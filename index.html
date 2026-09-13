@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>خدمة الأنبا كاراس | OED - ORASCOM CONSTRUCTION</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM via CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel for in-browser transpilation of JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- SheetJS for Excel Export -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-50 text-slate-800 antialiased">
+  <div id="root"></div>
+
+  <!-- The entire React App -->
+  <script type="text/babel" data-type="module">
+    const { useState, useEffect, useRef } = React;
+
+    // Custom UUID Generator since we don't have the uuid npm package
+    const uuidv4 = () => {
+      if (crypto && crypto.randomUUID) return crypto.randomUUID();
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    };
+
+    // Inline SVG Icons replacing lucide-react
+    const Mic = ({ size = 24, className = '' }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+    );
+    const MicOff = ({ size = 24, className = '' }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="2" x2="22" y1="2" y2="22"/><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"/><path d="M5 10v2a7 7 0 0 0 12 5"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+    );
+    const Plus = ({ size = 24, className = '' }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+    );
+    const Download = ({ size = 24, className = '' }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+    );
+    const RefreshCw = ({ size = 24, className = '' }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+    );
+    const MapPin = ({ size = 24, className = '' }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+    );
+    const Trash2 = ({ size = 24, className = '' }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+    );
+
+    // Component: MicInput
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    function MicInput({ value, onValueChange, multiline = false, type = 'text', placeholder, className = "", id }) {
+      const [isListening, setIsListening] = useState(false);
+      const recognitionRef = useRef(null);
+
+      useEffect(() => {
+        if (SpeechRecognition) {
+          recognitionRef.current = new SpeechRecognition();
+          recognitionRef.current.continuous = false;
+          recognitionRef.current.interimResults = false;
+          recognitionRef.current.lang = 'ar-EG';
+
+          recognitionRef.current.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            onValueChange(value ? `${value} ${transcript}` : transcript);
+          };
+
+          recognitionRef.current.onerror = (event) => {
+            console.error("Speech recognition error", event.error);
+            setIsListening(false);
+          };
+
+          recognitionRef.current.onend = () => {
+            setIsListening(false);
+          };
+        }
+      }, [value, onValueChange]);
+
+      const toggleListen = () => {
+        if (isListening) {
+          recognitionRef.current?.stop();
+          setIsListening(false);
+        } else {
+          try {
+            recognitionRef.current?.start();
+            setIsListening(true);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      };
+
+      const baseInputClass = "w-full rounded-md border border-gray-300 p-2.5 text-sm focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] focus:outline-none transition-shadow";
+
+      return (
+        <div className="relative flex items-center w-full">
+          {multiline ? (
+            <textarea
+              id={id}
+              value={value}
+              onChange={(e) => onValueChange(e.target.value)}
+              placeholder={placeholder}
+              className={`${baseInputClass} pl-12 min-h-[80px] ${className}`}
+            />
+          ) : (
+            <input
+              id={id}
+              type={type}
+              value={value}
+              onChange={(e) => onValueChange(e.target.value)}
+              placeholder={placeholder}
+              className={`${baseInputClass} pl-12 ${className}`}
+            />
+          )}
+          
+          {SpeechRecognition && type !== 'date' && type !== 'number' && (
+            <button
+              type="button"
+              onClick={toggleListen}
+              className={`absolute left-2 top-2 p-1.5 rounded-full transition-colors flex-shrink-0 ${
+                isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'text-gray-400 hover:text-[#002f6c] hover:bg-gray-100'
+              }`}
+              title="تحدث للإدخال"
+            >
+              {isListening ? <Mic size={18} /> : <MicOff size={18} />}
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // Component: CaseForm
+    function CaseForm({ onAddCase }) {
+      const [name, setName] = useState('');
+      const [projectType, setProjectType] = useState('');
+      const [projectValue, setProjectValue] = useState('');
+      const [installmentAmount, setInstallmentAmount] = useState('');
+      const [notes, setNotes] = useState('');
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+
+        onAddCase({
+          id: uuidv4(),
+          name: name.trim(),
+          projectType: projectType.trim(),
+          projectValue: Number(projectValue) || 0,
+          installmentAmount: Number(installmentAmount) || 0,
+          notes: notes.trim()
+        });
+
+        setName('');
+        setProjectType('');
+        setProjectValue('');
+        setInstallmentAmount('');
+        setNotes('');
+      };
+
+      return (
+        <form onSubmit={handleSubmit} className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+          <h4 className="font-semibold text-lg text-[#002f6c] mb-4">إضافة حالة جديدة</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label htmlFor="caseName" className="block text-sm font-medium text-gray-700 mb-1">اسم الحالة *</label>
+              <MicInput id="caseName" value={name} onValueChange={setName} placeholder="أدخل اسم الحالة" />
+            </div>
+            <div>
+              <label htmlFor="projectType" className="block text-sm font-medium text-gray-700 mb-1">نوع المشروع</label>
+              <MicInput id="projectType" value={projectType} onValueChange={setProjectType} placeholder="أدخل نوع المشروع" />
+            </div>
+            <div>
+              <label htmlFor="projectValue" className="block text-sm font-medium text-gray-700 mb-1">قيمة المشروع</label>
+              <MicInput id="projectValue" type="number" value={projectValue} onValueChange={setProjectValue} placeholder="0" />
+            </div>
+            <div>
+              <label htmlFor="installment" className="block text-sm font-medium text-gray-700 mb-1">قيمة القسط</label>
+              <MicInput id="installment" type="number" value={installmentAmount} onValueChange={setInstallmentAmount} placeholder="0" />
+            </div>
+            <div className="sm:col-span-2">
+              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
+              <MicInput id="notes" value={notes} onValueChange={setNotes} placeholder="أضف ملاحظات..." multiline />
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={!name.trim()}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#d4af37] hover:bg-[#c49b27] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium py-2.5 px-6 rounded-md transition-colors shadow-sm"
+          >
+            <Plus size={18} />
+            <span>إضافة الحالة</span>
+          </button>
+        </form>
+      );
+    }
+
+    // Component: RegionCard
+    function RegionCard({ region, onUpdateRegion, onDeleteRegion }) {
+      const handleNameChange = (name) => {
+        onUpdateRegion({ ...region, name });
+      };
+
+      const handleChurchNameChange = (churchName) => {
+        onUpdateRegion({ ...region, churchName });
+      };
+
+      const handleAddCase = (newCase) => {
+        onUpdateRegion({ ...region, cases: [...region.cases, newCase] });
+      };
+
+      const handleDeleteCase = (caseId) => {
+        if (confirm('هل أنت متأكد من حذف هذه الحالة؟')) {
+          onUpdateRegion({ ...region, cases: region.cases.filter(c => c.id !== caseId) });
+        }
+      };
+
+      const totalProjects = region.cases.length;
+      const totalProjectValue = region.cases.reduce((sum, c) => sum + c.projectValue, 0);
+      const totalInstallments = region.cases.reduce((sum, c) => sum + c.installmentAmount, 0);
+
+      return (
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-6">
+          <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">اسم المنطقة</label>
+                <MicInput value={region.name} onValueChange={handleNameChange} placeholder="أدخل اسم المنطقة" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">اسم الكنيسة</label>
+                <MicInput value={region.churchName} onValueChange={handleChurchNameChange} placeholder="أدخل اسم الكنيسة" />
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                if (confirm('هل أنت متأكد من حذف هذه المنطقة بالكامل؟')) {
+                  onDeleteRegion(region.id);
+                }
+              }}
+              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-md transition-colors flex-shrink-0 self-end sm:self-auto"
+              title="حذف المنطقة"
+            >
+              <Trash2 size={20} />
+            </button>
+          </div>
+
+          <div className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-center shadow-sm">
+                <span className="block text-sm font-medium text-blue-800 mb-1">إجمالي عدد المشاريع</span>
+                <span className="block text-2xl font-bold text-[#002f6c]">{totalProjects}</span>
+              </div>
+              <div className="bg-green-50 border border-green-100 rounded-lg p-4 text-center shadow-sm">
+                <span className="block text-sm font-medium text-green-800 mb-1">إجمالي قيمة المشاريع</span>
+                <span className="block text-2xl font-bold text-[#002f6c]">{totalProjectValue.toLocaleString('ar-EG')} ج.م</span>
+              </div>
+              <div className="bg-[#fff9e6] border border-[#f0e0a8] rounded-lg p-4 text-center shadow-sm">
+                <span className="block text-sm font-medium text-[#8a7222] mb-1">إجمالي الأقساط</span>
+                <span className="block text-2xl font-bold text-[#002f6c]">{totalInstallments.toLocaleString('ar-EG')} ج.م</span>
+              </div>
+            </div>
+
+            <CaseForm onAddCase={handleAddCase} />
+
+            {region.cases.length > 0 ? (
+              <div className="overflow-x-auto rounded-lg border border-gray-200">
+                <table className="w-full text-sm text-right text-gray-600 min-w-[700px]">
+                  <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+                    <tr>
+                      <th scope="col" className="px-4 py-3 font-semibold">اسم الحالة</th>
+                      <th scope="col" className="px-4 py-3 font-semibold">نوع المشروع</th>
+                      <th scope="col" className="px-4 py-3 font-semibold">قيمة المشروع</th>
+                      <th scope="col" className="px-4 py-3 font-semibold">قيمة القسط</th>
+                      <th scope="col" className="px-4 py-3 font-semibold">ملاحظات</th>
+                      <th scope="col" className="px-4 py-3 text-center font-semibold">إجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {region.cases.map((c) => (
+                      <tr key={c.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
+                        <td className="px-4 py-3">{c.projectType || '-'}</td>
+                        <td className="px-4 py-3">{c.projectValue.toLocaleString('ar-EG')}</td>
+                        <td className="px-4 py-3">{c.installmentAmount.toLocaleString('ar-EG')}</td>
+                        <td className="px-4 py-3 max-w-[200px] truncate" title={c.notes}>{c.notes || '-'}</td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleDeleteCase(c.id)}
+                            className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
+                            title="حذف الحالة"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                لا توجد حالات مضافة في هذه المنطقة بعد.
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Main App Component
+    const STORAGE_KEY = 'anba_karas_visit_data';
+
+    const initialData = {
+      location: '',
+      date: new Date().toISOString().split('T')[0],
+      regions: []
+    };
+
+    function App() {
+      const [data, setData] = useState(() => {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          try {
+            return JSON.parse(saved);
+          } catch (e) {
+            console.error('Failed to parse local storage', e);
+          }
+        }
+        return initialData;
+      });
+
+      useEffect(() => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }, [data]);
+
+      const handleUpdateLocation = (location) => {
+        setData(prev => ({ ...prev, location }));
+      };
+
+      const handleUpdateDate = (e) => {
+        setData(prev => ({ ...prev, date: e.target.value }));
+      };
+
+      const handleAddRegion = () => {
+        const newRegion = {
+          id: uuidv4(),
+          name: '',
+          churchName: '',
+          cases: []
+        };
+        setData(prev => ({ ...prev, regions: [newRegion, ...prev.regions] }));
+      };
+
+      const handleUpdateRegion = (updatedRegion) => {
+        setData(prev => ({
+          ...prev,
+          regions: prev.regions.map(r => r.id === updatedRegion.id ? updatedRegion : r)
+        }));
+      };
+
+      const handleDeleteRegion = (id) => {
+        setData(prev => ({
+          ...prev,
+          regions: prev.regions.filter(r => r.id !== id)
+        }));
+      };
+
+      const handleClearAll = () => {
+        if (confirm('هل أنت متأكد من مسح جميع البيانات والبدء بزيارة جديدة؟ لا يمكن التراجع عن هذا الإجراء.')) {
+          setData({
+            location: '',
+            date: new Date().toISOString().split('T')[0],
+            regions: []
+          });
+        }
+      };
+
+      const handleExportExcel = () => {
+        if (typeof XLSX === 'undefined') {
+          alert('جاري تحميل مكتبة الإكسيل، يرجى المحاولة مرة أخرى بعد قليل.');
+          return;
+        }
+
+        const rows = [];
+        let grandTotalProjects = 0;
+        let grandTotalProjectValue = 0;
+        let grandTotalInstallments = 0;
+
+        data.regions.forEach(region => {
+          region.cases.forEach(c => {
+            rows.push({
+              'مكان الزيارة': data.location,
+              'تاريخ الزيارة': data.date,
+              'اسم المنطقة': region.name,
+              'اسم الكنيسة': region.churchName,
+              'اسم الحالة': c.name,
+              'نوع المشروع': c.projectType,
+              'قيمة المشروع': c.projectValue,
+              'قيمة القسط': c.installmentAmount,
+              'ملاحظات': c.notes
+            });
+            grandTotalProjects++;
+            grandTotalProjectValue += c.projectValue;
+            grandTotalInstallments += c.installmentAmount;
+          });
+        });
+
+        if (rows.length === 0) {
+          alert('لا توجد بيانات للتصدير.');
+          return;
+        }
+
+        rows.push({
+          'مكان الزيارة': 'الإجمالي',
+          'تاريخ الزيارة': '',
+          'اسم المنطقة': '',
+          'اسم الكنيسة': '',
+          'اسم الحالة': '',
+          'نوع المشروع': `${grandTotalProjects} مشروع`,
+          'قيمة المشروع': grandTotalProjectValue,
+          'قيمة القسط': grandTotalInstallments,
+          'ملاحظات': ''
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'الزيارة');
+
+        const locationPart = data.location ? `_${data.location.replace(/\s+/g, '_')}` : '';
+        const filename = `زيارة${locationPart}_${data.date}.xlsx`;
+        XLSX.writeFile(workbook, filename);
+      };
+
+      const totalRegionsCount = data.regions.length;
+      const grandTotalProjects = data.regions.reduce((sum, r) => sum + r.cases.length, 0);
+      const grandTotalProjectValue = data.regions.reduce((sum, r) => sum + r.cases.reduce((s, c) => s + c.projectValue, 0), 0);
+      const grandTotalInstallments = data.regions.reduce((sum, r) => sum + r.cases.reduce((s, c) => s + c.installmentAmount, 0), 0);
+
+      return (
+        <div className="min-h-screen pb-36">
+          <nav className="bg-[#002f6c] text-white shadow-md sticky top-0 z-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between h-16 items-center">
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col">
+                    <span className="text-[#d4af37] text-lg font-bold">خدمة الأنبا كاراس</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={handleExportExcel} className="hidden sm:flex items-center gap-1.5 bg-[#d4af37] hover:bg-[#c49b27] text-white px-3 py-1.5 rounded text-sm font-medium transition-colors">
+                    <Download size={16} />
+                    <span>تصدير إكسيل</span>
+                  </button>
+                  <button onClick={handleClearAll} className="hidden sm:flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors">
+                    <RefreshCw size={16} />
+                    <span>زيارة جديدة</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </nav>
+
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <section className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
+              <h2 className="text-xl font-bold text-[#002f6c] mb-4 flex items-center gap-2">
+                <MapPin size={24} className="text-[#d4af37]" />
+                بيانات الزيارة
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">مكان الزيارة</label>
+                  <MicInput value={data.location} onValueChange={handleUpdateLocation} placeholder="أدخل مكان الزيارة" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">تاريخ الزيارة</label>
+                  <input
+                    type="date"
+                    value={data.date}
+                    onChange={handleUpdateDate}
+                    className="w-full rounded-md border border-gray-300 p-2.5 text-sm focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] focus:outline-none transition-shadow"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+              <h2 className="text-2xl font-bold text-gray-800 w-full sm:w-auto">المناطق</h2>
+              <button
+                onClick={handleAddRegion}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#002f6c] hover:bg-[#001f4c] text-white font-medium py-2.5 px-6 rounded-md transition-colors shadow-md"
+              >
+                <Plus size={20} />
+                <span>إضافة منطقة جديدة</span>
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {data.regions.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-dashed border-gray-300">
+                  <p className="text-gray-500 mb-4">لم يتم إضافة أي مناطق بعد.</p>
+                  <button
+                    onClick={handleAddRegion}
+                    className="inline-flex items-center justify-center gap-2 bg-[#002f6c] hover:bg-[#001f4c] text-white font-medium py-2 px-6 rounded-md transition-colors"
+                  >
+                    <Plus size={18} />
+                    <span>إضافة منطقتك الأولى</span>
+                  </button>
+                </div>
+              ) : (
+                data.regions.map(region => (
+                  <RegionCard
+                    key={region.id}
+                    region={region}
+                    onUpdateRegion={handleUpdateRegion}
+                    onDeleteRegion={handleDeleteRegion}
+                  />
+                ))
+              )}
+            </div>
+          </main>
+
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-40">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center sm:text-right">
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-500">عدد المناطق</span>
+                  <span className="font-bold text-[#002f6c] text-lg">{totalRegionsCount}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-500">إجمالي المشاريع</span>
+                  <span className="font-bold text-[#002f6c] text-lg">{grandTotalProjects}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-500">إجمالي قيمة المشاريع</span>
+                  <span className="font-bold text-green-700 text-lg">{grandTotalProjectValue.toLocaleString('ar-EG')} ج.م</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-500">إجمالي الأقساط</span>
+                  <span className="font-bold text-[#8a7222] text-lg">{grandTotalInstallments.toLocaleString('ar-EG')} ج.م</span>
+                </div>
+              </div>
+              <div className="flex sm:hidden gap-2 mt-3 pt-3 border-t border-gray-100">
+                <button onClick={handleExportExcel} className="flex-1 flex justify-center items-center gap-1.5 bg-[#d4af37] hover:bg-[#c49b27] text-white px-3 py-2 rounded text-sm font-medium transition-colors">
+                  <Download size={16} />
+                  <span>تصدير إكسيل</span>
+                </button>
+                <button onClick={handleClearAll} className="flex-1 flex justify-center items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
+                  <RefreshCw size={16} />
+                  <span>زيارة جديدة</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
