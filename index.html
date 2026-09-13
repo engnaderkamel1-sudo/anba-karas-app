@@ -48,9 +48,20 @@
     const db = typeof firebase !== 'undefined' ? firebase.firestore() : null;
     
     if (db) {
-      db.enablePersistence().catch((err) => {
-        console.error("Firebase persistence error:", err.code);
-      });
+      try {
+        db.settings({
+          cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+        });
+        db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
+          if (err.code === 'failed-precondition') {
+             console.warn('Multiple tabs open, persistence can only be enabled in one tab at a a time.');
+          } else if (err.code === 'unimplemented') {
+             console.warn('The current browser does not support all of the features required to enable persistence');
+          }
+        });
+      } catch (e) {
+        console.warn("Firestore settings error:", e);
+      }
     }
 
     const { useState, useEffect, useRef } = React;
@@ -684,6 +695,16 @@
         setData({ visitId: newId, location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() });
       };
 
+      const handleClearAll = () => {
+        if (confirm('هل أنت متأكد من مسح جميع بيانات الزيارة الحالية بالكامل؟ لا يمكن التراجع عن هذا الإجراء وسيتم حذفها من السحابة.')) {
+           const emptyData = { visitId: currentVisitId, location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() };
+           setData(emptyData);
+           if (db && currentVisitId) {
+              db.collection('visits').doc(currentVisitId).set(emptyData);
+           }
+        }
+      };
+
       const handleForceSync = () => {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved && currentVisitId) {
@@ -819,6 +840,10 @@
                   <button onClick={handleExportExcel} className="hidden sm:flex items-center gap-1.5 bg-[#d4af37] hover:bg-[#c49b27] text-white px-3 py-1.5 rounded text-sm font-medium transition-colors">
                     <Download size={16} />
                     <span>تصدير إكسيل</span>
+                  </button>
+                  <button onClick={handleClearAll} className="hidden sm:flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" title="مسح محتوى الزيارة الحالية">
+                    <Trash2 size={16} />
+                    <span className="hidden lg:inline">مسح الزيارة</span>
                   </button>
                   <button onClick={handleNewVisit} className="hidden sm:flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors">
                     <Plus size={16} />
