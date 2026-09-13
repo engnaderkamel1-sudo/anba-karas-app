@@ -1048,6 +1048,10 @@
       const [filterServant, setFilterServant] = useState('');
       const [filterProject, setFilterProject] = useState('');
       const [filterCase, setFilterCase] = useState('');
+      const [expandedRegions, setExpandedRegions] = useState({});
+      const [expandedChurches, setExpandedChurches] = useState({});
+      const toggleRegion = (regionName) => setExpandedRegions(prev => ({ ...prev, [regionName]: !prev[regionName] }));
+      const toggleChurch = (churchId) => setExpandedChurches(prev => ({ ...prev, [churchId]: !prev[churchId] }));
 
       const uniqueRegions = Array.from(new Set((visit.churches||[]).map(ch => ch.regionName).filter(Boolean))).sort();
       const uniqueChurches = Array.from(new Set((visit.churches||[]).filter(ch => !filterRegion || ch.regionName === filterRegion).map(ch => ch.churchName).filter(Boolean))).sort();
