@@ -506,13 +506,52 @@
 
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
 
+      const isRemoteUpdate = useRef(false);
+
+      useEffect(() => {
+        if (!db) return;
+        const unsubscribe = db.collection('visits').doc('current_visit').onSnapshot((doc) => {
+          if (doc.exists) {
+            if (!doc.metadata.hasPendingWrites) {
+              const cloudData = doc.data();
+              setData(prevData => {
+                if (JSON.stringify(prevData) !== JSON.stringify(cloudData)) {
+                  isRemoteUpdate.current = true;
+                  return cloudData;
+                }
+                return prevData;
+              });
+            }
+          } else {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+              try {
+                const parsed = JSON.parse(saved);
+                if (parsed && Object.keys(parsed).length > 0) {
+                  setSyncStatus('syncing');
+                  db.collection('visits').doc('current_visit').set(parsed)
+                    .then(() => setSyncStatus('synced'))
+                    .catch(() => setSyncStatus('error'));
+                }
+              } catch(e) {}
+            }
+          }
+        });
+        return () => unsubscribe();
+      }, []);
+
       useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         
-        if (!data.visitId || !db) return;
+        if (isRemoteUpdate.current) {
+          isRemoteUpdate.current = false;
+          return;
+        }
+
+        if (!db) return;
 
         setSyncStatus('syncing');
-        db.collection('visits').doc(data.visitId).set(data)
+        db.collection('visits').doc('current_visit').set(data)
           .then(() => setSyncStatus('synced'))
           .catch((err) => {
             console.error("Firestore Save Error:", err);
@@ -614,6 +653,30 @@
         }
       };
 
+      const handleForceSync = () => {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            setSyncStatus('syncing');
+            db.collection('visits').doc('current_visit').set(parsed)
+              .then(() => {
+                 setSyncStatus('synced');
+                 alert('تم رفع البيانات المحلية للسحابة بنجاح!');
+              })
+              .catch(err => {
+                 console.error("Manual Sync Error:", err);
+                 setSyncStatus('error');
+                 alert('حدث خطأ أثناء الرفع: ' + err.message);
+              });
+          } catch(e) {
+             alert('فشل قراءة البيانات المحلية');
+          }
+        } else {
+          alert('لا توجد بيانات محلية لرفعها.');
+        }
+      };
+
       const handleExportExcel = () => {
         if (typeof XLSX === 'undefined') {
           alert('جاري تحميل مكتبة الإكسيل، يرجى المحاولة مرة أخرى بعد قليل.');
@@ -704,6 +767,10 @@
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <button onClick={handleForceSync} className="hidden sm:flex items-center gap-1.5 bg-[#005c29] hover:bg-[#004a20] text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" title="مزامنة ورفع البيانات السابقة للسحابة">
+                    <CloudUpload size={16} />
+                    <span className="hidden md:inline">رفع للسحابة</span>
+                  </button>
                   <button onClick={handleExportExcel} className="hidden sm:flex items-center gap-1.5 bg-[#d4af37] hover:bg-[#c49b27] text-white px-3 py-1.5 rounded text-sm font-medium transition-colors">
                     <Download size={16} />
                     <span>تصدير إكسيل</span>
