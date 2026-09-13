@@ -221,6 +221,10 @@
         onUpdateRegion({ ...region, name });
       };
 
+      const handleVillageNameChange = (villageName) => {
+        onUpdateRegion({ ...region, villageName });
+      };
+
       const handleChurchNameChange = (churchName) => {
         onUpdateRegion({ ...region, churchName });
       };
@@ -246,10 +250,14 @@
       return (
         <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-6">
           <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">اسم المنطقة</label>
                 <MicInput value={region.name || ''} onValueChange={handleNameChange} placeholder="أدخل اسم المنطقة" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">اسم القرية</label>
+                <MicInput value={region.villageName || ''} onValueChange={handleVillageNameChange} placeholder="أدخل اسم القرية" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">اسم الكنيسة</label>
@@ -374,6 +382,7 @@
         const newRegion = {
           id: uuidv4(),
           name: '',
+          villageName: '',
           churchName: '',
           servantsNames: '',
           cases: []
@@ -422,6 +431,7 @@
               'مكان الزيارة': data.location,
               'تاريخ الزيارة': data.date,
               'اسم المنطقة': region.name,
+              'اسم القرية': region.villageName || '',
               'اسم الكنيسة': region.churchName,
               'أسماء الخدام': region.servantsNames || '',
               'اسم الحالة': c.name,
@@ -445,6 +455,7 @@
           'مكان الزيارة': 'الإجمالي',
           'تاريخ الزيارة': '',
           'اسم المنطقة': '',
+          'اسم القرية': '',
           'اسم الكنيسة': '',
           'أسماء الخدام': '',
           'اسم الحالة': '',
