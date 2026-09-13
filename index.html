@@ -137,6 +137,7 @@
     const Calendar = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
     const CheckCircle = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
     const RotateCcw = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 2 3 14 15 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L3 14"/></svg>;
+        const Search = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>;
     const AlertTriangle = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
 
     // --- MIC INPUT COMPONENT ---
@@ -411,6 +412,7 @@
     // --- PAGE 1: ACTIVE VISIT ENTRY ---
     function ActiveVisitForm({ data, updateData, onEndVisit }) {
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
+      const [searchTerm, setSearchTerm] = useState('');
       const [expandedChurches, setExpandedChurches] = useState({});
 
       // Compute Church Serials
@@ -580,7 +582,23 @@
           })()}
 
 
-          <div className="mb-6 flex justify-between items-end">
+          
+          {/* SEARCH BAR */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex items-center gap-3">
+             <Search size={20} className="text-gray-400" />
+             <input 
+                type="text" 
+                placeholder="ابحث باسم الكنيسة، الحالة، نوع المشروع، أو اسم الخادم..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1 bg-transparent border-none outline-none text-gray-800 placeholder-gray-400 text-sm font-sans"
+             />
+             {searchTerm && (
+                <button onClick={() => setSearchTerm('')} className="text-gray-400 hover:text-red-500"><X size={18} /></button>
+             )}
+          </div>
+
+          <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
             <h3 className="text-lg font-bold text-gray-800">الكنائس والمناطق ({formatNumber((data.churches||[]).length)})</h3>
             <button onClick={handleAddChurch} className="flex items-center gap-1.5 bg-[#002f6c] text-white hover:bg-[#001f4c] px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors">
               <Plus size={16} /> إضافة كنيسة/منطقة
@@ -595,7 +613,45 @@
             </div>
           ) : (
             <div className="space-y-8">
-              {data.churches.map((churchLoc) => (
+              {(() => {
+                const term = searchTerm.toLowerCase().trim();
+                let filteredChurches = data.churches || [];
+                
+                if (term) {
+                    filteredChurches = filteredChurches.map(ch => {
+                        // If church name matches, keep all its groups and cases
+                        if (ch.churchName && ch.churchName.toLowerCase().includes(term)) {
+                            return ch;
+                        }
+                        
+                        // Otherwise, filter groups and cases
+                        const filteredGroups = (ch.servantsGroups || []).map(sg => {
+                            if (sg.servantsNames && sg.servantsNames.toLowerCase().includes(term)) {
+                                return sg; // Keep all cases in this group
+                            }
+                            
+                            const filteredCases = (sg.cases || []).filter(c => 
+                                (c.name && c.name.toLowerCase().includes(term)) ||
+                                (c.projectType && c.projectType.toLowerCase().includes(term))
+                            );
+                            
+                            return { ...sg, cases: filteredCases };
+                        }).filter(sg => sg.cases.length > 0 || (sg.servantsNames && sg.servantsNames.toLowerCase().includes(term)));
+                        
+                        return { ...ch, servantsGroups: filteredGroups };
+                    }).filter(ch => ch.servantsGroups.length > 0 || (ch.churchName && ch.churchName.toLowerCase().includes(term)));
+                }
+                
+                if (filteredChurches.length === 0 && term) {
+                    return (
+                        <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
+                           <Search size={48} className="mx-auto text-gray-200 mb-3" />
+                           <p className="text-gray-500 font-medium text-lg">لا توجد نتائج مطابقة للبحث</p>
+                        </div>
+                    );
+                }
+
+                return filteredChurches.map((churchLoc) => (
                 <div key={churchLoc.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                   {/* Accordion Header */}
                   <div 
@@ -656,7 +712,7 @@
                     </div>
                   )}
                 </div>
-              ))}
+              ))})()}
             </div>
           )}
 
@@ -765,6 +821,7 @@
     }
 
     function ArchiveDetails({ visit, onBack }) {
+      const [searchTerm, setSearchTerm] = useState('');
       const churchesCount = (visit.churches||[]).length;
       let totalCases = 0, totalValue = 0, totalInst = 0;
       
@@ -816,10 +873,58 @@
                </div>
             </div>
 
-            <h3 className="text-lg font-bold text-gray-800 mb-4">تفاصيل الحالات</h3>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+              <h3 className="text-lg font-bold text-gray-800">تفاصيل الحالات</h3>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 flex items-center gap-2 w-full sm:w-80">
+                 <Search size={16} className="text-gray-400" />
+                 <input 
+                    type="text" 
+                    placeholder="ابحث هنا..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="flex-1 bg-transparent border-none outline-none text-gray-800 placeholder-gray-400 text-sm font-sans"
+                 />
+                 {searchTerm && (
+                    <button onClick={() => setSearchTerm('')} className="text-gray-400 hover:text-red-500"><X size={14} /></button>
+                 )}
+              </div>
+            </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                {(visit.churches||[]).length === 0 ? <div className="p-8 text-center text-gray-500">لا توجد تفاصيل.</div> : null}
-               {(visit.churches||[]).map(ch => (
+               {(() => {
+                  const term = searchTerm.toLowerCase().trim();
+                  let filteredChurches = visit.churches || [];
+                  
+                  if (term) {
+                      filteredChurches = filteredChurches.map(ch => {
+                          if (ch.churchName && ch.churchName.toLowerCase().includes(term)) {
+                              return ch;
+                          }
+                          const filteredGroups = (ch.servantsGroups || []).map(sg => {
+                              if (sg.servantsNames && sg.servantsNames.toLowerCase().includes(term)) {
+                                  return sg;
+                              }
+                              const filteredCases = (sg.cases || []).filter(c => 
+                                  (c.name && c.name.toLowerCase().includes(term)) ||
+                                  (c.projectType && c.projectType.toLowerCase().includes(term))
+                              );
+                              return { ...sg, cases: filteredCases };
+                          }).filter(sg => sg.cases.length > 0 || (sg.servantsNames && sg.servantsNames.toLowerCase().includes(term)));
+                          
+                          return { ...ch, servantsGroups: filteredGroups };
+                      }).filter(ch => ch.servantsGroups.length > 0 || (ch.churchName && ch.churchName.toLowerCase().includes(term)));
+                  }
+                  
+                  if (filteredChurches.length === 0 && term) {
+                      return (
+                          <div className="p-8 text-center bg-white rounded-xl">
+                             <Search size={32} className="mx-auto text-gray-200 mb-2" />
+                             <p className="text-gray-500 font-medium">لا توجد نتائج مطابقة للبحث</p>
+                          </div>
+                      );
+                  }
+                  
+                  return filteredChurches.map(ch => (
                   <div key={ch.id} className="border-b border-gray-100 last:border-0">
                      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
@@ -871,7 +976,7 @@
                         </table>
                      </div>
                   </div>
-               ))}
+               ))})()}
             </div>
          </div>
       );
@@ -1070,6 +1175,14 @@
                 <ArchiveDetails 
                    visit={viewingArchive} 
                    onBack={() => { setViewingArchive(null); setActiveTab('archive'); }} 
+                />
+             )}
+             {activeTab === 'trash' && (
+                <TrashPage 
+                   deletedVisits={allVisits.filter(v => v.isDeleted)} 
+                   onRestore={handleRestoreVisit} 
+                   onPermanentDelete={handlePermanentDelete} 
+                   onEmptyTrash={handleEmptyTrash} 
                 />
              )}
           </main>
