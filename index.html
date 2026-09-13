@@ -476,10 +476,12 @@
     }
 
     const STORAGE_KEY = 'anba_karas_visit_data';
-    const initialData = { visitId: uuidv4(), location: '', date: new Date().toISOString().split('T')[0], churches: [] };
+    const initialData = { visitId: uuidv4(), location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() };
 
     function App() {
       const [syncStatus, setSyncStatus] = useState('synced');
+      const [visitList, setVisitList] = useState([]);
+      const [currentVisitId, setCurrentVisitId] = useState(null);
       
       const [data, setData] = useState(() => {
         const saved = localStorage.getItem(STORAGE_KEY);
@@ -487,6 +489,7 @@
           try {
             const parsed = JSON.parse(saved);
             if (!parsed.visitId) parsed.visitId = uuidv4();
+            if (!parsed.createdAt) parsed.createdAt = Date.now();
             // Migrate old structure if present
             if (parsed.regions && !parsed.churches) {
               parsed.churches = parsed.regions.map(r => ({
@@ -510,7 +513,32 @@
 
       useEffect(() => {
         if (!db) return;
-        const unsubscribe = db.collection('visits').doc('current_visit').onSnapshot((doc) => {
+        const unsubscribe = db.collection('visits').onSnapshot(snapshot => {
+          const list = [];
+          snapshot.forEach(doc => {
+            const d = doc.data();
+            list.push({
+               id: doc.id,
+               location: d.location || 'بدون اسم',
+               date: d.date || '',
+               createdAt: d.createdAt || 0
+            });
+          });
+          list.sort((a, b) => b.createdAt - a.createdAt);
+          setVisitList(list);
+
+          setCurrentVisitId(prev => {
+             if (prev) return prev;
+             if (list.length > 0) return list[0].id;
+             return data.visitId;
+          });
+        });
+        return () => unsubscribe();
+      }, []);
+
+      useEffect(() => {
+        if (!db || !currentVisitId) return;
+        const unsubscribe = db.collection('visits').doc(currentVisitId).onSnapshot((doc) => {
           if (doc.exists) {
             if (!doc.metadata.hasPendingWrites) {
               const cloudData = doc.data();
@@ -529,7 +557,7 @@
                 const parsed = JSON.parse(saved);
                 if (parsed && Object.keys(parsed).length > 0) {
                   setSyncStatus('syncing');
-                  db.collection('visits').doc('current_visit').set(parsed)
+                  db.collection('visits').doc(currentVisitId).set(parsed)
                     .then(() => setSyncStatus('synced'))
                     .catch(() => setSyncStatus('error'));
                 }
@@ -538,7 +566,7 @@
           }
         });
         return () => unsubscribe();
-      }, []);
+      }, [currentVisitId]);
 
       useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -548,16 +576,19 @@
           return;
         }
 
-        if (!db) return;
+        if (!db || !currentVisitId) return;
 
         setSyncStatus('syncing');
-        db.collection('visits').doc('current_visit').set(data)
+        const toSave = { ...data, visitId: currentVisitId };
+        if (!toSave.createdAt) toSave.createdAt = Date.now();
+
+        db.collection('visits').doc(currentVisitId).set(toSave)
           .then(() => setSyncStatus('synced'))
           .catch((err) => {
             console.error("Firestore Save Error:", err);
             setSyncStatus('error');
           });
-      }, [data]);
+      }, [data, currentVisitId]);
 
       // Serial mapping logic
       const serialMap = {};
@@ -647,19 +678,19 @@
         }));
       };
 
-      const handleClearAll = () => {
-        if (confirm('هل أنت متأكد من مسح جميع البيانات والبدء بزيارة جديدة؟ لا يمكن التراجع عن هذا الإجراء.')) {
-          setData({ visitId: uuidv4(), location: '', date: new Date().toISOString().split('T')[0], churches: [] });
-        }
+      const handleNewVisit = () => {
+        const newId = uuidv4();
+        setCurrentVisitId(newId);
+        setData({ visitId: newId, location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() });
       };
 
       const handleForceSync = () => {
         const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
+        if (saved && currentVisitId) {
           try {
             const parsed = JSON.parse(saved);
             setSyncStatus('syncing');
-            db.collection('visits').doc('current_visit').set(parsed)
+            db.collection('visits').doc(currentVisitId).set(parsed)
               .then(() => {
                  setSyncStatus('synced');
                  alert('تم رفع البيانات المحلية للسحابة بنجاح!');
@@ -759,8 +790,22 @@
                   <div className="flex flex-col">
                     <span className="text-[#d4af37] text-lg font-bold">خدمة الأنبا كاراس</span>
                   </div>
+
+                  <div className="mr-2 sm:mr-4">
+                    <select 
+                       value={currentVisitId || ''} 
+                       onChange={(e) => setCurrentVisitId(e.target.value)}
+                       className="text-xs sm:text-sm border border-[#004a8f] bg-[#001f4c] text-white rounded px-2 py-1 outline-none appearance-none cursor-pointer hover:bg-[#002f6c] transition-colors"
+                       style={{ direction: 'rtl' }}
+                    >
+                       {visitList.length === 0 && <option value={currentVisitId || ''}>زيارة جديدة...</option>}
+                       {visitList.map(v => (
+                         <option key={v.id} value={v.id}>{v.location || 'بدون مكان'} - {v.date}</option>
+                       ))}
+                    </select>
+                  </div>
                   
-                  <div className="hidden sm:flex items-center mr-4 text-xs font-medium px-2 py-1 rounded bg-[#001f4c] text-blue-200" title="حالة التزامن مع السحابة">
+                  <div className="hidden sm:flex items-center mr-2 text-xs font-medium px-2 py-1 rounded bg-[#001f4c] text-blue-200" title="حالة التزامن مع السحابة">
                     {syncStatus === 'syncing' && <><CloudUpload size={14} className="ml-1 animate-pulse" /><span>جاري الحفظ...</span></>}
                     {syncStatus === 'synced' && <><Cloud size={14} className="ml-1 text-green-400" /><span>تم الحفظ</span></>}
                     {syncStatus === 'error' && <><CloudOff size={14} className="ml-1 text-red-400" /><span>غير متصل</span></>}
@@ -775,8 +820,8 @@
                     <Download size={16} />
                     <span>تصدير إكسيل</span>
                   </button>
-                  <button onClick={handleClearAll} className="hidden sm:flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors">
-                    <RefreshCw size={16} />
+                  <button onClick={handleNewVisit} className="hidden sm:flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors">
+                    <Plus size={16} />
                     <span>زيارة جديدة</span>
                   </button>
                 </div>
