@@ -198,13 +198,13 @@
     };
 
     // --- EXPORT FUNCTION ---
-    const handleExportExcel = (visitData, options = { scope: 'full', targetName: '' }) => {
+    const handleExportExcel = (visitData, options = { scope: 'full', targetRegion: '', targetChurchId: '', targetChurchObj: null }) => {
         if (typeof XLSX === 'undefined') {
           alert('مكتبة الإكسيل غير متوفرة.');
           return;
         }
         
-        const { scope, targetName } = options;
+        const { scope, targetRegion, targetChurchId, targetChurchObj } = options;
 
         const aoa = [];
         const headers = [
@@ -218,17 +218,22 @@
         let grandTotalProjects = 0;
         let grandTotalProjectValue = 0;
         let grandTotalInstallments = 0;
+        
+        let targetChurches = visitData.churches || [];
+        if (scope === 'region') {
+            targetChurches = targetChurches.filter(ch => ch.regionName === targetRegion);
+        } else if (scope === 'church') {
+            targetChurches = targetChurches.filter(ch => ch.id === targetChurchId);
+        }
 
-        (visitData.churches || []).forEach((churchLoc, index) => {
+        targetChurches.forEach((churchLoc, index) => {
           let churchSerial = 1;
           let churchHasCases = false;
-
           (churchLoc.servantsGroups || []).forEach(sg => {
             (sg.cases || []).forEach(c => {
               churchHasCases = true;
               const projectVal = parseArabicNumeric(c.projectValue) || 0;
               const instVal = parseArabicNumeric(c.installmentAmount) || 0;
-
               aoa.push([
                 churchSerial,
                 visitData.location,
@@ -250,9 +255,8 @@
               grandTotalInstallments += instVal;
             });
           });
-
           // Add a divider row if it's not the last church and this church had cases
-          if (index < (visitData.churches || []).length - 1 && churchHasCases) {
+          if (index < targetChurches.length - 1 && churchHasCases) {
               aoa.push(['', '', '', '', '', '', '', '', '', '', '', '']); // separator
           }
         });
@@ -400,8 +404,14 @@
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'الزيارة');
 
-        const locationPart = visitData.location ? `_${visitData.location.replace(/\s+/g, '_')}` : '';
-        const filename = `زيارة${locationPart}_${visitData.date}.xlsx`;
+        const locationSafe = visitData.location ? visitData.location.replace(/\s+/g, '_') : 'بدون_اسم';
+        let filename = `زيارة_${locationSafe}`;
+        if (scope === 'region' && targetRegion) {
+            filename += `_منطقة_${targetRegion.replace(/\s+/g, '_')}`;
+        } else if (scope === 'church' && targetChurchObj) {
+            filename += `_كنيسة_${targetChurchObj.churchName.replace(/\s+/g, '_')}_${targetChurchObj.regionName.replace(/\s+/g, '_')}`;
+        }
+        filename += `_${visitData.date}.xlsx`;
 
         XLSX.writeFile(wb, filename, { cellStyles: true });
     };
@@ -1333,18 +1343,30 @@
     function ExportModal({ visit, onClose }) {
       const [scope, setScope] = useState('full');
       const [selectedRegion, setSelectedRegion] = useState('');
-      const [selectedChurch, setSelectedChurch] = useState('');
+      const [selectedChurchId, setSelectedChurchId] = useState('');
 
       const uniqueRegions = [...new Set((visit?.churches || []).map(ch => ch.regionName).filter(Boolean))];
-      const uniqueChurches = [...new Set((visit?.churches || []).map(ch => ch.churchName).filter(Boolean))];
+      // Store unique church objects to show name + region (and village if any)
+      const churchOptions = (visit?.churches || []).filter(ch => ch.churchName).map(ch => ({
+          id: ch.id,
+          churchName: ch.churchName,
+          regionName: ch.regionName,
+          villageName: ch.villageName
+      }));
 
       useEffect(() => {
          if (scope === 'region' && !selectedRegion && uniqueRegions.length > 0) setSelectedRegion(uniqueRegions[0]);
-         if (scope === 'church' && !selectedChurch && uniqueChurches.length > 0) setSelectedChurch(uniqueChurches[0]);
+         if (scope === 'church' && !selectedChurchId && churchOptions.length > 0) setSelectedChurchId(churchOptions[0].id);
       }, [scope]);
 
       const handleExport = () => {
-         handleExportExcel(visit, { scope, targetName: scope === 'region' ? selectedRegion : scope === 'church' ? selectedChurch : '' });
+         const churchData = churchOptions.find(c => c.id === selectedChurchId);
+         handleExportExcel(visit, { 
+             scope, 
+             targetRegion: scope === 'region' ? selectedRegion : '',
+             targetChurchId: scope === 'church' ? selectedChurchId : '',
+             targetChurchObj: churchData
+         });
          onClose();
       };
 
@@ -1386,9 +1408,13 @@
                        </div>
                        {scope === 'church' && (
                           <div className="mr-7 mt-1">
-                             <select value={selectedChurch} onChange={e => setSelectedChurch(e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm focus:border-[#002f6c] focus:ring focus:ring-[#002f6c]/20 p-2 text-sm bg-white">
-                                {uniqueChurches.map(c => <option key={c} value={c}>{c}</option>)}
-                                {uniqueChurches.length === 0 && <option value="">لا توجد كنائس</option>}
+                             <select value={selectedChurchId} onChange={e => setSelectedChurchId(e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm focus:border-[#002f6c] focus:ring focus:ring-[#002f6c]/20 p-2 text-sm bg-white">
+                                {churchOptions.map(c => (
+                                    <option key={c.id} value={c.id}>
+                                        {c.churchName} - {c.regionName} {c.villageName ? `(${c.villageName})` : ''}
+                                    </option>
+                                ))}
+                                {churchOptions.length === 0 && <option value="">لا توجد كنائس</option>}
                              </select>
                           </div>
                        )}
@@ -1397,7 +1423,7 @@
 
                  <div className="flex gap-3 justify-end pt-2 border-t border-gray-100">
                     <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md font-medium transition-colors">إلغاء</button>
-                    <button onClick={handleExport} disabled={ (scope === 'region' && !selectedRegion) || (scope === 'church' && !selectedChurch) } className="px-6 py-2 bg-[#d4af37] text-white hover:bg-[#c49b27] rounded-md font-medium shadow transition-colors disabled:opacity-50 flex items-center gap-2">
+                    <button onClick={handleExport} disabled={ (scope === 'region' && !selectedRegion) || (scope === 'church' && !selectedChurchId) } className="px-6 py-2 bg-[#d4af37] text-white hover:bg-[#c49b27] rounded-md font-medium shadow transition-colors disabled:opacity-50 flex items-center gap-2">
                        <Download size={18} /> بدء التصدير
                     </button>
                  </div>
