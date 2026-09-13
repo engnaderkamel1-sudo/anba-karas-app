@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>خدمة الأنبا كاراس - أبحاث</title>
+  <title>خدمة الأنبا كاراس - مشاريع</title>
   
   <!-- PWA & Mobile Web App Icons -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
@@ -1464,8 +1464,8 @@
                <div className="flex items-center gap-4">
                   <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-[#001f4c] rounded-md transition-colors"><Menu size={24} /></button>
                   <div className="flex items-center gap-3">
-                     <SaintHaloIcon className="w-10 h-10 rounded-full border-2 border-[#d4af37] shadow-sm object-cover" />
-                     <div className="font-bold text-[#d4af37] text-lg sm:text-xl tracking-wide hidden sm:block">خدمة الأنبا كاراس - أبحاث</div>
+                     <img src="./logo.jpg" alt="Logo" className="w-9 h-9 rounded-full object-cover border border-amber-400/60 shadow-sm" />
+                     <div className="font-bold text-[#d4af37] text-lg sm:text-xl tracking-wide hidden sm:block">خدمة الأنبا كاراس - مشاريع</div>
                      {isReadOnly && (
                         <div className="bg-red-500/20 text-red-100 border border-red-400/50 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm">
                            <span>👁️</span> وضع العرض فقط (للاطلاع)
@@ -1489,7 +1489,7 @@
           <div className={`fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
              <div className="h-16 bg-[#002f6c] px-4 flex items-center justify-between border-b border-[#001f4c]">
                 <div className="flex items-center gap-3">
-                   <SaintHaloIcon className="w-8 h-8 rounded-full border border-[#d4af37] object-cover" />
+                   <img src="./logo.jpg" alt="Logo" className="w-8 h-8 rounded-full object-cover border border-amber-400/60 shadow-sm" />
                    <span className="font-bold text-[#d4af37] text-sm">خدمة الأنبا كاراس</span>
                 </div>
                 <button onClick={() => setIsSidebarOpen(false)} className="text-white hover:text-gray-300 p-2"><X size={20}/></button>
