@@ -1338,7 +1338,7 @@
 
       const [data, setData] = useState({ visitId: uuidv4(), location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() });
 
-      // Fetch all visits once
+      // Real-Time Firestore Synchronization
       useEffect(() => {
         if (!db) return;
         const unsubscribe = db.collection('visits').onSnapshot(snapshot => {
@@ -1349,15 +1349,34 @@
           list.sort((a, b) => b.createdAt - a.createdAt);
           setAllVisits(list);
 
-          // Auto-load most recent visit into Active Entry if we don't have one loaded
-          setCurrentVisitId(prev => {
-             if (prev) return prev;
+          // Update Active Entry if another device modifies it
+          setCurrentVisitId(prevId => {
+             if (prevId) {
+                 const updated = list.find(v => v.id === prevId);
+                 if (updated) {
+                     setData(updated);
+                 }
+                 return prevId;
+             }
              if (list.length > 0) {
                  setData(list[0]);
                  return list[0].id;
              }
-             return data.visitId; // use initialized fallback
+             // If nothing exists, keep whatever data is initialized
+             return prevId; 
           });
+
+          // Update Archive Details if open and modified remotely
+          setViewingArchive(prev => {
+             if (prev) {
+                 const updated = list.find(v => v.id === prev.id);
+                 return updated || prev;
+             }
+             return prev;
+          });
+
+        }, (error) => {
+          console.error("Realtime sync error:", error);
         });
         return () => unsubscribe();
       }, []);
@@ -1553,6 +1572,37 @@
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
+  </script>
+
+  <script>
+    // Seamless PWA / Cache Auto-Reload on Code Updates
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          reg.onupdatefound = () => {
+            const installingWorker = reg.installing;
+            if (installingWorker) {
+              installingWorker.onstatechange = () => {
+                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // New update available
+                  if (confirm('يتوفر تحديث جديد للتطبيق. هل تريد إعادة التحميل الآن لتطبيق التحديثات؟')) {
+                     installingWorker.postMessage({ type: 'SKIP_WAITING' });
+                  }
+                }
+              };
+            }
+          };
+        }).catch(err => console.log('Service Worker registration skipped or failed: ', err));
+
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            window.location.reload();
+            refreshing = true;
+          }
+        });
+      });
+    }
   </script>
 </body>
 </html>
