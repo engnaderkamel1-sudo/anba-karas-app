@@ -77,6 +77,21 @@
       });
     };
 
+    
+    const getChurchStats = (churchLoc) => {
+        let totalCases = 0;
+        let totalValue = 0;
+        let totalInst = 0;
+        (churchLoc.servantsGroups || []).forEach(sg => {
+            (sg.cases || []).forEach(c => {
+                totalCases++;
+                totalValue += (parseFloat(c.projectValue) || 0);
+                totalInst += (parseFloat(c.installmentAmount) || 0);
+            });
+        });
+        return { totalCases, totalValue, totalInst };
+    };
+
     const formatNumber = (num) => {
       if (num === null || num === undefined || num === '') return '';
       return String(num).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
@@ -500,9 +515,22 @@
                       <span>{churchLoc.villageName || 'قرية غير محددة'}</span>
                       <span className="text-gray-400">-</span>
                       <span>{churchLoc.churchName || 'كنيسة غير محددة'}</span>
-                      <span className="mr-auto bg-white text-[#d4af37] border border-[#d4af37]/30 px-3 py-1 rounded-full text-xs font-sans">
-                         {(churchLoc.servantsGroups || []).reduce((sum, g) => sum + (g.cases || []).length, 0)} حالات
-                      </span>
+                      {(() => {
+                         const stats = getChurchStats(churchLoc);
+                         return (
+                           <div className="mr-auto flex flex-wrap gap-2 items-center">
+                              <span className="bg-white text-[#d4af37] border border-[#d4af37]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                                 📊 <span className="font-sans">{formatNumber(stats.totalCases)}</span> مشاريع
+                              </span>
+                              <span className="bg-white text-green-700 border border-green-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                                 💰 <span className="font-sans">{formatNumber(stats.totalValue)}</span> ج.م
+                              </span>
+                              <span className="bg-white text-[#8a7222] border border-[#f0e0a8] px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap hidden sm:inline-block">
+                                 💸 <span className="font-sans">{formatNumber(stats.totalInst)}</span> ج.م
+                              </span>
+                           </div>
+                         );
+                      })()}
                     </div>
                     <div className="flex items-center gap-2">
                        <button onClick={(e) => { e.stopPropagation(); handleDeleteChurch(churchLoc.id); }} className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-md transition-colors" title="حذف الكنيسة"><Trash2 size={20}/></button>
@@ -639,7 +667,25 @@
                {(visit.churches||[]).map(ch => (
                   <div key={ch.id} className="border-b border-gray-100 last:border-0">
                      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                        <h4 className="font-bold text-[#002f6c]">{ch.churchName} <span className="text-sm font-normal text-gray-500">({ch.regionName} - {ch.villageName})</span></h4>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                           <h4 className="font-bold text-[#002f6c]">{ch.churchName} <span className="text-sm font-normal text-gray-500">({ch.regionName} - {ch.villageName})</span></h4>
+                           {(() => {
+                             const stats = getChurchStats(ch);
+                             return (
+                               <div className="flex flex-wrap gap-2 items-center">
+                                  <span className="bg-white text-[#d4af37] border border-[#d4af37]/30 px-2 py-0.5 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                                     📊 <span className="font-sans">{formatNumber(stats.totalCases)}</span> مشاريع
+                                  </span>
+                                  <span className="bg-white text-green-700 border border-green-200 px-2 py-0.5 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                                     💰 <span className="font-sans">{formatNumber(stats.totalValue)}</span> ج.م
+                                  </span>
+                                  <span className="bg-white text-[#8a7222] border border-[#f0e0a8] px-2 py-0.5 rounded-full text-xs font-bold shadow-sm whitespace-nowrap hidden sm:inline-block">
+                                     💸 <span className="font-sans">{formatNumber(stats.totalInst)}</span> ج.م
+                                  </span>
+                               </div>
+                             );
+                           })()}
+                        </div>
                      </div>
                      <div className="p-0 overflow-x-auto">
                         <table className="w-full text-sm text-right">
