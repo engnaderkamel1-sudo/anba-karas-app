@@ -526,6 +526,60 @@
             </div>
           </div>
 
+          {/* OVERALL VISIT SUMMARY BAR */}
+          {(() => {
+              let totalProjects = 0;
+              let totalProjectValue = 0;
+              let totalInstallments = 0;
+              let totalChurches = (data.churches || []).length;
+              
+              (data.churches || []).forEach(ch => {
+                  (ch.servantsGroups || []).forEach(sg => {
+                      (sg.cases || []).forEach(c => {
+                          totalProjects++;
+                          totalProjectValue += (parseFloat(c.projectValue) || 0);
+                          totalInstallments += (parseFloat(c.installmentAmount) || 0);
+                      });
+                  });
+              });
+
+              return (
+                 <div className="bg-[#002f6c]/5 rounded-xl border border-[#002f6c]/20 p-4 mb-8 flex flex-wrap gap-4 items-center justify-between">
+                     <div className="flex flex-wrap gap-4 items-center">
+                        <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
+                           <span className="text-xl">📊</span>
+                           <div className="flex flex-col">
+                              <span className="text-xs text-gray-500 font-medium">إجمالي المشاريع</span>
+                              <span className="font-bold text-[#002f6c]"><span className="font-sans">{formatNumber(totalProjects)}</span> مشروع</span>
+                           </div>
+                        </div>
+                        <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
+                           <span className="text-xl">💰</span>
+                           <div className="flex flex-col">
+                              <span className="text-xs text-gray-500 font-medium">إجمالي المبالغ</span>
+                              <span className="font-bold text-green-700"><span className="font-sans">{formatNumber(totalProjectValue)}</span> ج.م</span>
+                           </div>
+                        </div>
+                        <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
+                           <span className="text-xl">💸</span>
+                           <div className="flex flex-col">
+                              <span className="text-xs text-gray-500 font-medium">إجمالي الأقساط</span>
+                              <span className="font-bold text-[#8a7222]"><span className="font-sans">{formatNumber(totalInstallments)}</span> ج.م</span>
+                           </div>
+                        </div>
+                     </div>
+                     <div className="bg-[#002f6c] text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2">
+                        <span className="text-xl">⛪</span>
+                        <div className="flex flex-col">
+                           <span className="text-xs text-blue-200 font-medium">عدد الكنائس</span>
+                           <span className="font-bold"><span className="font-sans">{formatNumber(totalChurches)}</span> كنيسة</span>
+                        </div>
+                     </div>
+                 </div>
+              );
+          })()}
+
+
           <div className="mb-6 flex justify-between items-end">
             <h3 className="text-lg font-bold text-gray-800">الكنائس والمناطق ({formatNumber((data.churches||[]).length)})</h3>
             <button onClick={handleAddChurch} className="flex items-center gap-1.5 bg-[#002f6c] text-white hover:bg-[#001f4c] px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors">
@@ -981,12 +1035,20 @@
                 </div>
                 <button onClick={() => setIsSidebarOpen(false)} className="text-white hover:text-gray-300 p-2"><X size={20}/></button>
              </div>
-             <div className="py-4 flex flex-col">
+             <div className="py-4 flex flex-col h-[calc(100vh-64px)] overflow-y-auto">
                 <button onClick={() => { setActiveTab('entry'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'entry' ? 'bg-blue-50 text-[#002f6c] border-r-4 border-[#002f6c] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
                    <Edit2 size={20} /> تسجيل الزيارة الحالية
                 </button>
                 <button onClick={() => { setActiveTab('archive'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'archive' || activeTab === 'archiveDetails' ? 'bg-blue-50 text-[#002f6c] border-r-4 border-[#002f6c] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
                    <ListIcon size={20} /> سجل الزيارات والإحصائيات
+                </button>
+                <button onClick={() => { setActiveTab('trash'); setIsSidebarOpen(false); }} className={`flex items-center justify-between mt-auto px-6 py-4 text-right transition-colors border-t border-gray-100 ${activeTab === 'trash' ? 'bg-red-50 text-red-600 border-r-4 border-red-600 font-bold' : 'text-gray-600 hover:bg-red-50 hover:text-red-600'}`}>
+                   <div className="flex items-center gap-3"><Trash2 size={20} /> سلة المهملات</div>
+                   {allVisits.filter(v => v.isDeleted).length > 0 && (
+                       <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-bold font-sans">
+                          {formatNumber(allVisits.filter(v => v.isDeleted).length)}
+                       </span>
+                   )}
                 </button>
              </div>
           </div>
