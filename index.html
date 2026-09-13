@@ -522,6 +522,15 @@
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
 
       const isRemoteUpdate = useRef(false);
+      const userActionSync = useRef(false);
+
+      const updateData = (updater) => {
+        setData(prev => {
+          const next = typeof updater === 'function' ? updater(prev) : updater;
+          userActionSync.current = true;
+          return next;
+        });
+      };
 
       useEffect(() => {
         if (!db) return;
@@ -588,7 +597,17 @@
           return;
         }
 
+        if (!userActionSync.current) {
+          return;
+        }
+        userActionSync.current = false;
+
         if (!db || !currentVisitId) return;
+
+        try {
+           localStorage.setItem('anba_karas_backup_v1_' + Date.now(), JSON.stringify(data));
+           cleanupBackups();
+        } catch(e) {}
 
         setSyncStatus('syncing');
         const toSave = { ...data, visitId: currentVisitId };
@@ -601,6 +620,18 @@
             setSyncStatus('error');
           });
       }, [data, currentVisitId]);
+
+      const cleanupBackups = () => {
+        try {
+          const keys = Object.keys(localStorage).filter(k => k.startsWith('anba_karas_backup_v1_'));
+          if (keys.length > 20) {
+            keys.sort();
+            for (let i = 0; i < keys.length - 20; i++) {
+              localStorage.removeItem(keys[i]);
+            }
+          }
+        } catch(e) {}
+      };
 
       // Serial mapping logic
       const serialMap = {};
@@ -644,18 +675,18 @@
           churchName: '',
           servantsGroups: [{ id: uuidv4(), servantsNames: '', cases: [] }]
         };
-        setData(prev => ({ ...prev, churches: [newChurch, ...(prev.churches || [])] }));
+        updateData(prev => ({ ...prev, churches: [newChurch, ...(prev.churches || [])] }));
       };
 
       const handleUpdateChurch = (updatedChurch) => {
-        setData(prev => ({
+        updateData(prev => ({
           ...prev,
           churches: prev.churches.map(ch => ch.id === updatedChurch.id ? updatedChurch : ch)
         }));
       };
 
       const handleDeleteChurch = (id) => {
-        setData(prev => ({
+        updateData(prev => ({
           ...prev,
           churches: prev.churches.filter(ch => ch.id !== id)
         }));
@@ -663,7 +694,7 @@
 
       const handleSaveEditCase = (updatedCase) => {
         const { churchId, groupId } = editingCaseInfo;
-        setData(prev => ({
+        updateData(prev => ({
           ...prev,
           churches: prev.churches.map(ch => ch.id === churchId ? {
             ...ch,
@@ -678,7 +709,7 @@
 
       const handleDeleteCase = (caseId, churchId, groupId) => {
         if (!confirm('هل أنت متأكد من حذف هذه الحالة؟')) return;
-        setData(prev => ({
+        updateData(prev => ({
           ...prev,
           churches: prev.churches.map(ch => ch.id === churchId ? {
             ...ch,
@@ -693,16 +724,13 @@
       const handleNewVisit = () => {
         const newId = uuidv4();
         setCurrentVisitId(newId);
-        setData({ visitId: newId, location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() });
+        updateData({ visitId: newId, location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() });
       };
 
       const handleClearAll = () => {
         if (confirm('هل أنت متأكد من مسح جميع بيانات الزيارة الحالية بالكامل؟ لا يمكن التراجع عن هذا الإجراء وسيتم حذفها من السحابة.')) {
            const emptyData = { visitId: currentVisitId, location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() };
-           setData(emptyData);
-           if (db && currentVisitId) {
-              db.collection('visits').doc(currentVisitId).set(emptyData);
-           }
+           updateData(emptyData);
         }
       };
 
@@ -728,6 +756,41 @@
         } else {
           alert('لا توجد بيانات محلية لرفعها.');
         }
+      };
+
+      const handleImportJSON = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json';
+        input.onchange = e => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = event => {
+            try {
+              const importedData = JSON.parse(event.target.result);
+              if (importedData && typeof importedData === 'object') {
+                updateData(importedData);
+                alert('تم استيراد النسخة الاحتياطية بنجاح!');
+              }
+            } catch(err) {
+              alert('فشل قراءة الملف. تأكد من أنه ملف JSON صحيح.');
+            }
+          };
+          reader.readAsText(file);
+        };
+        input.click();
+      };
+
+      const handleExportJSON = () => {
+        const jsonString = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `backup_${data.date}_${data.location}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
       };
 
       const handleExportExcel = () => {
@@ -834,6 +897,14 @@
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <button onClick={handleImportJSON} className="hidden lg:flex items-center gap-1.5 bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" title="استيراد نسخة احتياطية (JSON)">
+                    <RefreshCw size={16} />
+                    <span>استيراد</span>
+                  </button>
+                  <button onClick={handleExportJSON} className="hidden lg:flex items-center gap-1.5 bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" title="تصدير نسخة احتياطية (JSON)">
+                    <Download size={16} />
+                    <span>نسخة احتياطية</span>
+                  </button>
                   <button onClick={handleForceSync} className="hidden sm:flex items-center gap-1.5 bg-[#005c29] hover:bg-[#004a20] text-white px-3 py-1.5 rounded text-sm font-medium transition-colors" title="مزامنة ورفع البيانات السابقة للسحابة">
                     <CloudUpload size={16} />
                     <span className="hidden md:inline">رفع للسحابة</span>
@@ -864,14 +935,14 @@
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">مكان الزيارة</label>
-                  <MicInput value={data.location} onValueChange={(v) => setData(p => ({...p, location: v}))} placeholder="أدخل مكان الزيارة" />
+                  <MicInput value={data.location} onValueChange={(v) => updateData(p => ({...p, location: v}))} placeholder="أدخل مكان الزيارة" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">تاريخ الزيارة</label>
                   <input
                     type="date"
                     value={data.date}
-                    onChange={(e) => setData(p => ({...p, date: e.target.value}))}
+                    onChange={(e) => updateData(p => ({...p, date: e.target.value}))}
                     className="w-full rounded-md border border-gray-300 p-2.5 text-sm focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] focus:outline-none transition-shadow text-gray-900 font-sans"
                   />
                 </div>
