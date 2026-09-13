@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>OED - ORASCOM CONSTRUCTION</title>
+  <title>خدمة الأنبا كاراس - أبحاث</title>
+  
+  <!-- PWA & Mobile Web App Icons -->
+  <link rel="icon" type="image/jpeg" href="https://i.ibb.co/3sZq1qW/anba-karas.jpg" />
+  <link rel="apple-touch-icon" href="https://i.ibb.co/3sZq1qW/anba-karas.jpg" />
+  <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -703,7 +709,10 @@
             <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
                <div className="flex items-center gap-4">
                   <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-[#001f4c] rounded-md transition-colors"><Menu size={24} /></button>
-                  <div className="font-bold text-[#d4af37] text-lg sm:text-xl tracking-wide">OED - ORASCOM</div>
+                  <div className="flex items-center gap-3">
+                     <img src="https://i.ibb.co/3sZq1qW/anba-karas.jpg" alt="الأنبا كاراس" className="w-10 h-10 rounded-full border-2 border-[#d4af37] shadow-sm object-cover" />
+                     <div className="font-bold text-[#d4af37] text-lg sm:text-xl tracking-wide hidden sm:block">خدمة الأنبا كاراس - أبحاث</div>
+                  </div>
                </div>
                <div className="flex items-center gap-2">
                   <div className="hidden sm:flex items-center text-xs font-medium px-2 py-1 rounded bg-[#001f4c] text-blue-200">
@@ -719,7 +728,10 @@
           <div className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsSidebarOpen(false)} />
           <div className={`fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
              <div className="h-16 bg-[#002f6c] px-4 flex items-center justify-between border-b border-[#001f4c]">
-                <span className="font-bold text-[#d4af37]">القائمة الرئيسية</span>
+                <div className="flex items-center gap-3">
+                   <img src="https://i.ibb.co/3sZq1qW/anba-karas.jpg" alt="الأنبا كاراس" className="w-8 h-8 rounded-full border border-[#d4af37] object-cover" />
+                   <span className="font-bold text-[#d4af37] text-sm">خدمة الأنبا كاراس</span>
+                </div>
                 <button onClick={() => setIsSidebarOpen(false)} className="text-white hover:text-gray-300 p-2"><X size={20}/></button>
              </div>
              <div className="py-4 flex flex-col">
