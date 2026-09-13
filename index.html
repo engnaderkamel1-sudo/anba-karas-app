@@ -198,11 +198,13 @@
     };
 
     // --- EXPORT FUNCTION ---
-    const handleExportExcel = (visitData) => {
+    const handleExportExcel = (visitData, options = { scope: 'full', targetName: '' }) => {
         if (typeof XLSX === 'undefined') {
           alert('مكتبة الإكسيل غير متوفرة.');
           return;
         }
+        
+        const { scope, targetName } = options;
 
         const aoa = [];
         const headers = [
@@ -657,7 +659,7 @@
                <Edit2 size={24} className="text-[#d4af37]" /> تسجيل الزيارة الحالية
              </h2>
              <div className="flex gap-2 w-full sm:w-auto">
-                <button onClick={() => handleExportExcel(data)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white border border-[#d4af37] text-[#8a7222] hover:bg-[#fff9e6] px-4 py-2 rounded-md font-medium transition-colors">
+                <button onClick={() => openExportModal(data)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white border border-[#d4af37] text-[#8a7222] hover:bg-[#fff9e6] px-4 py-2 rounded-md font-medium transition-colors">
                   <Download size={18} /> تصدير
                 </button>
                 {!isReadOnly && (
@@ -1042,7 +1044,7 @@
       );
     }
 
-    function ArchiveDetails({ visit, onBack }) {
+    function ArchiveDetails({ visit, onBack, onExport }) {
       const [filterRegion, setFilterRegion] = useState('');
       const [filterChurch, setFilterChurch] = useState('');
       const [filterServant, setFilterServant] = useState('');
@@ -1119,7 +1121,7 @@
                   <h2 className="text-2xl font-bold text-[#002f6c]">{visit.location || 'زيارة بدون اسم'}</h2>
                   <p className="text-gray-500 text-sm mt-1 flex items-center gap-1"><Calendar size={14}/> {visit.date}</p>
                </div>
-               <button onClick={() => handleExportExcel(visit, serialMap)} className="flex items-center gap-2 bg-[#d4af37] text-white hover:bg-[#c49b27] px-5 py-2 rounded-md shadow transition-colors font-medium">
+               <button onClick={() => onExport(visit)} className="flex items-center gap-2 bg-[#d4af37] text-white hover:bg-[#c49b27] px-5 py-2 rounded-md shadow transition-colors font-medium">
                   <Download size={18} /> تصدير الإكسيل
                </button>
             </div>
@@ -1327,8 +1329,93 @@
 
 
     // --- MAIN APP COMPONENT ---
-    function App() {
+    
+    function ExportModal({ visit, onClose }) {
+      const [scope, setScope] = useState('full');
+      const [selectedRegion, setSelectedRegion] = useState('');
+      const [selectedChurch, setSelectedChurch] = useState('');
+
+      const uniqueRegions = [...new Set((visit?.churches || []).map(ch => ch.regionName).filter(Boolean))];
+      const uniqueChurches = [...new Set((visit?.churches || []).map(ch => ch.churchName).filter(Boolean))];
+
+      useEffect(() => {
+         if (scope === 'region' && !selectedRegion && uniqueRegions.length > 0) setSelectedRegion(uniqueRegions[0]);
+         if (scope === 'church' && !selectedChurch && uniqueChurches.length > 0) setSelectedChurch(uniqueChurches[0]);
+      }, [scope]);
+
+      const handleExport = () => {
+         handleExportExcel(visit, { scope, targetName: scope === 'region' ? selectedRegion : scope === 'church' ? selectedChurch : '' });
+         onClose();
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="bg-[#002f6c] p-4 text-white flex justify-between items-center">
+                 <h3 className="font-bold text-lg flex items-center gap-2"><Download size={20} className="text-[#d4af37]" /> تصدير الإكسيل</h3>
+                 <button onClick={onClose} className="text-white/80 hover:text-white transition-colors"><X size={24} /></button>
+              </div>
+              <div className="p-5">
+                 <p className="text-gray-600 mb-4 text-sm">اختر نطاق البيانات الذي ترغب في تصديره لزيارة <strong className="text-[#002f6c]">{visit.location || 'بدون اسم'}</strong>:</p>
+                 
+                 <div className="space-y-3 mb-6">
+                    <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${scope === 'full' ? 'border-[#002f6c] bg-blue-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                       <input type="radio" name="exportScope" value="full" checked={scope === 'full'} onChange={() => setScope('full')} className="w-4 h-4 text-[#002f6c]" />
+                       <span className="font-medium text-gray-800">تصدير الزيارة بالكامل</span>
+                    </label>
+
+                    <label className={`flex flex-col gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${scope === 'region' ? 'border-[#002f6c] bg-blue-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                       <div className="flex items-center gap-3">
+                          <input type="radio" name="exportScope" value="region" checked={scope === 'region'} onChange={() => setScope('region')} className="w-4 h-4 text-[#002f6c]" />
+                          <span className="font-medium text-gray-800">تصدير حسب المنطقة</span>
+                       </div>
+                       {scope === 'region' && (
+                          <div className="mr-7 mt-1">
+                             <select value={selectedRegion} onChange={e => setSelectedRegion(e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm focus:border-[#002f6c] focus:ring focus:ring-[#002f6c]/20 p-2 text-sm bg-white">
+                                {uniqueRegions.map(r => <option key={r} value={r}>{r}</option>)}
+                                {uniqueRegions.length === 0 && <option value="">لا توجد مناطق</option>}
+                             </select>
+                          </div>
+                       )}
+                    </label>
+
+                    <label className={`flex flex-col gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${scope === 'church' ? 'border-[#002f6c] bg-blue-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                       <div className="flex items-center gap-3">
+                          <input type="radio" name="exportScope" value="church" checked={scope === 'church'} onChange={() => setScope('church')} className="w-4 h-4 text-[#002f6c]" />
+                          <span className="font-medium text-gray-800">تصدير حسب الكنيسة</span>
+                       </div>
+                       {scope === 'church' && (
+                          <div className="mr-7 mt-1">
+                             <select value={selectedChurch} onChange={e => setSelectedChurch(e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm focus:border-[#002f6c] focus:ring focus:ring-[#002f6c]/20 p-2 text-sm bg-white">
+                                {uniqueChurches.map(c => <option key={c} value={c}>{c}</option>)}
+                                {uniqueChurches.length === 0 && <option value="">لا توجد كنائس</option>}
+                             </select>
+                          </div>
+                       )}
+                    </label>
+                 </div>
+
+                 <div className="flex gap-3 justify-end pt-2 border-t border-gray-100">
+                    <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md font-medium transition-colors">إلغاء</button>
+                    <button onClick={handleExport} disabled={ (scope === 'region' && !selectedRegion) || (scope === 'church' && !selectedChurch) } className="px-6 py-2 bg-[#d4af37] text-white hover:bg-[#c49b27] rounded-md font-medium shadow transition-colors disabled:opacity-50 flex items-center gap-2">
+                       <Download size={18} /> بدء التصدير
+                    </button>
+                 </div>
+              </div>
+           </div>
+        </div>
+      );
+    }
+
+function App() {
       const [activeTab, setActiveTab] = useState('archive'); // 'entry' | 'archive' | 'archiveDetails'
+      const [showExportModal, setShowExportModal] = useState(false);
+      const [exportVisitData, setExportVisitData] = useState(null);
+      
+      const openExportModal = (visitData) => {
+         setExportVisitData(visitData);
+         setShowExportModal(true);
+      };
       const [isSidebarOpen, setIsSidebarOpen] = useState(true);
       const [syncStatus, setSyncStatus] = useState('synced');
       
@@ -1553,7 +1640,7 @@
              )}
              {activeTab === 'archiveDetails' && viewingArchive && (
                 <ArchiveDetails 
-                   visit={viewingArchive} 
+                   visit={viewingArchive} onExport={openExportModal} 
                    onBack={() => { setViewingArchive(null); setActiveTab('archive'); }} 
                 />
              )}
@@ -1564,6 +1651,9 @@
                    onPermanentDelete={handlePermanentDelete} 
                    onEmptyTrash={handleEmptyTrash} 
                 />
+             )}
+             {showExportModal && exportVisitData && (
+                 <ExportModal visit={exportVisitData} onClose={() => setShowExportModal(false)} />
              )}
           </main>
         </div>
