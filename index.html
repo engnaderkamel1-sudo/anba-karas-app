@@ -94,12 +94,17 @@
 
     const formatNumber = (num) => {
       if (num === null || num === undefined || num === '') return '';
-      return String(num).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+      const str = String(num).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+      const cleanStr = str.replace(/,/g, '');
+      if (!isNaN(cleanStr) && cleanStr.trim() !== '') {
+        return Number(cleanStr).toLocaleString('en-US');
+      }
+      return str;
     };
 
     const parseArabicNumeric = (str) => {
-      if (!str) return '';
-      const englishStr = String(str).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+      if (!str && str !== 0) return '';
+      const englishStr = String(str).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/,/g, '');
       const parsed = parseFloat(englishStr);
       return isNaN(parsed) ? '' : parsed;
     };
@@ -185,7 +190,7 @@
     };
 
     // --- EXPORT FUNCTION ---
-    const handleExportExcel = (visitData, serialMap) => {
+    const handleExportExcel = (visitData) => {
         if (typeof XLSX === 'undefined') {
           alert('مكتبة الإكسيل غير متوفرة.');
           return;
@@ -196,11 +201,18 @@
         let grandTotalProjectValue = 0;
         let grandTotalInstallments = 0;
 
-        (visitData.churches || []).forEach(churchLoc => {
+        (visitData.churches || []).forEach((churchLoc, index) => {
+          let churchSerial = 1;
+          let churchHasCases = false;
+
           (churchLoc.servantsGroups || []).forEach(sg => {
             (sg.cases || []).forEach(c => {
+              churchHasCases = true;
+              const projectVal = parseArabicNumeric(c.projectValue) || 0;
+              const instVal = parseArabicNumeric(c.installmentAmount) || 0;
+
               rows.push({
-                'مسلسل الكنيسة': formatNumber(serialMap[c.id]),
+                'مسلسل الكنيسة': churchSerial,
                 'مكان الزيارة': visitData.location,
                 'تاريخ الزيارة': visitData.date,
                 'اسم المنطقة': churchLoc.regionName,
@@ -209,15 +221,35 @@
                 'أسماء الخدام': sg.servantsNames,
                 'اسم الحالة': c.name,
                 'نوع المشروع': c.projectType,
-                'قيمة المشروع': formatNumber(c.projectValue),
-                'قيمة القسط': formatNumber(c.installmentAmount),
+                'قيمة المشروع': projectVal,
+                'قيمة القسط': instVal,
                 'ملاحظات': c.notes
               });
+              
+              churchSerial++;
               grandTotalProjects++;
-              grandTotalProjectValue += c.projectValue;
-              grandTotalInstallments += c.installmentAmount;
+              grandTotalProjectValue += projectVal;
+              grandTotalInstallments += instVal;
             });
           });
+
+          // Add a divider row if it's not the last church and this church had cases
+          if (index < (visitData.churches || []).length - 1 && churchHasCases) {
+              rows.push({
+                'مسلسل الكنيسة': '',
+                'مكان الزيارة': '',
+                'تاريخ الزيارة': '',
+                'اسم المنطقة': '',
+                'اسم القرية': '',
+                'اسم الكنيسة': '',
+                'أسماء الخدام': '',
+                'اسم الحالة': '',
+                'نوع المشروع': '',
+                'قيمة المشروع': null,
+                'قيمة القسط': null,
+                'ملاحظات': ''
+              });
+          }
         });
 
         if (rows.length === 0) {
@@ -225,6 +257,7 @@
           return;
         }
 
+        // Final Summary Row
         rows.push({
           'مسلسل الكنيسة': 'الإجمالي',
           'مكان الزيارة': '',
@@ -234,13 +267,17 @@
           'اسم الكنيسة': '',
           'أسماء الخدام': '',
           'اسم الحالة': '',
-          'نوع المشروع': formatNumber(grandTotalProjects) + ' مشروع',
-          'قيمة المشروع': formatNumber(grandTotalProjectValue),
-          'قيمة القسط': formatNumber(grandTotalInstallments),
+          'نوع المشروع': grandTotalProjects + ' مشروع',
+          'قيمة المشروع': grandTotalProjectValue,
+          'قيمة القسط': grandTotalInstallments,
           'ملاحظات': ''
         });
 
         const worksheet = XLSX.utils.json_to_sheet(rows);
+        
+        // RTL Direction
+        if(!worksheet['!dir']) worksheet['!dir'] = 'rtl';
+
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'الزيارة');
 
@@ -465,7 +502,7 @@
                <Edit2 size={24} className="text-[#d4af37]" /> تسجيل الزيارة الحالية
              </h2>
              <div className="flex gap-2 w-full sm:w-auto">
-                <button onClick={() => handleExportExcel(data, serialMap)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white border border-[#d4af37] text-[#8a7222] hover:bg-[#fff9e6] px-4 py-2 rounded-md font-medium transition-colors">
+                <button onClick={() => handleExportExcel(data)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white border border-[#d4af37] text-[#8a7222] hover:bg-[#fff9e6] px-4 py-2 rounded-md font-medium transition-colors">
                   <Download size={18} /> تصدير
                 </button>
                 <button onClick={onEndVisit} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-[#002f6c] text-white hover:bg-[#001f4c] px-4 py-2 rounded-md font-medium shadow-md transition-colors">
@@ -573,7 +610,7 @@
     }
 
     // --- PAGE 2: ARCHIVE & ANALYTICS ---
-    function ArchivePage({ allVisits, onViewDetails }) {
+    function ArchivePage({ allVisits, onViewDetails, onEditVisit, onDeleteVisit }) {
       if (allVisits.length === 0) {
         return (
           <div className="text-center py-20">
@@ -595,7 +632,11 @@
                  <div key={visit.id} onClick={() => onViewDetails(visit)} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 cursor-pointer hover:shadow-md hover:border-[#002f6c]/30 transition-all group">
                     <div className="flex justify-between items-start mb-3">
                        <h3 className="font-bold text-lg text-gray-900 group-hover:text-[#002f6c]">{visit.location || 'زيارة بدون اسم'}</h3>
-                       <div className="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded font-sans flex items-center gap-1"><Calendar size={12}/>{visit.date}</div>
+                       <div className="flex items-center gap-2">
+                           <div className="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded font-sans flex items-center gap-1"><Calendar size={12}/>{visit.date}</div>
+                           <button onClick={(e) => { e.stopPropagation(); onEditVisit(visit); }} className="text-gray-400 hover:text-[#002f6c] p-1 transition-colors bg-gray-50 hover:bg-gray-100 rounded" title="تعديل الزيارة"><Edit2 size={16}/></button>
+                           <button onClick={(e) => { e.stopPropagation(); onDeleteVisit(visit.id); }} className="text-gray-400 hover:text-red-600 p-1 transition-colors bg-gray-50 hover:bg-red-50 rounded" title="حذف الزيارة"><Trash2 size={16}/></button>
+                       </div>
                     </div>
                     <div className="flex gap-4 text-sm text-gray-600 mt-4 pt-4 border-t border-gray-50">
                        <div>كنائس: <span className="font-bold font-sans text-gray-900">{formatNumber(churchesCount)}</span></div>
@@ -776,6 +817,28 @@
         });
       };
 
+      const handleEditVisit = (visit) => {
+        setData(visit);
+        setCurrentVisitId(visit.id);
+        setActiveTab('entry');
+      };
+
+      const handleDeleteVisit = async (visitId) => {
+        if (confirm('هل أنت متأكد من حذف هذه الزيارة نهائياً؟')) {
+            try {
+                await db.collection('visits').doc(visitId).delete();
+                if (currentVisitId === visitId) {
+                     const newId = uuidv4();
+                     setData({ visitId: newId, location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() });
+                     setCurrentVisitId(newId);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('حدث خطأ أثناء الحذف.');
+            }
+        }
+      };
+
       const handleEndVisit = () => {
         if(confirm("هل أنت متأكد من حفظ وإنهاء هذه الزيارة والبدء في زيارة جديدة؟")) {
             const newId = uuidv4();
@@ -838,7 +901,9 @@
              {activeTab === 'archive' && (
                 <ArchivePage 
                    allVisits={allVisits} 
-                   onViewDetails={(v) => { setViewingArchive(v); setActiveTab('archiveDetails'); }} 
+                   onViewDetails={(v) => { setViewingArchive(v); setActiveTab('archiveDetails'); }}
+                   onEditVisit={handleEditVisit}
+                   onDeleteVisit={handleDeleteVisit}
                 />
              )}
              {activeTab === 'archiveDetails' && viewingArchive && (
