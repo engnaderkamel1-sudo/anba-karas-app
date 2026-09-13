@@ -29,7 +29,6 @@
   <script type="text/babel" data-type="module">
     const { useState, useEffect, useRef } = React;
 
-    // Custom UUID Generator since we don't have the uuid npm package
     const uuidv4 = () => {
       if (crypto && crypto.randomUUID) return crypto.randomUUID();
       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -38,7 +37,19 @@
       });
     };
 
-    // Inline SVG Icons replacing lucide-react
+    const formatNumber = (num) => {
+      if (num === null || num === undefined || isNaN(num)) return '0';
+      return Number(num).toLocaleString('en-US');
+    };
+
+    const parseArabicNumeric = (val) => {
+      if (!val) return 0;
+      const englishStr = String(val).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+      const num = Number(englishStr.replace(/[^0-9.-]/g, ''));
+      return isNaN(num) ? 0 : num;
+    };
+
+    // Icons
     const Mic = ({ size = 24, className = '' }) => (
       <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
     );
@@ -60,8 +71,10 @@
     const Trash2 = ({ size = 24, className = '' }) => (
       <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
     );
+    const Pencil = ({ size = 24, className = '' }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+    );
 
-    // Component: MicInput
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     function MicInput({ value, onValueChange, multiline = false, type = 'text', placeholder, className = "", id }) {
@@ -105,7 +118,7 @@
         }
       };
 
-      const baseInputClass = "w-full rounded-md border border-gray-300 p-2.5 text-sm focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] focus:outline-none transition-shadow";
+      const baseInputClass = "w-full rounded-md border border-gray-300 p-2.5 text-sm focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] focus:outline-none transition-shadow text-gray-900";
 
       return (
         <div className="relative flex items-center w-full">
@@ -145,7 +158,65 @@
       );
     }
 
-    // Component: CaseForm
+    function EditCaseModal({ caseData, onSave, onCancel }) {
+      const [name, setName] = useState(caseData.name);
+      const [projectType, setProjectType] = useState(caseData.projectType || '');
+      const [projectValue, setProjectValue] = useState(caseData.projectValue || '');
+      const [installmentAmount, setInstallmentAmount] = useState(caseData.installmentAmount || '');
+      const [notes, setNotes] = useState(caseData.notes || '');
+
+      const handleSave = (e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        onSave({
+          ...caseData,
+          name: name.trim(),
+          projectType: projectType.trim(),
+          projectValue: parseArabicNumeric(projectValue),
+          installmentAmount: parseArabicNumeric(installmentAmount),
+          notes: notes.trim()
+        });
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-[#002f6c] p-4 text-white flex justify-between items-center shrink-0">
+              <h3 className="font-bold text-lg">تعديل الحالة</h3>
+            </div>
+            <div className="p-4 sm:p-6 overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">اسم الحالة *</label>
+                  <MicInput value={name} onValueChange={setName} placeholder="أدخل اسم الحالة" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">نوع المشروع</label>
+                  <MicInput value={projectType} onValueChange={setProjectType} placeholder="أدخل نوع المشروع" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">قيمة المشروع</label>
+                  <MicInput type="number" value={projectValue} onValueChange={setProjectValue} placeholder="0" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">قيمة القسط</label>
+                  <MicInput type="number" value={installmentAmount} onValueChange={setInstallmentAmount} placeholder="0" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
+                  <MicInput value={notes} onValueChange={setNotes} placeholder="أضف ملاحظات..." multiline />
+                </div>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button onClick={onCancel} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 transition-colors">إلغاء</button>
+                <button onClick={handleSave} disabled={!name.trim()} className="px-4 py-2 bg-[#d4af37] text-white rounded-md font-medium hover:bg-[#c49b27] transition-colors disabled:bg-gray-300">حفظ التعديل</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     function CaseForm({ onAddCase }) {
       const [name, setName] = useState('');
       const [projectType, setProjectType] = useState('');
@@ -157,17 +228,12 @@
         e.preventDefault();
         if (!name.trim()) return;
 
-        const parseNumeric = (val) => {
-          const num = Number(String(val).replace(/[^0-9.-]/g, ''));
-          return isNaN(num) ? 0 : num;
-        };
-
         onAddCase({
           id: uuidv4(),
           name: name.trim(),
           projectType: projectType.trim(),
-          projectValue: parseNumeric(projectValue),
-          installmentAmount: parseNumeric(installmentAmount),
+          projectValue: parseArabicNumeric(projectValue),
+          installmentAmount: parseArabicNumeric(installmentAmount),
           notes: notes.trim()
         });
 
@@ -183,31 +249,27 @@
           <h4 className="font-semibold text-lg text-[#002f6c] mb-4">إضافة حالة جديدة</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
-              <label htmlFor="caseName" className="block text-sm font-medium text-gray-700 mb-1">اسم الحالة *</label>
-              <MicInput id="caseName" value={name} onValueChange={setName} placeholder="أدخل اسم الحالة" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">اسم الحالة *</label>
+              <MicInput value={name} onValueChange={setName} placeholder="أدخل اسم الحالة" />
             </div>
             <div>
-              <label htmlFor="projectType" className="block text-sm font-medium text-gray-700 mb-1">نوع المشروع</label>
-              <MicInput id="projectType" value={projectType} onValueChange={setProjectType} placeholder="أدخل نوع المشروع" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">نوع المشروع</label>
+              <MicInput value={projectType} onValueChange={setProjectType} placeholder="أدخل نوع المشروع" />
             </div>
             <div>
-              <label htmlFor="projectValue" className="block text-sm font-medium text-gray-700 mb-1">قيمة المشروع</label>
-              <MicInput id="projectValue" type="number" value={projectValue} onValueChange={setProjectValue} placeholder="0" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">قيمة المشروع</label>
+              <MicInput type="number" value={projectValue} onValueChange={setProjectValue} placeholder="0" />
             </div>
             <div>
-              <label htmlFor="installment" className="block text-sm font-medium text-gray-700 mb-1">قيمة القسط</label>
-              <MicInput id="installment" type="number" value={installmentAmount} onValueChange={setInstallmentAmount} placeholder="0" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">قيمة القسط</label>
+              <MicInput type="number" value={installmentAmount} onValueChange={setInstallmentAmount} placeholder="0" />
             </div>
             <div className="sm:col-span-2">
-              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
-              <MicInput id="notes" value={notes} onValueChange={setNotes} placeholder="أضف ملاحظات..." multiline />
+              <label className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
+              <MicInput value={notes} onValueChange={setNotes} placeholder="أضف ملاحظات..." multiline />
             </div>
           </div>
-          <button
-            type="submit"
-            disabled={!name.trim()}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#d4af37] hover:bg-[#c49b27] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium py-2.5 px-6 rounded-md transition-colors shadow-sm"
-          >
+          <button type="submit" disabled={!name.trim()} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#d4af37] hover:bg-[#c49b27] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium py-2.5 px-6 rounded-md transition-colors shadow-sm">
             <Plus size={18} />
             <span>إضافة الحالة</span>
           </button>
@@ -215,202 +277,292 @@
       );
     }
 
-    // Component: RegionCard
-    function RegionCard({ region, onUpdateRegion, onDeleteRegion }) {
-      const handleNameChange = (name) => {
-        onUpdateRegion({ ...region, name });
-      };
-
-      const handleVillageNameChange = (villageName) => {
-        onUpdateRegion({ ...region, villageName });
-      };
-
-      const handleChurchNameChange = (churchName) => {
-        onUpdateRegion({ ...region, churchName });
-      };
-
-      const handleServantsNamesChange = (servantsNames) => {
-        onUpdateRegion({ ...region, servantsNames });
-      };
-
+    function ServantsGroupView({ group, churchId, onUpdateGroup, onDeleteGroup, serialMap, onEditCase, onDeleteCase }) {
       const handleAddCase = (newCase) => {
-        onUpdateRegion({ ...region, cases: [...region.cases, newCase] });
+        onUpdateGroup({ ...group, cases: [...group.cases, newCase] });
       };
 
-      const handleDeleteCase = (caseId) => {
-        if (confirm('هل أنت متأكد من حذف هذه الحالة؟')) {
-          onUpdateRegion({ ...region, cases: region.cases.filter(c => c.id !== caseId) });
-        }
+      return (
+        <div className="p-5 bg-white border border-gray-200 rounded-lg shadow-sm relative">
+          <button onClick={() => { if(confirm('هل أنت متأكد من حذف فريق الخدام هذا وكل حالاته؟')) onDeleteGroup(group.id); }} className="absolute top-4 left-4 text-red-500 hover:text-red-700 bg-red-50 p-1.5 rounded-md" title="حذف الفريق">
+            <Trash2 size={18} />
+          </button>
+          
+          <div className="max-w-md mb-6 pr-2">
+            <label className="block text-sm font-bold text-gray-800 mb-2">فريق الخدام</label>
+            <MicInput value={group.servantsNames || ''} onValueChange={(v) => onUpdateGroup({ ...group, servantsNames: v })} placeholder="أدخل أسماء الخدام" />
+          </div>
+          
+          <CaseForm onAddCase={handleAddCase} />
+          
+          {group.cases.length > 0 && (
+            <div className="overflow-x-auto rounded-lg border border-gray-200 mt-6">
+              <table className="w-full text-sm text-right text-gray-600 min-w-[900px]">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+                  <tr>
+                    <th className="px-3 py-3 w-16 text-center border-l border-gray-200">م. عام</th>
+                    <th className="px-3 py-3 w-16 text-center border-l border-gray-200">م. منطقة</th>
+                    <th className="px-3 py-3 w-16 text-center border-l border-gray-200">م. كنيسة</th>
+                    <th className="px-4 py-3">اسم الحالة</th>
+                    <th className="px-4 py-3">نوع المشروع</th>
+                    <th className="px-4 py-3">قيمة المشروع</th>
+                    <th className="px-4 py-3">قيمة القسط</th>
+                    <th className="px-4 py-3">ملاحظات</th>
+                    <th className="px-4 py-3 text-center">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.cases.map(c => {
+                    const s = serialMap[c.id] || { g: 0, r: 0, c: 0 };
+                    return (
+                      <tr key={c.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
+                        <td className="px-3 py-3 text-center font-bold text-gray-500 bg-gray-50 border-l border-gray-200 font-sans">{formatNumber(s.g)}</td>
+                        <td className="px-3 py-3 text-center font-bold text-gray-500 bg-gray-50 border-l border-gray-200 font-sans">{formatNumber(s.r)}</td>
+                        <td className="px-3 py-3 text-center font-bold text-gray-500 bg-gray-50 border-l border-gray-200 font-sans">{formatNumber(s.c)}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
+                        <td className="px-4 py-3">{c.projectType || '-'}</td>
+                        <td className="px-4 py-3 font-semibold font-sans">{formatNumber(c.projectValue)}</td>
+                        <td className="px-4 py-3 font-semibold font-sans">{formatNumber(c.installmentAmount)}</td>
+                        <td className="px-4 py-3 max-w-[150px] truncate" title={c.notes}>{c.notes || '-'}</td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button onClick={() => onEditCase(c, churchId, group.id)} className="text-blue-500 hover:bg-blue-50 p-1.5 rounded" title="تعديل">
+                              <Pencil size={16} />
+                            </button>
+                            <button onClick={() => onDeleteCase(c.id, churchId, group.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded" title="حذف">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function ChurchCard({ churchLoc, onUpdateChurch, onDeleteChurch, serialMap, onEditCase, onDeleteCase }) {
+      const handleAddServantsGroup = () => {
+        const newGroup = { id: uuidv4(), servantsNames: '', cases: [] };
+        onUpdateChurch({ ...churchLoc, servantsGroups: [...(churchLoc.servantsGroups || []), newGroup] });
+      };
+      
+      const handleUpdateGroup = (updatedGroup) => {
+        onUpdateChurch({
+          ...churchLoc,
+          servantsGroups: churchLoc.servantsGroups.map(g => g.id === updatedGroup.id ? updatedGroup : g)
+        });
       };
 
-      const totalProjects = region.cases.length;
-      const totalProjectValue = region.cases.reduce((sum, c) => sum + c.projectValue, 0);
-      const totalInstallments = region.cases.reduce((sum, c) => sum + c.installmentAmount, 0);
+      const handleDeleteGroup = (groupId) => {
+        onUpdateChurch({
+          ...churchLoc,
+          servantsGroups: churchLoc.servantsGroups.filter(g => g.id !== groupId)
+        });
+      };
+
+      let totalProjects = 0;
+      let totalProjectValue = 0;
+      let totalInstallments = 0;
+      (churchLoc.servantsGroups || []).forEach(g => {
+        g.cases.forEach(c => {
+          totalProjects++;
+          totalProjectValue += c.projectValue;
+          totalInstallments += c.installmentAmount;
+        });
+      });
 
       return (
         <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-6">
-          <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 sm:p-6 border-b border-gray-200 bg-[#002f6c]/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">اسم المنطقة</label>
-                <MicInput value={region.name || ''} onValueChange={handleNameChange} placeholder="أدخل اسم المنطقة" />
+                <label className="block text-sm font-medium text-[#002f6c] mb-1">المنطقة</label>
+                <MicInput value={churchLoc.regionName || ''} onValueChange={(v) => onUpdateChurch({...churchLoc, regionName: v})} placeholder="أدخل اسم المنطقة" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">اسم القرية</label>
-                <MicInput value={region.villageName || ''} onValueChange={handleVillageNameChange} placeholder="أدخل اسم القرية" />
+                <label className="block text-sm font-medium text-[#002f6c] mb-1">القرية</label>
+                <MicInput value={churchLoc.villageName || ''} onValueChange={(v) => onUpdateChurch({...churchLoc, villageName: v})} placeholder="أدخل اسم القرية" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">اسم الكنيسة</label>
-                <MicInput value={region.churchName || ''} onValueChange={handleChurchNameChange} placeholder="أدخل اسم الكنيسة" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">أسماء الخدام</label>
-                <MicInput value={region.servantsNames || ''} onValueChange={handleServantsNamesChange} placeholder="أدخل أسماء الخدام" />
+                <label className="block text-sm font-medium text-[#002f6c] mb-1">الكنيسة</label>
+                <MicInput value={churchLoc.churchName || ''} onValueChange={(v) => onUpdateChurch({...churchLoc, churchName: v})} placeholder="أدخل اسم الكنيسة" />
               </div>
             </div>
-            <button
-              onClick={() => {
-                if (confirm('هل أنت متأكد من حذف هذه المنطقة بالكامل؟')) {
-                  onDeleteRegion(region.id);
-                }
-              }}
-              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-md transition-colors flex-shrink-0 self-end sm:self-auto"
-              title="حذف المنطقة"
-            >
+            <button onClick={() => { if (confirm('هل أنت متأكد من حذف بيانات هذه الكنيسة بالكامل؟')) onDeleteChurch(churchLoc.id); }} className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-md transition-colors">
               <Trash2 size={20} />
             </button>
           </div>
 
           <div className="p-4 sm:p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-center shadow-sm">
-                <span className="block text-sm font-medium text-blue-800 mb-1">إجمالي عدد المشاريع</span>
-                <span className="block text-2xl font-bold text-[#002f6c]">{totalProjects}</span>
+              <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-center">
+                <span className="block text-sm font-medium text-blue-800 mb-1">إجمالي حالات الكنيسة</span>
+                <span className="block text-2xl font-bold text-[#002f6c] font-sans">{formatNumber(totalProjects)}</span>
               </div>
-              <div className="bg-green-50 border border-green-100 rounded-lg p-4 text-center shadow-sm">
+              <div className="bg-green-50 border border-green-100 rounded-lg p-4 text-center">
                 <span className="block text-sm font-medium text-green-800 mb-1">إجمالي قيمة المشاريع</span>
-                <span className="block text-2xl font-bold text-[#002f6c]">{totalProjectValue.toLocaleString('ar-EG')} ج.م</span>
+                <span className="block text-2xl font-bold text-[#002f6c]"><span className="font-sans">{formatNumber(totalProjectValue)}</span> ج.م</span>
               </div>
-              <div className="bg-[#fff9e6] border border-[#f0e0a8] rounded-lg p-4 text-center shadow-sm">
+              <div className="bg-[#fff9e6] border border-[#f0e0a8] rounded-lg p-4 text-center">
                 <span className="block text-sm font-medium text-[#8a7222] mb-1">إجمالي الأقساط</span>
-                <span className="block text-2xl font-bold text-[#002f6c]">{totalInstallments.toLocaleString('ar-EG')} ج.م</span>
+                <span className="block text-2xl font-bold text-[#002f6c]"><span className="font-sans">{formatNumber(totalInstallments)}</span> ج.م</span>
               </div>
             </div>
 
-            <CaseForm onAddCase={handleAddCase} />
+            <div className="space-y-8">
+              {(churchLoc.servantsGroups || []).map(group => (
+                <ServantsGroupView 
+                  key={group.id} 
+                  group={group} 
+                  churchId={churchLoc.id}
+                  onUpdateGroup={handleUpdateGroup} 
+                  onDeleteGroup={handleDeleteGroup} 
+                  serialMap={serialMap} 
+                  onEditCase={onEditCase} 
+                  onDeleteCase={onDeleteCase} 
+                />
+              ))}
+            </div>
 
-            {region.cases.length > 0 ? (
-              <div className="overflow-x-auto rounded-lg border border-gray-200">
-                <table className="w-full text-sm text-right text-gray-600 min-w-[700px]">
-                  <thead className="text-xs text-gray-700 uppercase bg-gray-100">
-                    <tr>
-                      <th scope="col" className="px-4 py-3 font-semibold">اسم الحالة</th>
-                      <th scope="col" className="px-4 py-3 font-semibold">نوع المشروع</th>
-                      <th scope="col" className="px-4 py-3 font-semibold">قيمة المشروع</th>
-                      <th scope="col" className="px-4 py-3 font-semibold">قيمة القسط</th>
-                      <th scope="col" className="px-4 py-3 font-semibold">ملاحظات</th>
-                      <th scope="col" className="px-4 py-3 text-center font-semibold">إجراءات</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {region.cases.map((c) => (
-                      <tr key={c.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
-                        <td className="px-4 py-3">{c.projectType || '-'}</td>
-                        <td className="px-4 py-3">{c.projectValue.toLocaleString('ar-EG')}</td>
-                        <td className="px-4 py-3">{c.installmentAmount.toLocaleString('ar-EG')}</td>
-                        <td className="px-4 py-3 max-w-[200px] truncate" title={c.notes}>{c.notes || '-'}</td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => handleDeleteCase(c.id)}
-                            className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
-                            title="حذف الحالة"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                لا توجد حالات مضافة في هذه المنطقة بعد.
-              </div>
-            )}
+            <div className="mt-6 flex justify-center">
+              <button onClick={handleAddServantsGroup} className="flex items-center gap-2 bg-gray-50 hover:bg-gray-100 text-[#002f6c] font-medium py-2.5 px-6 rounded-md transition-colors border border-gray-300 shadow-sm">
+                <Plus size={18} />
+                <span>إضافة خدام آخرين لنفس الكنيسة</span>
+              </button>
+            </div>
           </div>
         </div>
       );
     }
 
-    // Main App Component
     const STORAGE_KEY = 'anba_karas_visit_data';
-
-    const initialData = {
-      location: '',
-      date: new Date().toISOString().split('T')[0],
-      regions: []
-    };
+    const initialData = { location: '', date: new Date().toISOString().split('T')[0], churches: [] };
 
     function App() {
       const [data, setData] = useState(() => {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           try {
-            return JSON.parse(saved);
-          } catch (e) {
-            console.error('Failed to parse local storage', e);
-          }
+            const parsed = JSON.parse(saved);
+            // Migrate old structure if present
+            if (parsed.regions && !parsed.churches) {
+              parsed.churches = parsed.regions.map(r => ({
+                id: r.id,
+                regionName: r.name || '',
+                villageName: r.villageName || '',
+                churchName: r.churchName || '',
+                servantsGroups: [{ id: uuidv4(), servantsNames: r.servantsNames || '', cases: r.cases || [] }]
+              }));
+              delete parsed.regions;
+            }
+            return parsed;
+          } catch (e) { console.error('Failed to parse local storage', e); }
         }
         return initialData;
       });
+
+      const [editingCaseInfo, setEditingCaseInfo] = useState(null);
 
       useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       }, [data]);
 
-      const handleUpdateLocation = (location) => {
-        setData(prev => ({ ...prev, location }));
-      };
+      // Serial mapping logic
+      const serialMap = {};
+      let globalS = 0;
+      let lastRegion = null;
+      let regionS = 0;
+      let lastChurch = null;
+      let churchS = 0;
 
-      const handleUpdateDate = (e) => {
-        setData(prev => ({ ...prev, date: e.target.value }));
-      };
+      (data.churches || []).forEach(churchLoc => {
+        const rKey = (churchLoc.regionName || '').trim().toLowerCase();
+        const cKey = rKey + '|' + (churchLoc.villageName || '').trim().toLowerCase() + '|' + (churchLoc.churchName || '').trim().toLowerCase();
 
-      const handleAddRegion = () => {
-        const newRegion = {
+        (churchLoc.servantsGroups || []).forEach(sg => {
+          (sg.cases || []).forEach(c => {
+            globalS++;
+            if (rKey !== lastRegion) {
+              lastRegion = rKey;
+              regionS = 1;
+            } else {
+              regionS++;
+            }
+            
+            if (cKey !== lastChurch) {
+              lastChurch = cKey;
+              churchS = 1;
+            } else {
+              churchS++;
+            }
+            
+            serialMap[c.id] = { g: globalS, r: regionS, c: churchS };
+          });
+        });
+      });
+
+      const handleAddChurch = () => {
+        const newChurch = {
           id: uuidv4(),
-          name: '',
+          regionName: '',
           villageName: '',
           churchName: '',
-          servantsNames: '',
-          cases: []
+          servantsGroups: [{ id: uuidv4(), servantsNames: '', cases: [] }]
         };
-        setData(prev => ({ ...prev, regions: [newRegion, ...prev.regions] }));
+        setData(prev => ({ ...prev, churches: [newChurch, ...(prev.churches || [])] }));
       };
 
-      const handleUpdateRegion = (updatedRegion) => {
+      const handleUpdateChurch = (updatedChurch) => {
         setData(prev => ({
           ...prev,
-          regions: prev.regions.map(r => r.id === updatedRegion.id ? updatedRegion : r)
+          churches: prev.churches.map(ch => ch.id === updatedChurch.id ? updatedChurch : ch)
         }));
       };
 
-      const handleDeleteRegion = (id) => {
+      const handleDeleteChurch = (id) => {
         setData(prev => ({
           ...prev,
-          regions: prev.regions.filter(r => r.id !== id)
+          churches: prev.churches.filter(ch => ch.id !== id)
+        }));
+      };
+
+      const handleSaveEditCase = (updatedCase) => {
+        const { churchId, groupId } = editingCaseInfo;
+        setData(prev => ({
+          ...prev,
+          churches: prev.churches.map(ch => ch.id === churchId ? {
+            ...ch,
+            servantsGroups: ch.servantsGroups.map(sg => sg.id === groupId ? {
+              ...sg,
+              cases: sg.cases.map(c => c.id === updatedCase.id ? updatedCase : c)
+            } : sg)
+          } : ch)
+        }));
+        setEditingCaseInfo(null);
+      };
+
+      const handleDeleteCase = (caseId, churchId, groupId) => {
+        if (!confirm('هل أنت متأكد من حذف هذه الحالة؟')) return;
+        setData(prev => ({
+          ...prev,
+          churches: prev.churches.map(ch => ch.id === churchId ? {
+            ...ch,
+            servantsGroups: ch.servantsGroups.map(sg => sg.id === groupId ? {
+              ...sg,
+              cases: sg.cases.filter(c => c.id !== caseId)
+            } : sg)
+          } : ch)
         }));
       };
 
       const handleClearAll = () => {
         if (confirm('هل أنت متأكد من مسح جميع البيانات والبدء بزيارة جديدة؟ لا يمكن التراجع عن هذا الإجراء.')) {
-          setData({
-            location: '',
-            date: new Date().toISOString().split('T')[0],
-            regions: []
-          });
+          setData({ location: '', date: new Date().toISOString().split('T')[0], churches: [] });
         }
       };
 
@@ -425,24 +577,30 @@
         let grandTotalProjectValue = 0;
         let grandTotalInstallments = 0;
 
-        data.regions.forEach(region => {
-          region.cases.forEach(c => {
-            rows.push({
-              'مكان الزيارة': data.location,
-              'تاريخ الزيارة': data.date,
-              'اسم المنطقة': region.name,
-              'اسم القرية': region.villageName || '',
-              'اسم الكنيسة': region.churchName,
-              'أسماء الخدام': region.servantsNames || '',
-              'اسم الحالة': c.name,
-              'نوع المشروع': c.projectType,
-              'قيمة المشروع': c.projectValue,
-              'قيمة القسط': c.installmentAmount,
-              'ملاحظات': c.notes
+        (data.churches || []).forEach(churchLoc => {
+          (churchLoc.servantsGroups || []).forEach(sg => {
+            (sg.cases || []).forEach(c => {
+              const s = serialMap[c.id] || { g: 0, r: 0, c: 0 };
+              rows.push({
+                'مسلسل عام': s.g,
+                'مسلسل المنطقة': s.r,
+                'مسلسل الكنيسة': s.c,
+                'مكان الزيارة': data.location,
+                'تاريخ الزيارة': data.date,
+                'اسم المنطقة': churchLoc.regionName,
+                'اسم القرية': churchLoc.villageName,
+                'اسم الكنيسة': churchLoc.churchName,
+                'أسماء الخدام': sg.servantsNames,
+                'اسم الحالة': c.name,
+                'نوع المشروع': c.projectType,
+                'قيمة المشروع': c.projectValue,
+                'قيمة القسط': c.installmentAmount,
+                'ملاحظات': c.notes
+              });
+              grandTotalProjects++;
+              grandTotalProjectValue += c.projectValue;
+              grandTotalInstallments += c.installmentAmount;
             });
-            grandTotalProjects++;
-            grandTotalProjectValue += c.projectValue;
-            grandTotalInstallments += c.installmentAmount;
           });
         });
 
@@ -452,7 +610,10 @@
         }
 
         rows.push({
-          'مكان الزيارة': 'الإجمالي',
+          'مسلسل عام': 'الإجمالي',
+          'مسلسل المنطقة': '',
+          'مسلسل الكنيسة': '',
+          'مكان الزيارة': '',
           'تاريخ الزيارة': '',
           'اسم المنطقة': '',
           'اسم القرية': '',
@@ -474,10 +635,9 @@
         XLSX.writeFile(workbook, filename);
       };
 
-      const totalRegionsCount = data.regions.length;
-      const grandTotalProjects = data.regions.reduce((sum, r) => sum + r.cases.length, 0);
-      const grandTotalProjectValue = data.regions.reduce((sum, r) => sum + r.cases.reduce((s, c) => s + c.projectValue, 0), 0);
-      const grandTotalInstallments = data.regions.reduce((sum, r) => sum + r.cases.reduce((s, c) => s + c.installmentAmount, 0), 0);
+      const grandTotalProjects = (data.churches || []).reduce((sum, ch) => sum + ch.servantsGroups.reduce((s2, sg) => s2 + sg.cases.length, 0), 0);
+      const grandTotalProjectValue = (data.churches || []).reduce((sum, ch) => sum + ch.servantsGroups.reduce((s2, sg) => s2 + sg.cases.reduce((s3, c) => s3 + c.projectValue, 0), 0), 0);
+      const grandTotalInstallments = (data.churches || []).reduce((sum, ch) => sum + ch.servantsGroups.reduce((s2, sg) => s2 + sg.cases.reduce((s3, c) => s3 + c.installmentAmount, 0), 0), 0);
 
       return (
         <div className="min-h-screen pb-36">
@@ -512,50 +672,47 @@
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">مكان الزيارة</label>
-                  <MicInput value={data.location} onValueChange={handleUpdateLocation} placeholder="أدخل مكان الزيارة" />
+                  <MicInput value={data.location} onValueChange={(v) => setData(p => ({...p, location: v}))} placeholder="أدخل مكان الزيارة" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">تاريخ الزيارة</label>
                   <input
                     type="date"
                     value={data.date}
-                    onChange={handleUpdateDate}
-                    className="w-full rounded-md border border-gray-300 p-2.5 text-sm focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] focus:outline-none transition-shadow"
+                    onChange={(e) => setData(p => ({...p, date: e.target.value}))}
+                    className="w-full rounded-md border border-gray-300 p-2.5 text-sm focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] focus:outline-none transition-shadow text-gray-900 font-sans"
                   />
                 </div>
               </div>
             </section>
 
             <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-              <h2 className="text-2xl font-bold text-gray-800 w-full sm:w-auto">المناطق</h2>
-              <button
-                onClick={handleAddRegion}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#002f6c] hover:bg-[#001f4c] text-white font-medium py-2.5 px-6 rounded-md transition-colors shadow-md"
-              >
+              <h2 className="text-2xl font-bold text-gray-800 w-full sm:w-auto">أقسام الكنائس</h2>
+              <button onClick={handleAddChurch} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#002f6c] hover:bg-[#001f4c] text-white font-medium py-2.5 px-6 rounded-md transition-colors shadow-md">
                 <Plus size={20} />
-                <span>إضافة منطقة جديدة</span>
+                <span>إضافة كنيسة جديدة</span>
               </button>
             </div>
 
             <div className="space-y-6">
-              {data.regions.length === 0 ? (
+              {(data.churches || []).length === 0 ? (
                 <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-dashed border-gray-300">
-                  <p className="text-gray-500 mb-4">لم يتم إضافة أي مناطق بعد.</p>
-                  <button
-                    onClick={handleAddRegion}
-                    className="inline-flex items-center justify-center gap-2 bg-[#002f6c] hover:bg-[#001f4c] text-white font-medium py-2 px-6 rounded-md transition-colors"
-                  >
+                  <p className="text-gray-500 mb-4">لم يتم إضافة أي بيانات بعد.</p>
+                  <button onClick={handleAddChurch} className="inline-flex items-center justify-center gap-2 bg-[#002f6c] hover:bg-[#001f4c] text-white font-medium py-2 px-6 rounded-md transition-colors">
                     <Plus size={18} />
-                    <span>إضافة منطقتك الأولى</span>
+                    <span>إضافة القسم الأول</span>
                   </button>
                 </div>
               ) : (
-                data.regions.map(region => (
-                  <RegionCard
-                    key={region.id}
-                    region={region}
-                    onUpdateRegion={handleUpdateRegion}
-                    onDeleteRegion={handleDeleteRegion}
+                (data.churches || []).map(churchLoc => (
+                  <ChurchCard
+                    key={churchLoc.id}
+                    churchLoc={churchLoc}
+                    onUpdateChurch={handleUpdateChurch}
+                    onDeleteChurch={handleDeleteChurch}
+                    serialMap={serialMap}
+                    onEditCase={(c, churchId, groupId) => setEditingCaseInfo({ caseData: c, churchId, groupId })}
+                    onDeleteCase={handleDeleteCase}
                   />
                 ))
               )}
@@ -566,20 +723,20 @@
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center sm:text-right">
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500">عدد المناطق</span>
-                  <span className="font-bold text-[#002f6c] text-lg">{totalRegionsCount}</span>
+                  <span className="text-xs text-gray-500">عدد الكنائس</span>
+                  <span className="font-bold text-[#002f6c] text-lg font-sans">{formatNumber((data.churches || []).length)}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500">إجمالي المشاريع</span>
-                  <span className="font-bold text-[#002f6c] text-lg">{grandTotalProjects}</span>
+                  <span className="text-xs text-gray-500">إجمالي الحالات الكلي</span>
+                  <span className="font-bold text-[#002f6c] text-lg font-sans">{formatNumber(grandTotalProjects)}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500">إجمالي قيمة المشاريع</span>
-                  <span className="font-bold text-green-700 text-lg">{grandTotalProjectValue.toLocaleString('ar-EG')} ج.م</span>
+                  <span className="text-xs text-gray-500">إجمالي قيم المشاريع</span>
+                  <span className="font-bold text-green-700 text-lg"><span className="font-sans">{formatNumber(grandTotalProjectValue)}</span> ج.م</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-500">إجمالي الأقساط</span>
-                  <span className="font-bold text-[#8a7222] text-lg">{grandTotalInstallments.toLocaleString('ar-EG')} ج.م</span>
+                  <span className="font-bold text-[#8a7222] text-lg"><span className="font-sans">{formatNumber(grandTotalInstallments)}</span> ج.م</span>
                 </div>
               </div>
               <div className="flex sm:hidden gap-2 mt-3 pt-3 border-t border-gray-100">
@@ -594,6 +751,14 @@
               </div>
             </div>
           </div>
+          
+          {editingCaseInfo && (
+            <EditCaseModal
+              caseData={editingCaseInfo.caseData}
+              onSave={handleSaveEditCase}
+              onCancel={() => setEditingCaseInfo(null)}
+            />
+          )}
         </div>
       );
     }
