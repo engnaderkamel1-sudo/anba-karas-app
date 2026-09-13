@@ -50,7 +50,8 @@
     if (db) {
       try {
         db.settings({
-          cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+          cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+          experimentalForceLongPolling: true
         });
         db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
           if (err.code === 'failed-precondition') {
