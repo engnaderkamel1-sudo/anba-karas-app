@@ -527,19 +527,26 @@
     // --- PAGE 1: ACTIVE VISIT ENTRY ---
     function ActiveVisitForm({ data, updateData, onEndVisit }) {
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
+      const [filterRegion, setFilterRegion] = useState('');
       const [filterChurch, setFilterChurch] = useState('');
       const [filterServant, setFilterServant] = useState('');
       const [filterProject, setFilterProject] = useState('');
       const [filterCase, setFilterCase] = useState('');
+      const [expandedRegions, setExpandedRegions] = useState({});
       const [expandedChurches, setExpandedChurches] = useState({});
+      const toggleRegion = (regionName) => {
+          setExpandedRegions(prev => ({ ...prev, [regionName]: !prev[regionName] }));
+      };
 
       
-      const uniqueChurches = Array.from(new Set((data.churches||[]).map(ch => ch.churchName).filter(Boolean))).sort();
+      const uniqueRegions = Array.from(new Set((data.churches||[]).map(ch => ch.regionName).filter(Boolean))).sort();
+      const uniqueChurches = Array.from(new Set((data.churches||[]).filter(ch => !filterRegion || ch.regionName === filterRegion).map(ch => ch.churchName).filter(Boolean))).sort();
       const uniqueServants = Array.from(new Set((data.churches||[]).flatMap(ch => (ch.servantsGroups || []).map(sg => sg.servantsNames)).filter(Boolean))).sort();
       const uniqueProjects = Array.from(new Set((data.churches||[]).flatMap(ch => (ch.servantsGroups || []).flatMap(sg => (sg.cases || []).map(c => c.projectType))).filter(Boolean))).sort();
       const uniqueCases = Array.from(new Set((data.churches||[]).flatMap(ch => (ch.servantsGroups || []).flatMap(sg => (sg.cases || []).map(c => c.name))).filter(Boolean))).sort();
 
       let filteredChurches = (data.churches || []).map(ch => {
+          if (filterRegion && ch.regionName !== filterRegion) return null;
           if (filterChurch && ch.churchName !== filterChurch) return null;
           
           const filteredGroups = (ch.servantsGroups || []).map(sg => {
@@ -740,13 +747,20 @@
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
              <div className="flex justify-between items-center mb-4 border-b border-gray-50 pb-2">
                 <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2"><Search size={16} className="text-[#002f6c]"/> تصفية متقدمة</h4>
-                {(filterChurch || filterServant || filterProject || filterCase) && (
-                   <button onClick={() => { setFilterChurch(''); setFilterServant(''); setFilterProject(''); setFilterCase(''); }} className="text-xs flex items-center gap-1 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors font-medium">
+                {(filterRegion || filterChurch || filterServant || filterProject || filterCase) && (
+                   <button onClick={() => { setFilterRegion(''); setFilterChurch(''); setFilterServant(''); setFilterProject(''); setFilterCase(''); }} className="text-xs flex items-center gap-1 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors font-medium">
                        <RotateCcw size={14}/> إعادة ضبط الفلاتر
                    </button>
                 )}
              </div>
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div>
+                   <label className="block text-xs font-medium text-gray-500 mb-1">قائمة المناطق</label>
+                   <select value={filterRegion} onChange={e => { setFilterRegion(e.target.value); setFilterChurch(''); }} className="w-full text-sm border border-gray-200 rounded-md focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] py-2 px-3 outline-none text-gray-700 bg-gray-50 hover:bg-white transition-colors cursor-pointer">
+                      <option value="">كل المناطق</option>
+                      {uniqueRegions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                   </select>
+                </div>
                 <div>
                    <label className="block text-xs font-medium text-gray-500 mb-1">قائمة الكنائس</label>
                    <select value={filterChurch} onChange={e => setFilterChurch(e.target.value)} className="w-full text-sm border border-gray-200 rounded-md focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] py-2 px-3 outline-none text-gray-700 bg-gray-50 hover:bg-white transition-colors cursor-pointer">
@@ -803,8 +817,53 @@
                     );
                 }
 
-                return filteredChurches.map((churchLoc) => (
-                <div key={churchLoc.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                const groupedByRegion = filteredChurches.reduce((acc, ch) => {
+                    const r = ch.regionName || 'منطقة غير محددة';
+                    if(!acc[r]) acc[r] = [];
+                    acc[r].push(ch);
+                    return acc;
+                }, {});
+                
+                return Object.entries(groupedByRegion).map(([regionName, churchesInRegion]) => {
+                    const regionStats = churchesInRegion.reduce((acc, ch) => {
+                        const s = getChurchStats(ch);
+                        acc.totalChurches += 1;
+                        acc.totalGroups += s.totalGroups;
+                        acc.totalCases += s.totalCases;
+                        acc.totalValue += s.totalValue;
+                        acc.totalInst += s.totalInst;
+                        return acc;
+                    }, {totalChurches: 0, totalGroups: 0, totalCases: 0, totalValue: 0, totalInst: 0});
+                    
+                    return (
+                        <div key={regionName} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+                            <div className="p-4 sm:p-5 border-b border-gray-200 bg-[#002f6c]/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer hover:bg-[#002f6c]/20 transition-colors" onClick={() => toggleRegion(regionName)}>
+                                <div className="flex-1 flex flex-wrap items-center gap-2 text-sm sm:text-base font-bold text-[#002f6c]">
+                                    <span className="text-lg">🏛️ {regionName}</span>
+                                    <div className="mr-auto flex flex-wrap gap-2 items-center">
+                                       <span className="bg-white text-[#002f6c] border border-[#002f6c]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                                          ⛪ <span className="font-sans">{formatNumber(regionStats.totalChurches)}</span> كنائس
+                                       </span>
+                                       <span className="bg-white text-blue-600 border border-blue-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                                          👥 <span className="font-sans">{formatNumber(regionStats.totalGroups)}</span> مجموعات
+                                       </span>
+                                       <span className="bg-white text-[#d4af37] border border-[#d4af37]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                                          📊 <span className="font-sans">{formatNumber(regionStats.totalCases)}</span> مشاريع
+                                       </span>
+                                       <span className="bg-white text-green-700 border border-green-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                                          💰 <span className="font-sans">{formatNumber(regionStats.totalValue)}</span> ج.م
+                                       </span>
+                                    </div>
+                                </div>
+                                <div className="text-gray-500">
+                                   {expandedRegions[regionName] ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+                                </div>
+                            </div>
+                            
+                            {expandedRegions[regionName] && (
+                                <div className="p-4 sm:p-5 space-y-6 bg-gray-50/50">
+                                    {churchesInRegion.map((churchLoc) => (
+                                        <div key={churchLoc.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                   {/* Accordion Header */}
                   <div 
                     className="p-4 sm:p-5 border-b border-gray-200 bg-[#002f6c]/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer hover:bg-[#002f6c]/10 transition-colors"
@@ -867,7 +926,13 @@
                     </div>
                   )}
                 </div>
-              ))})()}
+              ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                });
+            })()}
             </div>
           )}
 
@@ -978,17 +1043,20 @@
     }
 
     function ArchiveDetails({ visit, onBack }) {
+      const [filterRegion, setFilterRegion] = useState('');
       const [filterChurch, setFilterChurch] = useState('');
       const [filterServant, setFilterServant] = useState('');
       const [filterProject, setFilterProject] = useState('');
       const [filterCase, setFilterCase] = useState('');
 
-      const uniqueChurches = Array.from(new Set((visit.churches||[]).map(ch => ch.churchName).filter(Boolean))).sort();
+      const uniqueRegions = Array.from(new Set((visit.churches||[]).map(ch => ch.regionName).filter(Boolean))).sort();
+      const uniqueChurches = Array.from(new Set((visit.churches||[]).filter(ch => !filterRegion || ch.regionName === filterRegion).map(ch => ch.churchName).filter(Boolean))).sort();
       const uniqueServants = Array.from(new Set((visit.churches||[]).flatMap(ch => (ch.servantsGroups || []).map(sg => sg.servantsNames)).filter(Boolean))).sort();
       const uniqueProjects = Array.from(new Set((visit.churches||[]).flatMap(ch => (ch.servantsGroups || []).flatMap(sg => (sg.cases || []).map(c => c.projectType))).filter(Boolean))).sort();
       const uniqueCases = Array.from(new Set((visit.churches||[]).flatMap(ch => (ch.servantsGroups || []).flatMap(sg => (sg.cases || []).map(c => c.name))).filter(Boolean))).sort();
 
       let filteredChurches = (visit.churches || []).map(ch => {
+          if (filterRegion && ch.regionName !== filterRegion) return null;
           if (filterChurch && ch.churchName !== filterChurch) return null;
           
           const filteredGroups = (ch.servantsGroups || []).map(sg => {
@@ -1076,13 +1144,20 @@
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
                <div className="flex justify-between items-center mb-4 border-b border-gray-50 pb-2">
                   <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2"><Search size={16} className="text-[#002f6c]"/> تصفية متقدمة</h4>
-                  {(filterChurch || filterServant || filterProject || filterCase) && (
-                     <button onClick={() => { setFilterChurch(''); setFilterServant(''); setFilterProject(''); setFilterCase(''); }} className="text-xs flex items-center gap-1 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors font-medium">
+                  {(filterRegion || filterChurch || filterServant || filterProject || filterCase) && (
+                     <button onClick={() => { setFilterRegion(''); setFilterChurch(''); setFilterServant(''); setFilterProject(''); setFilterCase(''); }} className="text-xs flex items-center gap-1 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors font-medium">
                          <RotateCcw size={14}/> إعادة ضبط الفلاتر
                      </button>
                   )}
                </div>
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div>
+                     <label className="block text-xs font-medium text-gray-500 mb-1">قائمة المناطق</label>
+                     <select value={filterRegion} onChange={e => { setFilterRegion(e.target.value); setFilterChurch(''); }} className="w-full text-sm border border-gray-200 rounded-md focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] py-2 px-3 outline-none text-gray-700 bg-gray-50 hover:bg-white transition-colors cursor-pointer">
+                        <option value="">كل المناطق</option>
+                        {uniqueRegions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                     </select>
+                  </div>
                   <div>
                      <label className="block text-xs font-medium text-gray-500 mb-1">قائمة الكنائس</label>
                      <select value={filterChurch} onChange={e => setFilterChurch(e.target.value)} className="w-full text-sm border border-gray-200 rounded-md focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] py-2 px-3 outline-none text-gray-700 bg-gray-50 hover:bg-white transition-colors cursor-pointer">
@@ -1127,12 +1202,62 @@
                       );
                   }
                   
-                  return filteredChurches.map(ch => (
-                  <div key={ch.id} className="border-b border-gray-100 last:border-0">
-                     <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                           <h4 className="font-bold text-[#002f6c]">{ch.churchName} <span className="text-sm font-normal text-gray-500">({ch.regionName} - {ch.villageName})</span></h4>
-                           {(() => {
+                  const groupedByRegion = filteredChurches.reduce((acc, ch) => {
+                    const r = ch.regionName || 'منطقة غير محددة';
+                    if(!acc[r]) acc[r] = [];
+                    acc[r].push(ch);
+                    return acc;
+                }, {});
+                
+                return Object.entries(groupedByRegion).map(([regionName, churchesInRegion]) => {
+                    const regionStats = churchesInRegion.reduce((acc, ch) => {
+                        const s = getChurchStats(ch);
+                        acc.totalChurches += 1;
+                        acc.totalGroups += s.totalGroups;
+                        acc.totalCases += s.totalCases;
+                        acc.totalValue += s.totalValue;
+                        acc.totalInst += s.totalInst;
+                        return acc;
+                    }, {totalChurches: 0, totalGroups: 0, totalCases: 0, totalValue: 0, totalInst: 0});
+                    
+                    return (
+                        <div key={regionName} className="bg-white border-b-4 border-gray-200 last:border-0">
+                            <div className="p-4 sm:p-5 border-b border-gray-200 bg-[#002f6c]/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer hover:bg-[#002f6c]/20 transition-colors" onClick={() => toggleRegion(regionName)}>
+                                <div className="flex-1 flex flex-wrap items-center gap-2 text-sm sm:text-base font-bold text-[#002f6c]">
+                                    <span className="text-lg">🏛️ {regionName}</span>
+                                    <div className="mr-auto flex flex-wrap gap-2 items-center">
+                                       <span className="bg-white text-[#002f6c] border border-[#002f6c]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                                          ⛪ <span className="font-sans">{formatNumber(regionStats.totalChurches)}</span> كنائس
+                                       </span>
+                                       <span className="bg-white text-blue-600 border border-blue-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                                          👥 <span className="font-sans">{formatNumber(regionStats.totalGroups)}</span> مجموعات
+                                       </span>
+                                       <span className="bg-white text-[#d4af37] border border-[#d4af37]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                                          📊 <span className="font-sans">{formatNumber(regionStats.totalCases)}</span> مشاريع
+                                       </span>
+                                       <span className="bg-white text-green-700 border border-green-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                                          💰 <span className="font-sans">{formatNumber(regionStats.totalValue)}</span> ج.م
+                                       </span>
+                                    </div>
+                                </div>
+                                <div className="text-gray-500">
+                                   {expandedRegions[regionName] ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+                                </div>
+                            </div>
+                            
+                            {expandedRegions[regionName] && (
+                                <div className="bg-gray-50/50">
+                                    {churchesInRegion.map(ch => (
+                                        <div key={ch.id} className="border-b border-gray-200 last:border-0">
+                                           <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => toggleChurch(ch.id)}>
+                                              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                                 <div className="flex items-center gap-2">
+                                                    <div className="text-gray-500">
+                                                       {expandedChurches[ch.id] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                    </div>
+                                                    <h4 className="font-bold text-[#002f6c]">{ch.churchName} <span className="text-sm font-normal text-gray-500">({ch.regionName} - {ch.villageName})</span></h4>
+                                                 </div>
+                                                 {(() => {
                              const stats = getChurchStats(ch);
                              return (
                                <div className="flex flex-wrap gap-2 items-center">
@@ -1153,6 +1278,7 @@
                            })()}
                         </div>
                      </div>
+{expandedChurches[ch.id] && (
                      <div className="p-0 overflow-x-auto">
                         <table className="w-full text-sm text-right">
                            <thead className="bg-white text-gray-600 border-b border-gray-200 text-xs uppercase">
@@ -1181,8 +1307,14 @@
                            </tbody>
                         </table>
                      </div>
+                     )}
                   </div>
-               ));
+               ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                });
             })()}
             </div>
          </div>
