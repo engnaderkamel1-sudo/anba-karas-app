@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
@@ -112,6 +112,39 @@
       return isNaN(parsed) ? '' : parsed;
     };
 
+    // --- STATUS CONFIG & HELPERS ---
+    const STATUS_CONFIG = {
+      initial: { label: 'موافقة مبدئية', badgeClass: 'bg-amber-100 text-amber-800 border-amber-300', dotColor: 'bg-amber-500', icon: '⏳' },
+      executed: { label: 'مشروع منفذ', badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300', dotColor: 'bg-emerald-500', icon: '✅' },
+      cancelled: { label: 'ملغى / لم ينفذ', badgeClass: 'bg-rose-100 text-rose-800 border-rose-300', dotColor: 'bg-rose-500', icon: '❌' }
+    };
+
+    const normalizeArabicText = (text) => {
+      if (!text) return '';
+      return String(text)
+        .trim()
+        .toLowerCase()
+        .replace(/[أإآ]/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/ى/g, 'ي')
+        .replace(/[\u064B-\u065F]/g, '')
+        .replace(/\s+/g, ' ');
+    };
+
+    const StatusBadge = ({ status = 'initial', className = '', onClick = null }) => {
+      const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.initial;
+      return (
+        <span 
+          onClick={onClick}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border transition-all ${cfg.badgeClass} ${onClick ? 'cursor-pointer hover:shadow-sm' : ''} ${className}`}
+          title={onClick ? 'انقر لتغيير الحالة' : undefined}
+        >
+          <span className={`w-2 h-2 rounded-full ${cfg.dotColor}`}></span>
+          <span>{cfg.label}</span>
+        </span>
+      );
+    };
+
     // --- ICONS ---
     const Menu = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>;
     const X = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
@@ -143,6 +176,10 @@
     const RotateCcw = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 2 3 14 15 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L3 14"/></svg>;
         const Search = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>;
     const AlertTriangle = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
+    const Upload = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
+    const CheckSquare = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>;
+    const Zap = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+    const FileSpreadsheet = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="10" y2="21"/></svg>;
 
     // --- MIC INPUT COMPONENT ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -210,14 +247,18 @@
         const headers = [
             'مسلسل الكنيسة', 'مكان الزيارة', 'تاريخ الزيارة', 'اسم المنطقة',
             'اسم القرية', 'اسم الكنيسة', 'أسماء الخدام', 'اسم الحالة',
-            'نوع المشروع', 'قيمة المشروع', 'قيمة القسط', 'ملاحظات'
+            'حالة المشروع', 'نوع المشروع', 'نوع المشروع المنفذ',
+            'قيمة المشروع (مبدئي)', 'القيمة المنفذة فعلياً', 'قيمة القسط (مبدئي)', 'القسط المنفذ',
+            'تاريخ التنفيذ', 'ملاحظات'
         ];
         
         aoa.push(headers);
         
         let grandTotalProjects = 0;
-        let grandTotalProjectValue = 0;
-        let grandTotalInstallments = 0;
+        let grandTotalApprovedValue = 0;
+        let grandTotalExecutedValue = 0;
+        let grandTotalApprovedInstallments = 0;
+        let grandTotalExecutedInstallments = 0;
         
         let targetChurches = visitData.churches || [];
         if (scope === 'region') {
@@ -232,8 +273,19 @@
           (churchLoc.servantsGroups || []).forEach(sg => {
             (sg.cases || []).forEach(c => {
               churchHasCases = true;
+              const isExec = c.status === 'executed';
+              const statusLabel = STATUS_CONFIG[c.status || 'initial']?.label || 'موافقة مبدئية';
               const projectVal = parseArabicNumeric(c.projectValue) || 0;
+              const execVal = isExec && c.executedProjectValue ? parseArabicNumeric(c.executedProjectValue) : (isExec ? projectVal : '');
               const instVal = parseArabicNumeric(c.installmentAmount) || 0;
+              const execInstVal = isExec && c.executedInstallmentAmount ? parseArabicNumeric(c.executedInstallmentAmount) : (isExec ? instVal : '');
+              const execType = isExec ? (c.executedProjectType || c.projectType) : '';
+              const execDate = isExec ? (c.executionDate || '') : '';
+              let fullNotes = c.notes || '';
+              if (c.executionNotes) {
+                fullNotes = fullNotes ? `${fullNotes} | ملاحظات التنفيذ: ${c.executionNotes}` : `ملاحظات التنفيذ: ${c.executionNotes}`;
+              }
+
               aoa.push([
                 churchSerial,
                 visitData.location,
@@ -243,21 +295,28 @@
                 churchLoc.churchName,
                 sg.servantsNames,
                 c.name,
+                statusLabel,
                 c.projectType,
+                execType,
                 projectVal,
+                execVal,
                 instVal,
-                c.notes || ''
+                execInstVal,
+                execDate,
+                fullNotes
               ]);
               
               churchSerial++;
               grandTotalProjects++;
-              grandTotalProjectValue += projectVal;
-              grandTotalInstallments += instVal;
+              grandTotalApprovedValue += projectVal;
+              if (isExec && typeof execVal === 'number') grandTotalExecutedValue += execVal;
+              grandTotalApprovedInstallments += instVal;
+              if (isExec && typeof execInstVal === 'number') grandTotalExecutedInstallments += execInstVal;
             });
           });
           // Add a divider row if it's not the last church and this church had cases
           if (index < targetChurches.length - 1 && churchHasCases) {
-              aoa.push(['', '', '', '', '', '', '', '', '', '', '', '']); // separator
+              aoa.push(new Array(headers.length).fill('')); // separator
           }
         });
 
@@ -269,17 +328,13 @@
         // Final Summary Row
         aoa.push([
           'الإجمالي',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
+          '', '', '', '', '', '', '', '', '',
           grandTotalProjects + ' مشروع',
-          grandTotalProjectValue,
-          grandTotalInstallments,
-          ''
+          grandTotalApprovedValue,
+          grandTotalExecutedValue,
+          grandTotalApprovedInstallments,
+          grandTotalExecutedInstallments,
+          '', ''
         ]);
 
         const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -336,7 +391,7 @@
 
         const range = XLSX.utils.decode_range(ws['!ref']);
         
-        const rightAlignCols = [1, 3, 4, 5, 6, 7, 8, 11]; // Indices of columns to right align
+        const rightAlignCols = [1, 3, 4, 5, 6, 7, 9, 10, 16]; // Indices of columns to right align
         
         let dataRowIdx = 0;
 
@@ -383,20 +438,25 @@
             }
         }
 
-        // Set column widths explicitly as requested
+        // Set column widths explicitly
         ws['!cols'] = [
-            { wch: 16 }, // A
-            { wch: 24 }, // B
-            { wch: 14 }, // C
-            { wch: 16 }, // D
-            { wch: 16 }, // E
-            { wch: 26 }, // F
-            { wch: 28 }, // G
-            { wch: 22 }, // H
-            { wch: 16 }, // I
-            { wch: 14 }, // J
-            { wch: 14 }, // K
-            { wch: 20 }  // L
+            { wch: 14 }, // A: مسلسل الكنيسة
+            { wch: 20 }, // B: مكان الزيارة
+            { wch: 14 }, // C: تاريخ الزيارة
+            { wch: 16 }, // D: اسم المنطقة
+            { wch: 16 }, // E: اسم القرية
+            { wch: 24 }, // F: اسم الكنيسة
+            { wch: 26 }, // G: أسماء الخدام
+            { wch: 24 }, // H: اسم الحالة
+            { wch: 18 }, // I: حالة المشروع
+            { wch: 20 }, // J: نوع المشروع
+            { wch: 20 }, // K: نوع المشروع المنفذ
+            { wch: 18 }, // L: قيمة المشروع (مبدئي)
+            { wch: 18 }, // M: القيمة المنفذة فعلياً
+            { wch: 16 }, // N: قيمة القسط (مبدئي)
+            { wch: 16 }, // O: القسط المنفذ
+            { wch: 16 }, // P: تاريخ التنفيذ
+            { wch: 32 }  // Q: ملاحظات
         ];
         
         ws['!views'] = [{ RTL: true }];
@@ -416,31 +476,541 @@
         XLSX.writeFile(wb, filename, { cellStyles: true });
     };
 
+    // --- EXECUTION MODAL ---
+    function ExecutionModal({ caseData, churchName, onSave, onClose }) {
+      const [status, setStatus] = useState(caseData?.status || 'executed');
+      const [executedProjectType, setExecutedProjectType] = useState(caseData?.executedProjectType || caseData?.projectType || '');
+      const [executedProjectValue, setExecutedProjectValue] = useState(caseData?.executedProjectValue ?? caseData?.projectValue ?? '');
+      const [executedInstallmentAmount, setExecutedInstallmentAmount] = useState(caseData?.executedInstallmentAmount ?? caseData?.installmentAmount ?? '');
+      const [executionDate, setExecutionDate] = useState(caseData?.executionDate || new Date().toISOString().split('T')[0]);
+      const [executionNotes, setExecutionNotes] = useState(caseData?.executionNotes || caseData?.notes || '');
+
+      const handleSave = () => {
+        onSave({
+          ...caseData,
+          status,
+          executedProjectType: executedProjectType ? String(executedProjectType).trim() : '',
+          executedProjectValue: parseArabicNumeric(executedProjectValue) || 0,
+          executedInstallmentAmount: parseArabicNumeric(executedInstallmentAmount) || 0,
+          executionDate,
+          executionNotes: executionNotes ? String(executionNotes).trim() : ''
+        });
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-gray-100 bg-[#002f6c] text-white flex justify-between items-center shrink-0">
+              <div>
+                <h3 className="font-bold text-lg flex items-center gap-2">
+                  <Zap size={20} className="text-[#d4af37]" />
+                  تحديث وتأكيد تنفيذ المشروع
+                </h3>
+                <p className="text-xs text-blue-200 mt-0.5">الحالة: {caseData?.name} {churchName ? `(${churchName})` : ''}</p>
+              </div>
+              <button onClick={onClose} className="text-white/80 hover:text-white p-1"><X size={20} /></button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">حالة المشروع</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setStatus(key)}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-lg border text-xs font-bold transition-all ${
+                        status === key 
+                          ? 'border-[#002f6c] bg-blue-50 text-[#002f6c] shadow-sm ring-2 ring-[#002f6c]/20'
+                          : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                      }`}
+                    >
+                      <span className="text-base mb-1">{cfg.icon}</span>
+                      <span>{cfg.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {status === 'executed' && (
+                <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4 space-y-4 animate-fade-in">
+                  <div className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                    <CheckCircle size={16} /> بيانات التنفيذ الفعلي على الأرض
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">نوع المشروع الفعلي</label>
+                    <MicInput value={executedProjectType} onValueChange={setExecutedProjectType} placeholder="نوع المشروع بعد التنفيذ" />
+                    {caseData?.projectType && caseData?.projectType !== executedProjectType && (
+                      <p className="text-[11px] text-gray-500 mt-1">النوع المبدئي: {caseData.projectType}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">قيمة المشروع الفعلية (ج.م)</label>
+                      <MicInput isNumeric value={executedProjectValue} onValueChange={setExecutedProjectValue} placeholder="0" />
+                      {caseData?.projectValue && (
+                        <p className="text-[11px] text-gray-500 mt-1">المبدئي: {formatNumber(caseData.projectValue)} ج.م</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">قيمة القسط الفعلي (ج.م)</label>
+                      <MicInput isNumeric value={executedInstallmentAmount} onValueChange={setExecutedInstallmentAmount} placeholder="0" />
+                      {caseData?.installmentAmount && (
+                        <p className="text-[11px] text-gray-500 mt-1">المبدئي: {formatNumber(caseData.installmentAmount)} ج.م</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">تاريخ التنفيذ الفعلي</label>
+                    <input 
+                      type="date" 
+                      value={executionDate} 
+                      onChange={e => setExecutionDate(e.target.value)} 
+                      className="w-full rounded-md border border-gray-300 p-2 text-sm focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] outline-none font-sans"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">ملاحظات مسؤول القرية بعد التنفيذ</label>
+                    <MicInput value={executionNotes} onValueChange={setExecutionNotes} placeholder="أي ملاحظات إضافية حول التنفيذ..." />
+                  </div>
+                </div>
+              )}
+
+              {status === 'cancelled' && (
+                <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 space-y-3 animate-fade-in">
+                  <label className="block text-xs font-semibold text-rose-800 mb-1">سبب إلغاء أو عدم تنفيذ المشروع</label>
+                  <MicInput value={executionNotes} onValueChange={setExecutionNotes} placeholder="اكتب سبب عدم التنفيذ..." />
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-2 shrink-0">
+              <button onClick={onClose} className="px-5 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">إلغاء</button>
+              <button onClick={handleSave} className="px-6 py-2 rounded-md text-sm font-medium text-white bg-[#002f6c] hover:bg-[#001f4c] transition-colors shadow-sm">
+                حفظ وتحديث الحالة
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- EXCEL IMPORT MODAL ---
+    function ExcelImportModal({ visitData, onApplyUpdates, onClose }) {
+      const [fileName, setFileName] = useState('');
+      const [matchedItems, setMatchedItems] = useState([]);
+      const [unmatchedRows, setUnmatchedRows] = useState([]);
+      const [selectedIds, setSelectedIds] = useState({});
+      const [executionDate, setExecutionDate] = useState(new Date().toISOString().split('T')[0]);
+      const [isProcessing, setIsProcessing] = useState(false);
+
+      const existingCases = [];
+      (visitData.churches || []).forEach(ch => {
+        (ch.servantsGroups || []).forEach(sg => {
+          (sg.cases || []).forEach(c => {
+            existingCases.push({
+              caseObj: c,
+              churchId: ch.id,
+              groupId: sg.id,
+              churchName: ch.churchName || '',
+              regionName: ch.regionName || '',
+              villageName: ch.villageName || '',
+              servantsNames: sg.servantsNames || ''
+            });
+          });
+        });
+      });
+
+      const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setFileName(file.name);
+        setIsProcessing(true);
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const bstr = evt.target.result;
+            const wb = XLSX.read(bstr, { type: 'binary' });
+            const wsName = wb.SheetNames[0];
+            const ws = wb.Sheets[wsName];
+            const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+            const matches = [];
+            const unmatched = [];
+            const initialSelected = {};
+
+            rows.forEach((row, idx) => {
+              const rowName = row['اسم الحالة'] || row['الحالة'] || row['الاسم'] || row['اسم_الحالة'] || '';
+              if (!rowName || String(rowName).includes('الإجمالي') || String(rowName).includes('اجمالي')) {
+                return;
+              }
+
+              const normRowName = normalizeArabicText(rowName);
+              const rowChurch = normalizeArabicText(row['اسم الكنيسة'] || row['الكنيسة'] || '');
+              const newProjectType = String(row['نوع المشروع المنفذ'] || row['نوع المشروع'] || row['المشروع'] || '').trim();
+              const newProjectVal = parseArabicNumeric(row['القيمة المنفذة'] || row['القيمة الفعلية'] || row['قيمة المشروع المنفذ'] || row['قيمة المشروع'] || row['القيمة'] || row['المبلغ']) || 0;
+              const newInstallmentVal = parseArabicNumeric(row['القسط المنفذ'] || row['القسط الفعلي'] || row['قيمة القسط المنفذ'] || row['قيمة القسط'] || row['القسط']) || 0;
+              const newNotes = String(row['ملاحظات التنفيذ'] || row['ملاحظات'] || '').trim();
+
+              let found = existingCases.find(ec => {
+                const ecName = normalizeArabicText(ec.caseObj.name);
+                if (ecName === normRowName) {
+                  if (rowChurch && normalizeArabicText(ec.churchName)) {
+                    return normalizeArabicText(ec.churchName).includes(rowChurch) || rowChurch.includes(normalizeArabicText(ec.churchName));
+                  }
+                  return true;
+                }
+                return false;
+              });
+
+              if (!found) {
+                found = existingCases.find(ec => {
+                  const ecName = normalizeArabicText(ec.caseObj.name);
+                  return (ecName.length > 5 && normRowName.length > 5 && (ecName.includes(normRowName) || normRowName.includes(ecName)));
+                });
+              }
+
+              if (found) {
+                const effectiveVal = newProjectVal > 0 ? newProjectVal : (found.caseObj.executedProjectValue || found.caseObj.projectValue);
+                const effectiveInst = newInstallmentVal > 0 ? newInstallmentVal : (found.caseObj.executedInstallmentAmount || found.caseObj.installmentAmount);
+                const effectiveType = newProjectType || found.caseObj.executedProjectType || found.caseObj.projectType;
+
+                const hasValueChanged = effectiveVal !== found.caseObj.projectValue;
+                const hasInstChanged = effectiveInst !== found.caseObj.installmentAmount;
+                const hasTypeChanged = effectiveType !== found.caseObj.projectType;
+
+                const matchObj = {
+                  rowIdx: idx,
+                  existing: found,
+                  excelData: {
+                    name: rowName,
+                    projectType: effectiveType,
+                    projectValue: effectiveVal,
+                    installmentAmount: effectiveInst,
+                    notes: newNotes || found.caseObj.notes || ''
+                  },
+                  hasChanges: hasValueChanged || hasInstChanged || hasTypeChanged
+                };
+
+                matches.push(matchObj);
+                initialSelected[found.caseObj.id] = true;
+              } else {
+                unmatched.push({
+                  rowIdx: idx,
+                  name: rowName,
+                  church: row['اسم الكنيسة'] || '',
+                  projectType: newProjectType,
+                  projectValue: newProjectVal,
+                  installmentAmount: newInstallmentVal,
+                  notes: newNotes
+                });
+              }
+            });
+
+            setMatchedItems(matches);
+            setUnmatchedRows(unmatched);
+            setSelectedIds(initialSelected);
+          } catch (err) {
+            console.error("Excel parse error:", err);
+            alert('حدث خطأ أثناء قراءة ملف الإكسيل. يرجى التأكد من صيغة الملف.');
+          } finally {
+            setIsProcessing(false);
+          }
+        };
+        reader.readAsBinaryString(file);
+      };
+
+      const toggleSelectAll = () => {
+        const allSelected = matchedItems.every(m => selectedIds[m.existing.caseObj.id]);
+        const next = {};
+        matchedItems.forEach(m => {
+          next[m.existing.caseObj.id] = !allSelected;
+        });
+        setSelectedIds(next);
+      };
+
+      const handleApply = () => {
+        const selectedMatches = matchedItems.filter(m => selectedIds[m.existing.caseObj.id]);
+        if (selectedMatches.length === 0) {
+          alert('برجاء تحديد حالة واحدة على الأقل لتحديثها.');
+          return;
+        }
+
+        onApplyUpdates(selectedMatches, executionDate);
+        onClose();
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-gray-100 bg-[#002f6c] text-white flex justify-between items-center shrink-0">
+              <div>
+                <h3 className="font-bold text-lg flex items-center gap-2">
+                  <Upload size={20} className="text-[#d4af37]" />
+                  استيراد ومطابقة كشف التنفيذ الفعلي من الإكسيل
+                </h3>
+                <p className="text-xs text-blue-200 mt-0.5">مطابقة الحالات آلياً وتحديث القيم وتحويلها إلى مشاريع منفذة</p>
+              </div>
+              <button onClick={onClose} className="text-white/80 hover:text-white p-1"><X size={20} /></button>
+            </div>
+
+            <div className="p-5 space-y-5 overflow-y-auto flex-1">
+              {!matchedItems.length && !unmatchedRows.length && (
+                <div className="border-2 border-dashed border-[#002f6c]/30 hover:border-[#002f6c] rounded-xl p-8 text-center bg-blue-50/30 transition-colors">
+                  <FileSpreadsheet size={48} className="mx-auto text-[#002f6c] mb-3 opacity-80" />
+                  <p className="text-gray-700 font-bold mb-1">اختر ملف الإكسيل المُعدل من مسؤول القرية</p>
+                  <p className="text-gray-500 text-xs mb-4">يدعم ملفات (.xlsx, .xls) التي تم تصديرها من التطبيق سابقاً بعد تعديلها</p>
+                  <label className="inline-flex items-center gap-2 bg-[#002f6c] hover:bg-[#001f4c] text-white px-5 py-2.5 rounded-lg cursor-pointer font-medium text-sm transition-colors shadow-sm">
+                    <Upload size={18} />
+                    <span>اختيار ملف الإكسيل</span>
+                    <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} className="hidden" />
+                  </label>
+                </div>
+              )}
+
+              {isProcessing && (
+                <div className="text-center py-10">
+                  <div className="w-8 h-8 border-4 border-[#002f6c] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                  <p className="text-gray-600 font-medium text-sm">جاري قراءة ومطابقة بيانات الإكسيل...</p>
+                </div>
+              )}
+
+              {(matchedItems.length > 0 || unmatchedRows.length > 0) && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <FileSpreadsheet size={20} className="text-[#002f6c]" />
+                      <span className="font-bold text-gray-800 text-sm">{fileName}</span>
+                      <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                        تم مطابقة {matchedItems.length} حالة
+                      </span>
+                      {unmatchedRows.length > 0 && (
+                        <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                          {unmatchedRows.length} غير متطابقة
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                      <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                        <span>تاريخ التنفيذ:</span>
+                        <input 
+                          type="date" 
+                          value={executionDate} 
+                          onChange={e => setExecutionDate(e.target.value)} 
+                          className="border border-gray-300 rounded px-2 py-1 text-xs font-sans outline-none focus:border-[#002f6c]"
+                        />
+                      </div>
+                      <label className="text-xs text-[#002f6c] hover:underline cursor-pointer flex items-center gap-1">
+                        <input type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" />
+                        تغيير الملف
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                    <div className="bg-gray-100 px-4 py-2.5 border-b border-gray-200 flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="checkbox" 
+                          id="selectAllMatches"
+                          checked={matchedItems.length > 0 && matchedItems.every(m => selectedIds[m.existing.caseObj.id])} 
+                          onChange={toggleSelectAll} 
+                          className="w-4 h-4 text-[#002f6c] rounded"
+                        />
+                        <label htmlFor="selectAllMatches" className="text-xs font-bold text-gray-700 cursor-pointer">
+                          تحديد كل الحالات المتطابقة ({matchedItems.length})
+                        </label>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        المحدد للتحديث: {Object.values(selectedIds).filter(Boolean).length}
+                      </span>
+                    </div>
+
+                    <div className="max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs text-right">
+                        <thead className="bg-gray-50 text-gray-600 border-b border-gray-200 uppercase sticky top-0">
+                          <tr>
+                            <th className="p-2.5 w-10 text-center">اختيار</th>
+                            <th className="p-2.5">اسم الحالة</th>
+                            <th className="p-2.5">الكنيسة</th>
+                            <th className="p-2.5">نوع المشروع</th>
+                            <th className="p-2.5 text-center">القيمة (المبدئي ⬅️ الفعلي)</th>
+                            <th className="p-2.5 text-center">القسط (المبدئي ⬅️ الفعلي)</th>
+                            <th className="p-2.5 text-center">الحالة الناتجة</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {matchedItems.map((m) => {
+                            const isSelected = !!selectedIds[m.existing.caseObj.id];
+                            const oldVal = m.existing.caseObj.projectValue;
+                            const newVal = m.excelData.projectValue;
+                            const valChanged = newVal !== oldVal;
+
+                            const oldInst = m.existing.caseObj.installmentAmount;
+                            const newInst = m.excelData.installmentAmount;
+                            const instChanged = newInst !== oldInst;
+
+                            const oldType = m.existing.caseObj.projectType;
+                            const newType = m.excelData.projectType;
+                            const typeChanged = newType !== oldType;
+
+                            return (
+                              <tr key={m.existing.caseObj.id} className={`hover:bg-blue-50/40 transition-colors ${isSelected ? 'bg-blue-50/20' : 'opacity-60'}`}>
+                                <td className="p-2.5 text-center">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={isSelected} 
+                                    onChange={() => setSelectedIds(p => ({ ...p, [m.existing.caseObj.id]: !p[m.existing.caseObj.id] }))} 
+                                    className="w-4 h-4 text-[#002f6c] rounded"
+                                  />
+                                </td>
+                                <td className="p-2.5 font-bold text-gray-900">{m.existing.caseObj.name}</td>
+                                <td className="p-2.5 text-gray-600">{m.existing.churchName}</td>
+                                <td className="p-2.5">
+                                  {typeChanged ? (
+                                    <span className="text-amber-800 font-medium">
+                                      <span className="line-through text-gray-400 ml-1">{oldType}</span>
+                                      <span>{newType}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-700">{oldType}</span>
+                                  )}
+                                </td>
+                                <td className="p-2.5 text-center font-sans">
+                                  {valChanged ? (
+                                    <div className="flex items-center justify-center gap-1 font-bold text-emerald-700">
+                                      <span className="line-through text-gray-400 text-[10px]">{formatNumber(oldVal)}</span>
+                                      <span>⬅️</span>
+                                      <span>{formatNumber(newVal)} ج.م</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-700">{formatNumber(oldVal)} ج.م</span>
+                                  )}
+                                </td>
+                                <td className="p-2.5 text-center font-sans">
+                                  {instChanged ? (
+                                    <div className="flex items-center justify-center gap-1 font-bold text-emerald-700">
+                                      <span className="line-through text-gray-400 text-[10px]">{formatNumber(oldInst)}</span>
+                                      <span>⬅️</span>
+                                      <span>{formatNumber(newInst)} ج.م</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-700">{formatNumber(oldInst)} ج.م</span>
+                                  )}
+                                </td>
+                                <td className="p-2.5 text-center">
+                                  <StatusBadge status="executed" />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {unmatchedRows.length > 0 && (
+                    <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
+                      <div className="font-bold flex items-center gap-1 mb-1">
+                        <AlertTriangle size={14} /> تنبيه: يوجد {unmatchedRows.length} صفوف في الإكسيل لم يتم العثور على اسم مطابق لها في هذه الزيارة (سيتم تجاهلها):
+                      </div>
+                      <div className="text-gray-600 max-h-20 overflow-y-auto">
+                        {unmatchedRows.map((u, i) => (
+                          <span key={i} className="inline-block bg-white px-2 py-0.5 rounded border border-amber-200 mr-1 mb-1">
+                            {u.name} {u.church ? `(${u.church})` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center shrink-0">
+              <button onClick={onClose} className="px-5 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">إلغاء</button>
+              
+              {(matchedItems.length > 0) && (
+                <button 
+                  onClick={handleApply} 
+                  disabled={Object.values(selectedIds).filter(Boolean).length === 0}
+                  className="px-6 py-2.5 rounded-md text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-md flex items-center gap-2"
+                >
+                  <CheckCircle size={18} />
+                  <span>تطبيق التحديثات وتحويل ({Object.values(selectedIds).filter(Boolean).length}) حالة إلى "مشروع منفذ"</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // --- CASE MODAL ---
     function CaseModal({ caseData, onSave, onClose }) {
       const [formData, setFormData] = useState(caseData || {
-        id: uuidv4(), name: '', projectType: '', projectValue: '', installmentAmount: '', notes: ''
+        id: uuidv4(), name: '', projectType: '', projectValue: '', installmentAmount: '', notes: '',
+        status: 'initial', executedProjectType: '', executedProjectValue: '', executedInstallmentAmount: '',
+        executionDate: new Date().toISOString().split('T')[0], executionNotes: ''
       });
 
       const handleSave = () => {
         if (!formData.name) { alert('برجاء إدخال اسم الحالة'); return; }
-        onSave({...formData, projectValue: parseArabicNumeric(formData.projectValue) || 0, installmentAmount: parseArabicNumeric(formData.installmentAmount) || 0});
+        onSave({
+          ...formData,
+          status: formData.status || 'initial',
+          projectValue: parseArabicNumeric(formData.projectValue) || 0,
+          installmentAmount: parseArabicNumeric(formData.installmentAmount) || 0,
+          executedProjectValue: parseArabicNumeric(formData.executedProjectValue) || parseArabicNumeric(formData.projectValue) || 0,
+          executedInstallmentAmount: parseArabicNumeric(formData.executedInstallmentAmount) || parseArabicNumeric(formData.installmentAmount) || 0,
+          executedProjectType: formData.executedProjectType ? String(formData.executedProjectType).trim() : formData.projectType,
+          executionNotes: formData.executionNotes ? String(formData.executionNotes).trim() : ''
+        });
       };
 
       return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
-            <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center shrink-0">
-              <h3 className="font-bold text-[#002f6c] text-lg">{caseData ? 'تعديل الحالة' : 'إضافة حالة جديدة'}</h3>
-              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={20} /></button>
+            <div className="p-4 border-b border-gray-100 bg-[#002f6c] text-white flex justify-between items-center shrink-0">
+              <h3 className="font-bold text-lg">{caseData ? 'تعديل الحالة' : 'إضافة حالة جديدة'}</h3>
+              <button onClick={onClose} className="text-white/80 hover:text-white p-1"><X size={20} /></button>
             </div>
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              {/* Status Selector */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">اسم الحالة</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">حالة المشروع</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, status: key })}
+                      className={`flex items-center justify-center gap-1.5 p-2 rounded-lg border text-xs font-bold transition-all ${
+                        (formData.status || 'initial') === key
+                          ? 'border-[#002f6c] bg-blue-50 text-[#002f6c] ring-2 ring-[#002f6c]/20'
+                          : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                      }`}
+                    >
+                      <span>{cfg.icon}</span>
+                      <span>{cfg.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">اسم الحالة *</label>
                 <MicInput value={formData.name} onValueChange={(v) => setFormData({...formData, name: v})} placeholder="الاسم ثلاثي" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">نوع المشروع</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">نوع المشروع المبدئي</label>
                 <MicInput value={formData.projectType} onValueChange={(v) => setFormData({...formData, projectType: v})} placeholder="مثل: بقالة، ملابس..." />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -453,8 +1023,40 @@
                   <MicInput isNumeric value={formData.installmentAmount} onValueChange={(v) => setFormData({...formData, installmentAmount: v})} placeholder="0" />
                 </div>
               </div>
+
+              {/* Executed Extra Fields */}
+              {formData.status === 'executed' && (
+                <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3.5 space-y-3 animate-fade-in">
+                  <div className="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                    <CheckCircle size={14} /> بيانات التنفيذ الفعلي (إذا اختلفت عن المبدئي)
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">نوع المشروع الفعلي</label>
+                    <MicInput value={formData.executedProjectType || formData.projectType} onValueChange={(v) => setFormData({...formData, executedProjectType: v})} placeholder="النوع الفعلي المنفذ" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">القيمة الفعلية (ج.م)</label>
+                      <MicInput isNumeric value={formData.executedProjectValue ?? formData.projectValue} onValueChange={(v) => setFormData({...formData, executedProjectValue: v})} placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">القسط الفعلي (ج.م)</label>
+                      <MicInput isNumeric value={formData.executedInstallmentAmount ?? formData.installmentAmount} onValueChange={(v) => setFormData({...formData, executedInstallmentAmount: v})} placeholder="0" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">تاريخ التنفيذ</label>
+                    <input type="date" value={formData.executionDate || new Date().toISOString().split('T')[0]} onChange={e => setFormData({...formData, executionDate: e.target.value})} className="w-full border border-gray-300 rounded p-1.5 text-xs font-sans outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">ملاحظات التنفيذ</label>
+                    <MicInput value={formData.executionNotes} onValueChange={(v) => setFormData({...formData, executionNotes: v})} placeholder="ملاحظات بعد التنفيذ..." />
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ملاحظات (اختياري)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ملاحظات عامة (اختياري)</label>
                 <MicInput value={formData.notes} onValueChange={(v) => setFormData({...formData, notes: v})} placeholder="أي ملاحظات إضافية" />
               </div>
             </div>
@@ -468,7 +1070,7 @@
     }
 
     // --- SERVANTS GROUP VIEW ---
-    function ServantsGroupView({ group, churchId, onUpdateGroup, onDeleteGroup, serialMap, onEditCase, onDeleteCase }) {
+    function ServantsGroupView({ group, churchId, onUpdateGroup, onDeleteGroup, serialMap, onEditCase, onDeleteCase, onExecuteCase }) {
       const [isAddingCase, setIsAddingCase] = useState(false);
 
       const handleSaveCase = (newCase) => {
@@ -492,35 +1094,99 @@
             <table className="w-full text-sm text-right">
               <thead className="bg-[#002f6c] text-white">
                 <tr>
-                  <th className="px-4 py-3 font-medium w-16 text-center"># (كنيسة)</th>
-                  <th className="px-4 py-3 font-medium min-w-[150px]">اسم الحالة</th>
-                  <th className="px-4 py-3 font-medium">نوع المشروع</th>
-                  <th className="px-4 py-3 font-medium text-center">القيمة</th>
-                  <th className="px-4 py-3 font-medium text-center">القسط</th>
+                  <th className="px-3 py-3 font-medium w-14 text-center"># (كنيسة)</th>
+                  <th className="px-4 py-3 font-medium min-w-[140px]">اسم الحالة</th>
+                  <th className="px-3 py-3 font-medium text-center w-28">حالة المشروع</th>
+                  <th className="px-3 py-3 font-medium">نوع المشروع</th>
+                  <th className="px-3 py-3 font-medium text-center">القيمة (ج.م)</th>
+                  <th className="px-3 py-3 font-medium text-center">القسط (ج.م)</th>
                   <th className="px-4 py-3 font-medium">ملاحظات</th>
-                  <th className="px-4 py-3 font-medium text-center w-20">إجراء</th>
+                  <th className="px-3 py-3 font-medium text-center w-32">إجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {(group.cases || []).length === 0 && (
-                  <tr><td colSpan="7" className="px-4 py-8 text-center text-gray-500">لا توجد حالات مسجلة لهذه المجموعة.</td></tr>
+                  <tr><td colSpan="8" className="px-4 py-8 text-center text-gray-500">لا توجد حالات مسجلة لهذه المجموعة.</td></tr>
                 )}
-                {(group.cases || []).map((c) => (
-                  <tr key={c.id} className="hover:bg-blue-50/50 transition-colors">
-                    <td className="px-4 py-3 text-center font-bold text-gray-500 font-sans">{formatNumber(serialMap[c.id])}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{c.projectType}</td>
-                    <td className="px-4 py-3 text-center text-[#002f6c] font-semibold font-sans">{formatNumber(c.projectValue)}</td>
-                    <td className="px-4 py-3 text-center text-green-700 font-semibold font-sans">{formatNumber(c.installmentAmount)}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{c.notes}</td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        {!isReadOnly && <button onClick={() => onEditCase(c, churchId, group.id)} className="text-blue-600 hover:text-blue-800 p-1" title="تعديل"><Edit2 size={16}/></button>}
-                        {!isReadOnly && <button onClick={() => onDeleteCase(c.id, churchId, group.id)} className="text-red-500 hover:text-red-700 p-1" title="حذف"><Trash2 size={16}/></button>}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {(group.cases || []).map((c) => {
+                  const isExec = c.status === 'executed';
+                  const hasValDiff = isExec && c.executedProjectValue && c.executedProjectValue !== c.projectValue;
+                  const hasInstDiff = isExec && c.executedInstallmentAmount && c.executedInstallmentAmount !== c.installmentAmount;
+                  const hasTypeDiff = isExec && c.executedProjectType && c.executedProjectType !== c.projectType;
+
+                  return (
+                    <tr key={c.id} className="hover:bg-blue-50/50 transition-colors">
+                      <td className="px-3 py-3 text-center font-bold text-gray-500 font-sans">{formatNumber(serialMap[c.id])}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        <div>{c.name}</div>
+                        {isExec && c.executionDate && (
+                          <div className="text-[10px] text-emerald-700 font-sans mt-0.5">منفذ في: {c.executionDate}</div>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <StatusBadge status={c.status || 'initial'} onClick={!isReadOnly ? () => onExecuteCase(c, churchId, group.id) : null} />
+                      </td>
+                      <td className="px-3 py-3 text-gray-600">
+                        {hasTypeDiff ? (
+                          <div>
+                            <span className="font-bold text-emerald-800">{c.executedProjectType}</span>
+                            <span className="block text-[11px] text-gray-400 line-through">{c.projectType}</span>
+                          </div>
+                        ) : (
+                          c.executedProjectType || c.projectType
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-center font-sans">
+                        {hasValDiff ? (
+                          <div>
+                            <span className="font-bold text-emerald-700">{formatNumber(c.executedProjectValue)}</span>
+                            <span className="block text-[11px] text-gray-400 line-through">{formatNumber(c.projectValue)}</span>
+                          </div>
+                        ) : (
+                          <span className="text-[#002f6c] font-semibold">{formatNumber(c.executedProjectValue || c.projectValue)}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-center font-sans">
+                        {hasInstDiff ? (
+                          <div>
+                            <span className="font-bold text-emerald-700">{formatNumber(c.executedInstallmentAmount)}</span>
+                            <span className="block text-[11px] text-gray-400 line-through">{formatNumber(c.installmentAmount)}</span>
+                          </div>
+                        ) : (
+                          <span className="text-green-700 font-semibold">{formatNumber(c.executedInstallmentAmount || c.installmentAmount)}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">
+                        <div>{c.notes || '-'}</div>
+                        {c.executionNotes && (
+                          <div className="text-[11px] text-emerald-800 bg-emerald-50 rounded p-1 mt-1 border border-emerald-100">
+                            <strong>ملاحظات التنفيذ:</strong> {c.executionNotes}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {!isReadOnly && (
+                            <button 
+                              onClick={() => onExecuteCase(c, churchId, group.id)} 
+                              className={`p-1.5 rounded transition-colors text-xs font-medium flex items-center gap-1 ${
+                                isExec 
+                                  ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200' 
+                                  : 'text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300'
+                              }`} 
+                              title={isExec ? "تعديل بيانات التنفيذ" : "تأكيد التنفيذ"}
+                            >
+                              <Zap size={14} />
+                              <span className="hidden sm:inline">{isExec ? 'المنفذ' : 'تأكيد'}</span>
+                            </button>
+                          )}
+                          {!isReadOnly && <button onClick={() => onEditCase(c, churchId, group.id)} className="text-blue-600 hover:text-blue-800 p-1" title="تعديل"><Edit2 size={16}/></button>}
+                          {!isReadOnly && <button onClick={() => onDeleteCase(c.id, churchId, group.id)} className="text-red-500 hover:text-red-700 p-1" title="حذف"><Trash2 size={16}/></button>}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -537,8 +1203,12 @@
     }
 
     // --- PAGE 1: ACTIVE VISIT ENTRY ---
-    function ActiveVisitForm({ data, updateData, onEndVisit }) {
+    function ActiveVisitForm({ data, updateData, onEndVisit, onExport }) {
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
+      const [executingCaseInfo, setExecutingCaseInfo] = useState(null);
+      const [showImportModal, setShowImportModal] = useState(false);
+      const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'initial' | 'executed' | 'cancelled'
+
       const [filterRegion, setFilterRegion] = useState('');
       const [filterChurch, setFilterChurch] = useState('');
       const [filterServant, setFilterServant] = useState('');
@@ -550,7 +1220,6 @@
           setExpandedRegions(prev => ({ ...prev, [regionName]: !prev[regionName] }));
       };
 
-      
       const uniqueRegions = Array.from(new Set((data.churches||[]).map(ch => ch.regionName).filter(Boolean))).sort();
       const uniqueChurches = Array.from(new Set((data.churches||[]).filter(ch => !filterRegion || ch.regionName === filterRegion).map(ch => ch.churchName).filter(Boolean))).sort();
       const uniqueServants = Array.from(new Set((data.churches||[]).flatMap(ch => (ch.servantsGroups || []).map(sg => sg.servantsNames)).filter(Boolean))).sort();
@@ -565,16 +1234,17 @@
               if (filterServant && sg.servantsNames !== filterServant) return null;
               
               const filteredCases = (sg.cases || []).filter(c => {
+                  if (filterStatus !== 'all' && (c.status || 'initial') !== filterStatus) return false;
                   if (filterProject && c.projectType !== filterProject) return false;
                   if (filterCase && c.name !== filterCase) return false;
                   return true;
               });
               
-              if (filteredCases.length === 0 && (filterProject || filterCase)) return null;
+              if (filteredCases.length === 0 && (filterStatus !== 'all' || filterProject || filterCase)) return null;
               return { ...sg, cases: filteredCases };
           }).filter(Boolean);
           
-          if (filteredGroups.length === 0 && (filterServant || filterProject || filterCase)) return null;
+          if (filteredGroups.length === 0 && (filterStatus !== 'all' || filterServant || filterProject || filterCase)) return null;
           return { ...ch, servantsGroups: filteredGroups };
       }).filter(Boolean);
 
@@ -651,6 +1321,46 @@
         setEditingCaseInfo(null);
       };
 
+      const handleSaveExecutionCase = (updatedCase) => {
+        const { churchId, groupId } = executingCaseInfo;
+        updateData(prev => ({
+          ...prev, churches: prev.churches.map(ch => ch.id === churchId ? {
+            ...ch, servantsGroups: ch.servantsGroups.map(sg => sg.id === groupId ? {
+              ...sg, cases: sg.cases.map(c => c.id === updatedCase.id ? updatedCase : c)
+            } : sg)
+          } : ch)
+        }));
+        setExecutingCaseInfo(null);
+      };
+
+      const handleApplyExcelUpdates = (selectedMatches, execDate) => {
+        updateData(prev => {
+          const updatedChurches = (prev.churches || []).map(ch => ({
+            ...ch,
+            servantsGroups: (ch.servantsGroups || []).map(sg => ({
+              ...sg,
+              cases: (sg.cases || []).map(c => {
+                const match = selectedMatches.find(m => m.existing.caseObj.id === c.id);
+                if (match) {
+                  return {
+                    ...c,
+                    status: 'executed',
+                    executedProjectType: match.excelData.projectType || c.projectType,
+                    executedProjectValue: match.excelData.projectValue || c.projectValue,
+                    executedInstallmentAmount: match.excelData.installmentAmount || c.installmentAmount,
+                    executionDate: execDate || new Date().toISOString().split('T')[0],
+                    executionNotes: match.excelData.notes || c.notes || ''
+                  };
+                }
+                return c;
+              })
+            }))
+          }));
+          return { ...prev, churches: updatedChurches };
+        });
+        alert(`تم بنجاح تحديث وتأكيد تنفيذ ${selectedMatches.length} حالة!`);
+      };
+
       const handleDeleteCase = (caseId, churchId, groupId) => {
         if (!confirm('هل أنت متأكد من حذف هذه الحالة؟')) return;
         updateData(prev => ({
@@ -666,14 +1376,19 @@
         <div className="animate-fade-in">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
              <h2 className="text-2xl font-bold text-[#002f6c] flex items-center gap-2">
-               <Edit2 size={24} className="text-[#d4af37]" /> تسجيل الزيارة الحالية
+               <Edit2 size={24} className="text-[#d4af37]" /> تسجيل الزيارة والمشاريع
              </h2>
-             <div className="flex gap-2 w-full sm:w-auto">
-                <button onClick={() => openExportModal(data)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white border border-[#d4af37] text-[#8a7222] hover:bg-[#fff9e6] px-4 py-2 rounded-md font-medium transition-colors">
+             <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                {!isReadOnly && (
+                  <button onClick={() => setShowImportModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700 px-4 py-2 rounded-md font-medium shadow-sm transition-colors text-sm">
+                    <Upload size={18} /> استيراد كشف التنفيذ
+                  </button>
+                )}
+                <button onClick={() => onExport && onExport(data)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white border border-[#d4af37] text-[#8a7222] hover:bg-[#fff9e6] px-4 py-2 rounded-md font-medium transition-colors text-sm">
                   <Download size={18} /> تصدير
                 </button>
                 {!isReadOnly && (
-                  <button onClick={onEndVisit} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-[#002f6c] text-white hover:bg-[#001f4c] px-4 py-2 rounded-md font-medium shadow-md transition-colors">
+                  <button onClick={onEndVisit} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-[#002f6c] text-white hover:bg-[#001f4c] px-4 py-2 rounded-md font-medium shadow-md transition-colors text-sm">
                     <CheckCircle size={18} /> حفظ وإنهاء
                   </button>
                 )}
@@ -696,7 +1411,9 @@
           {/* OVERALL VISIT SUMMARY BAR */}
           {(() => {
               let totalProjects = 0;
-              let totalProjectValue = 0;
+              let totalApprovedValue = 0;
+              let totalExecutedValue = 0;
+              let executedProjectsCount = 0;
               let totalInstallments = 0;
               let totalGroups = 0;
               let totalChurches = filteredChurches.length;
@@ -706,41 +1423,59 @@
                   (ch.servantsGroups || []).forEach(sg => {
                       (sg.cases || []).forEach(c => {
                           totalProjects++;
-                          totalProjectValue += (parseFloat(c.projectValue) || 0);
-                          totalInstallments += (parseFloat(c.installmentAmount) || 0);
+                          const val = parseFloat(c.projectValue) || 0;
+                          const execVal = parseFloat(c.executedProjectValue) || val;
+                          const inst = parseFloat(c.installmentAmount) || 0;
+                          const execInst = parseFloat(c.executedInstallmentAmount) || inst;
+                          
+                          totalApprovedValue += val;
+                          if (c.status === 'executed') {
+                            executedProjectsCount++;
+                            totalExecutedValue += execVal;
+                            totalInstallments += execInst;
+                          } else {
+                            totalInstallments += inst;
+                          }
                       });
                   });
               });
 
               return (
-                 <div className="bg-[#002f6c]/5 rounded-xl border border-[#002f6c]/20 p-4 mb-8 flex flex-wrap gap-4 items-center justify-between">
-                     <div className="flex flex-wrap gap-4 items-center">
-                        <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
-                           <span className="text-xl">👥</span>
+                 <div className="bg-[#002f6c]/5 rounded-xl border border-[#002f6c]/20 p-4 mb-6 flex flex-wrap gap-4 items-center justify-between">
+                     <div className="flex flex-wrap gap-3 items-center">
+                        <div className="bg-white px-3.5 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
+                           <span className="text-lg">👥</span>
                            <div className="flex flex-col">
-                              <span className="text-xs text-gray-500 font-medium">مجموعات الخدام</span>
-                              <span className="font-bold text-blue-600"><span className="font-sans">{formatNumber(totalGroups)}</span> مجموعة</span>
+                              <span className="text-[11px] text-gray-500 font-medium">مجموعات الخدام</span>
+                              <span className="font-bold text-blue-600 text-sm"><span className="font-sans">{formatNumber(totalGroups)}</span> مجموعة</span>
                            </div>
                         </div>
-                        <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
-                           <span className="text-xl">📊</span>
+                        <div className="bg-white px-3.5 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
+                           <span className="text-lg">📊</span>
                            <div className="flex flex-col">
-                              <span className="text-xs text-gray-500 font-medium">إجمالي المشاريع</span>
-                              <span className="font-bold text-[#002f6c]"><span className="font-sans">{formatNumber(totalProjects)}</span> مشروع</span>
+                              <span className="text-[11px] text-gray-500 font-medium">إجمالي الحالات</span>
+                              <span className="font-bold text-[#002f6c] text-sm"><span className="font-sans">{formatNumber(totalProjects)}</span> مشروع</span>
                            </div>
                         </div>
-                        <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
-                           <span className="text-xl">💰</span>
+                        <div className="bg-white px-3.5 py-2 rounded-lg shadow-sm border border-amber-200 bg-amber-50/40 flex items-center gap-2">
+                           <span className="text-lg">⏳</span>
                            <div className="flex flex-col">
-                              <span className="text-xs text-gray-500 font-medium">إجمالي المبالغ</span>
-                              <span className="font-bold text-green-700"><span className="font-sans">{formatNumber(totalProjectValue)}</span> ج.م</span>
+                              <span className="text-[11px] text-amber-800 font-medium">موافقة مبدئية</span>
+                              <span className="font-bold text-amber-700 text-sm"><span className="font-sans">{formatNumber(totalApprovedValue)}</span> ج.م</span>
                            </div>
                         </div>
-                        <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
-                           <span className="text-xl">💸</span>
+                        <div className="bg-white px-3.5 py-2 rounded-lg shadow-sm border border-emerald-200 bg-emerald-50/40 flex items-center gap-2">
+                           <span className="text-lg">✅</span>
                            <div className="flex flex-col">
-                              <span className="text-xs text-gray-500 font-medium">إجمالي الأقساط</span>
-                              <span className="font-bold text-[#8a7222]"><span className="font-sans">{formatNumber(totalInstallments)}</span> ج.م</span>
+                              <span className="text-[11px] text-emerald-800 font-medium">المنفذ فعلياً ({formatNumber(executedProjectsCount)})</span>
+                              <span className="font-bold text-emerald-700 text-sm"><span className="font-sans">{formatNumber(totalExecutedValue)}</span> ج.م</span>
+                           </div>
+                        </div>
+                        <div className="bg-white px-3.5 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
+                           <span className="text-lg">💸</span>
+                           <div className="flex flex-col">
+                              <span className="text-[11px] text-gray-500 font-medium">إجمالي الأقساط</span>
+                              <span className="font-bold text-[#8a7222] text-sm"><span className="font-sans">{formatNumber(totalInstallments)}</span> ج.م</span>
                            </div>
                         </div>
                      </div>
@@ -752,6 +1487,86 @@
                         </div>
                      </div>
                  </div>
+              );
+          })()}
+
+          {/* STATUS NAVIGATION TABS */}
+          {(() => {
+              let all = 0, initial = 0, executed = 0, cancelled = 0;
+              (data.churches || []).forEach(ch => {
+                (ch.servantsGroups || []).forEach(sg => {
+                  (sg.cases || []).forEach(c => {
+                    all++;
+                    const st = c.status || 'initial';
+                    if (st === 'executed') executed++;
+                    else if (st === 'cancelled') cancelled++;
+                    else initial++;
+                  });
+                });
+              });
+
+              return (
+                <div className="flex flex-wrap items-center gap-2 mb-6 bg-white p-2 rounded-xl shadow-sm border border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setFilterStatus('all')}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                      filterStatus === 'all'
+                        ? 'bg-[#002f6c] text-white shadow-md'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span>🌐 كل المشاريع</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-sans ${filterStatus === 'all' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                      {formatNumber(all)}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFilterStatus('initial')}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                      filterStatus === 'initial'
+                        ? 'bg-amber-600 text-white shadow-md'
+                        : 'text-amber-800 hover:bg-amber-50'
+                    }`}
+                  >
+                    <span>⏳ موافقة مبدئية</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-sans ${filterStatus === 'initial' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-900'}`}>
+                      {formatNumber(initial)}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFilterStatus('executed')}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                      filterStatus === 'executed'
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'text-emerald-800 hover:bg-emerald-50'
+                    }`}
+                  >
+                    <span>✅ مشاريع منفذة</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-sans ${filterStatus === 'executed' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-900'}`}>
+                      {formatNumber(executed)}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFilterStatus('cancelled')}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                      filterStatus === 'cancelled'
+                        ? 'bg-red-600 text-white shadow-md'
+                        : 'text-red-700 hover:bg-red-50'
+                    }`}
+                  >
+                    <span>❌ لم تُنفّذ / ملغاة</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-sans ${filterStatus === 'cancelled' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-800'}`}>
+                      {formatNumber(cancelled)}
+                    </span>
+                  </button>
+                </div>
               );
           })()}
 
@@ -927,7 +1742,17 @@
                       
                       <div className="p-4 sm:p-5 space-y-6">
                         {(churchLoc.servantsGroups || []).map(group => (
-                          <ServantsGroupView key={group.id} group={group} churchId={churchLoc.id} onUpdateGroup={handleUpdateGroup} onDeleteGroup={handleDeleteGroup} serialMap={serialMap} onEditCase={handleEditCase} onDeleteCase={handleDeleteCase} />
+                          <ServantsGroupView 
+                            key={group.id} 
+                            group={group} 
+                            churchId={churchLoc.id} 
+                            onUpdateGroup={handleUpdateGroup} 
+                            onDeleteGroup={handleDeleteGroup} 
+                            serialMap={serialMap} 
+                            onEditCase={handleEditCase} 
+                            onDeleteCase={handleDeleteCase}
+                            onExecuteCase={(caseObj, chId, grpId) => setExecutingCaseInfo({ caseObj, churchId: chId, groupId: grpId, churchName: churchLoc.churchName })}
+                          />
                         ))}
                         <div className="flex justify-center">
                           {!isReadOnly && <button onClick={() => handleAddGroup(churchLoc.id)} className="flex items-center gap-2 bg-gray-50 hover:bg-gray-100 text-[#002f6c] text-sm font-medium py-2 px-5 rounded-md transition-colors border border-gray-300 border-dashed">
@@ -949,6 +1774,21 @@
           )}
 
           {editingCaseInfo && <CaseModal caseData={editingCaseInfo.caseObj} onSave={handleSaveEditCase} onClose={() => setEditingCaseInfo(null)} />}
+          {executingCaseInfo && (
+            <ExecutionModal 
+              caseData={executingCaseInfo.caseObj} 
+              churchName={executingCaseInfo.churchName} 
+              onSave={handleSaveExecutionCase} 
+              onClose={() => setExecutingCaseInfo(null)} 
+            />
+          )}
+          {showImportModal && (
+            <ExcelImportModal 
+              visitData={data} 
+              onApplyUpdates={handleApplyExcelUpdates} 
+              onClose={() => setShowImportModal(false)} 
+            />
+          )}
         </div>
       );
     }
@@ -1654,7 +2494,7 @@ function App() {
           {/* MAIN CONTENT AREA */}
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
              {activeTab === 'entry' && (
-                <ActiveVisitForm data={data} updateData={updateData} onEndVisit={handleEndVisit} />
+                <ActiveVisitForm data={data} updateData={updateData} onEndVisit={handleEndVisit} onExport={openExportModal} />
              )}
              {activeTab === 'archive' && (
                 <ArchivePage 
@@ -1722,3 +2562,5 @@ function App() {
   </script>
 </body>
 </html>
+
+
