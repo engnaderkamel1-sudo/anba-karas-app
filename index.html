@@ -10,6 +10,10 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="app-build-id" content="1789908299181" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -6089,6 +6093,148 @@ function App() {
         for (let name of names) caches.delete(name);
       });
     }
+  </script>
+  <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
+  <script>
+    (function() {
+      const CLIENT_BUILD_ID = "1789908299181";
+      let initialEtag = null;
+      let isUpdating = false;
+
+      function triggerAppReload(reason) {
+        if (isUpdating) return;
+        isUpdating = true;
+        console.log('[Auto-Updater] New update detected (' + reason + '). Auto-refreshing in 1.2s...');
+
+        try {
+          const banner = document.createElement('div');
+          banner.id = 'app-auto-update-banner';
+          banner.style.cssText = [
+            'position: fixed',
+            'top: 18px',
+            'left: 50%',
+            'transform: translateX(-50%)',
+            'z-index: 999999',
+            'background: linear-gradient(135deg, #002f6c 0%, #001737 100%)',
+            'color: #ffffff',
+            'padding: 12px 22px',
+            'border-radius: 16px',
+            'box-shadow: 0 15px 35px rgba(0,0,0,0.3)',
+            'border: 2px solid #34d399',
+            'display: flex',
+            'align-items: center',
+            'gap: 12px',
+            'font-family: system-ui, -apple-system, sans-serif',
+            'direction: rtl',
+            'animation: slideDown 0.3s ease-out'
+          ].join(';');
+
+          banner.innerHTML = '<div style=\"font-size: 24px; animation: spin 1s linear infinite;\">&#128259;</div>' +
+            '<div>' +
+            '  <div style=\"font-weight: bold; font-size: 13px; color: #34d399;\">\u062a\u0645 \u0631\u0641\u0639 \u062a\u0639\u062f\u064a\u0644 \u062c\u062f\u064a\u062f \u0644\u0644\u062a\u0637\u0628\u064a\u0642!</div>' +
+            '  <div style=\"font-size: 11px; color: #cbd5e1; margin-top: 2px;\">\u062c\u0627\u0631\u064a \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u062a\u0637\u0628\u064a\u0642 \u062a\u0644\u0642\u0627\u0626\u064a\u0627\u064b \u0644\u0644\u0646\u0633\u062e\u0629 \u0627\u0644\u0623\u062d\u062f\u062b \u0627\u0644\u0622\u0646...</div>' +
+            '</div>';
+
+          if (!document.getElementById('auto-update-keyframes')) {
+            const style = document.createElement('style');
+            style.id = 'auto-update-keyframes';
+            style.textContent = '@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } ' +
+              '@keyframes slideDown { from { transform: translate(-50%, -40px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }';
+            document.head.appendChild(style);
+          }
+
+          document.body.appendChild(banner);
+        } catch(e) {}
+
+        setTimeout(function() {
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.set('_upd', Date.now());
+          window.location.href = newUrl.toString();
+        }, 1200);
+      }
+
+      async function checkServerHeaders() {
+        if (isUpdating) return;
+        if (!window.location.protocol.startsWith('http')) return;
+
+        try {
+          const url = window.location.origin + window.location.pathname + '?_check_upd=' + Date.now();
+          const res = await fetch(url, {
+            method: 'HEAD',
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            }
+          });
+
+          if (!res.ok) return;
+
+          const etag = res.headers.get('etag') || res.headers.get('last-modified') || res.headers.get('x-vercel-id');
+          if (!etag) {
+            checkMetaTagVersion();
+            return;
+          }
+
+          if (!initialEtag) {
+            initialEtag = etag;
+            return;
+          }
+
+          if (etag !== initialEtag) {
+            triggerAppReload('etag_changed');
+          }
+        } catch(err) {}
+      }
+
+      async function checkMetaTagVersion() {
+        if (isUpdating) return;
+        if (!window.location.protocol.startsWith('http')) return;
+
+        try {
+          const url = window.location.origin + window.location.pathname + '?_check_meta=' + Date.now();
+          const res = await fetch(url, {
+            method: 'GET',
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Range': 'bytes=0-3000'
+            }
+          });
+
+          if (!res.ok && res.status !== 206) return;
+          const text = await res.text();
+          const match = text.match(/<meta\s+name=["']app-build-id["']\s+content=["']([^"']+)["']/i);
+          if (match && match[1]) {
+            const remoteBuildId = match[1];
+            if (CLIENT_BUILD_ID && remoteBuildId !== CLIENT_BUILD_ID && remoteBuildId !== '__BUILD_TIMESTAMP__') {
+              triggerAppReload('build_id_mismatch');
+            }
+          }
+        } catch(e) {}
+      }
+
+      function performUpdateCheck() {
+        checkServerHeaders();
+      }
+
+      // Initial check after 4 seconds
+      setTimeout(performUpdateCheck, 4000);
+
+      // Periodic check every 15 seconds
+      setInterval(performUpdateCheck, 15000);
+
+      // Check immediately when user focuses back on window or switches to tab
+      window.addEventListener('focus', performUpdateCheck);
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+          performUpdateCheck();
+        }
+      });
+
+      window.__checkForUpdates = performUpdateCheck;
+    })();
   </script>
 </body>
 </html>
