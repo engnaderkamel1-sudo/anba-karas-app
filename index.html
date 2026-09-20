@@ -3368,11 +3368,10 @@
         }
       };
 
-      // Generate expected monthly schedule
+      // Generate expected monthly schedule with early deduction from the LAST installments
       const startDate = caseObj.executionDate ? new Date(caseObj.executionDate) : new Date();
-      // Month schedule starts month after execution or in current month
-      const schedule = [];
-      let runningPaid = totalPaid;
+      
+      const baseSchedule = [];
       for (let i = 1; i <= Math.max(totalMonths, 1); i++) {
         const dueDate = new Date(startDate);
         dueDate.setMonth(dueDate.getMonth() + i);
@@ -3380,21 +3379,60 @@
           ? (totalAmount - (totalMonths - 1) * monthlyAmount)
           : monthlyAmount;
         
-        const isMonthCovered = runningPaid >= expectedAmt;
-        const partialCovered = runningPaid > 0 && !isMonthCovered;
-        if (runningPaid >= expectedAmt) {
-          runningPaid -= expectedAmt;
-        } else {
-          runningPaid = 0;
-        }
-
-        schedule.push({
+        baseSchedule.push({
           monthNum: i,
           dueDateStr: dueDate.toISOString().split('T')[0],
           amount: expectedAmt,
-          status: isMonthCovered ? 'paid' : (partialCovered ? 'partial' : 'pending')
+          paidFromFront: 0,
+          deductedFromBack: 0,
+          status: 'pending' // 'paid' | 'partial' | 'pending' | 'back_deducted' | 'back_paid'
         });
       }
+
+      // Calculate full monthly installments from the front vs excess from the back
+      let fullMonths = 0;
+      let excess = 0;
+      let partialFront = 0;
+
+      if (monthlyAmount > 0) {
+        if (totalPaid < monthlyAmount) {
+          partialFront = totalPaid;
+        } else {
+          fullMonths = Math.floor(totalPaid / monthlyAmount);
+          excess = totalPaid - (fullMonths * monthlyAmount);
+        }
+      } else {
+        fullMonths = totalMonths;
+      }
+
+      // 1. Apply full months from the front
+      for (let i = 0; i < fullMonths && i < baseSchedule.length; i++) {
+        baseSchedule[i].paidFromFront = baseSchedule[i].amount;
+        baseSchedule[i].status = 'paid';
+      }
+
+      // 2. Partial payment for first month only if total paid is less than 1 full monthly installment
+      if (partialFront > 0 && baseSchedule.length > 0) {
+        baseSchedule[0].paidFromFront = partialFront;
+        baseSchedule[0].status = 'partial';
+      }
+
+      // 3. Excess is deducted from the LAST installments backwards
+      let remainingExcess = excess;
+      for (let i = baseSchedule.length - 1; i >= fullMonths && remainingExcess > 0; i--) {
+        const m = baseSchedule[i];
+        const deductAmt = Math.min(remainingExcess, m.amount);
+        m.deductedFromBack = deductAmt;
+        remainingExcess -= deductAmt;
+
+        if (m.deductedFromBack >= m.amount) {
+          m.status = 'back_paid';
+        } else {
+          m.status = 'back_deducted';
+        }
+      }
+
+      const schedule = baseSchedule;
 
       return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
@@ -3636,9 +3674,23 @@
                   <h4 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
                     <span>📅</span> جدول استحقاق الشهور المقدر ({totalMonths} شهر)
                   </h4>
+                  {excess > 0 && (
+                    <span className="text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full font-sans">
+                      خصم فائض {formatNumber(excess)} ج.م من نهاية الأقساط ⚡
+                    </span>
+                  )}
                 </div>
 
-                <div className="border border-gray-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+                {excess > 0 && (
+                  <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 flex items-center gap-2 mb-3 shadow-xs">
+                    <span className="text-base">💡</span>
+                    <span>
+                      تم تحصيل فائض بمقدار <strong className="font-sans">{formatNumber(excess)} ج.م</strong> فوق القسط الشهري، وتم خصمه تلقائياً من <strong>نهاية جدول السداد (آخر قسط)</strong> لتسديده مبكراً دون التأثير على القسط التالي.
+                    </span>
+                  </div>
+                )}
+
+                <div className="border border-gray-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
                   <table className="w-full text-right text-xs">
                     <thead className="bg-gray-100 text-gray-700 sticky top-0">
                       <tr>
@@ -3649,24 +3701,56 @@
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
-                      {schedule.map((sc) => (
-                        <tr key={sc.monthNum} className="hover:bg-gray-50">
-                          <td className="p-2 font-sans font-medium text-gray-700">الشهر {sc.monthNum}</td>
-                          <td className="p-2 font-sans text-gray-600">{sc.dueDateStr}</td>
-                          <td className="p-2 font-sans font-bold text-gray-800">{formatNumber(sc.amount)} ج.م</td>
-                          <td className="p-2 text-center">
-                            {sc.status === 'paid' && (
-                              <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[10px] font-bold">تم السداد ✅</span>
-                            )}
-                            {sc.status === 'partial' && (
-                              <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-bold">سداد جزئي ⏳</span>
-                            )}
-                            {sc.status === 'pending' && (
-                              <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[10px]">بانتظار السداد</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                      {schedule.map((sc) => {
+                        const netDue = Math.max(0, sc.amount - sc.deductedFromBack);
+                        return (
+                          <tr key={sc.monthNum} className={`hover:bg-gray-50 transition-colors ${sc.deductedFromBack > 0 ? 'bg-blue-50/40' : ''}`}>
+                            <td className="p-2 font-sans font-medium text-gray-700">الشهر {sc.monthNum}</td>
+                            <td className="p-2 font-sans text-gray-600">{sc.dueDateStr}</td>
+                            <td className="p-2">
+                              {sc.status === 'back_paid' ? (
+                                <div>
+                                  <span className="line-through text-gray-400 font-sans">{formatNumber(sc.amount)} ج.م</span>
+                                  <span className="text-[10px] text-emerald-600 font-bold block">مُسدد بالكامل من الفائض</span>
+                                </div>
+                              ) : sc.deductedFromBack > 0 ? (
+                                <div>
+                                  <span className="font-sans font-bold text-gray-800">{formatNumber(netDue)} ج.م</span>
+                                  <span className="text-[10px] text-blue-600 font-medium block font-sans">(خُصم {formatNumber(sc.deductedFromBack)} ج.م من الفائض)</span>
+                                </div>
+                              ) : sc.status === 'partial' ? (
+                                <div>
+                                  <span className="font-sans font-bold text-amber-800">{formatNumber(sc.amount - sc.paidFromFront)} ج.م</span>
+                                  <span className="text-[10px] text-gray-500 block font-sans">متبقي من {formatNumber(sc.amount)}</span>
+                                </div>
+                              ) : (
+                                <span className="font-sans font-bold text-gray-800">{formatNumber(sc.amount)} ج.م</span>
+                              )}
+                            </td>
+                            <td className="p-2 text-center">
+                              {sc.status === 'paid' && (
+                                <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[10px] font-bold">تم السداد ✅</span>
+                              )}
+                              {sc.status === 'back_paid' && (
+                                <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold">سُدد من الفائض ⚡</span>
+                              )}
+                              {sc.status === 'back_deducted' && (
+                                <span className="bg-blue-100 text-blue-800 border border-blue-200 px-2 py-0.5 rounded-full text-[10px] font-bold font-sans">
+                                  خصم {formatNumber(sc.deductedFromBack)} ج.م من الفائض ⚡
+                                </span>
+                              )}
+                              {sc.status === 'partial' && (
+                                <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-bold font-sans">
+                                  سداد جزئي ({formatNumber(sc.paidFromFront)} ج.م) ⏳
+                                </span>
+                              )}
+                              {sc.status === 'pending' && (
+                                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[10px]">بانتظار السداد</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
