@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
@@ -4439,63 +4439,145 @@
       );
     }
 
-    // --- PAGE: INSTALLMENTS & REPAYMENT TRACKING (PHASE 2) ---
+    // --- PAGE: INSTALLMENTS & REPAYMENT TRACKING (PHASE 2 & 3) ---
     function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
       const activeVisits = (allVisits || []).filter(v => !v.isDeleted);
-      // Default to 'all' so aggregate metrics for all visits are shown initially!
-      const [selectedVisitId, setSelectedVisitId] = useState('all');
 
+      // Selected visit for hierarchical breakdown view ('null' means viewing the list of visits or flat table)
+      const [selectedVisitIdForDetails, setSelectedVisitIdForDetails] = useState(null);
+
+      // View mode at top level: 'visits' (سجل الزيارات المنفذة) | 'allCases' (عرض كل الحالات مباشرة)
+      const [viewMode, setViewMode] = useState('visits');
+
+      // Top-level / Visit-level Filters
       const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'completed' | 'active' | 'unpaid'
       const [filterRegion, setFilterRegion] = useState('');
       const [filterChurch, setFilterChurch] = useState('');
       const [filterSearch, setFilterSearch] = useState('');
 
-      const [activeModalCaseInfo, setActiveModalCaseInfo] = useState(null); // { caseObj, churchName, regionName, churchId, groupId, visitId }
+      // Accordion states for hierarchical visit view
+      const [expandedRegions, setExpandedRegions] = useState({});
+      const [expandedChurches, setExpandedChurches] = useState({});
+      const toggleRegion = (reg) => setExpandedRegions(prev => ({ ...prev, [reg]: prev[reg] === false ? true : false }));
+      const toggleChurch = (chId) => setExpandedChurches(prev => ({ ...prev, [chId]: prev[chId] === false ? true : false }));
+
+      // Modals
+      const [activeModalCaseInfo, setActiveModalCaseInfo] = useState(null);
       const [showAddLegacyModal, setShowAddLegacyModal] = useState(false);
       const [showImportLegacyModal, setShowImportLegacyModal] = useState(false);
 
-      // Extract all executed cases from activeVisits (or selected visit)
+      // Helper to compute case stats
+      const extractCaseData = (c, v, ch, sg) => {
+        const totalAmt = parseFloat(c.executedProjectValue || c.projectValue) || 0;
+        const monthlyAmt = parseFloat(c.executedInstallmentAmount || c.installmentAmount) || 0;
+        const payments = c.payments || [];
+        const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+        const remainingAmt = Math.max(0, totalAmt - totalPaid);
+        const isCompleted = remainingAmt <= 0 && totalAmt > 0;
+        return {
+          visitId: v.id,
+          visitDate: v.date,
+          visitLocation: v.location,
+          regionName: ch.regionName || '',
+          churchId: ch.id,
+          churchName: ch.churchName || '',
+          villageName: ch.villageName || '',
+          groupId: sg.id,
+          servantsNames: sg.servantsNames || '',
+          caseObj: c,
+          totalAmt,
+          monthlyAmt,
+          totalMonths: monthlyAmt > 0 ? Math.ceil(totalAmt / monthlyAmt) : 0,
+          payments,
+          totalPaid,
+          remainingAmt,
+          isCompleted,
+          repaymentState: isCompleted ? 'completed' : (totalPaid > 0 ? 'active' : 'unpaid')
+        };
+      };
+
+      // Extract all executed cases across all visits
       const allExecutedCases = [];
       activeVisits.forEach(v => {
-        if (selectedVisitId !== 'all' && v.id !== selectedVisitId) return;
         (v.churches || []).forEach(ch => {
           (ch.servantsGroups || []).forEach(sg => {
             (sg.cases || []).forEach(c => {
               if (c.status === 'executed') {
-                const totalAmt = parseFloat(c.executedProjectValue || c.projectValue) || 0;
-                const monthlyAmt = parseFloat(c.executedInstallmentAmount || c.installmentAmount) || 0;
-                const payments = c.payments || [];
-                const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                const remainingAmt = Math.max(0, totalAmt - totalPaid);
-                const isCompleted = remainingAmt <= 0 && totalAmt > 0;
-
-                allExecutedCases.push({
-                  visitId: v.id,
-                  visitDate: v.date,
-                  visitLocation: v.location,
-                  regionName: ch.regionName || '',
-                  churchId: ch.id,
-                  churchName: ch.churchName || '',
-                  villageName: ch.villageName || '',
-                  groupId: sg.id,
-                  servantsNames: sg.servantsNames || '',
-                  caseObj: c,
-                  totalAmt,
-                  monthlyAmt,
-                  totalMonths: monthlyAmt > 0 ? Math.ceil(totalAmt / monthlyAmt) : 0,
-                  payments,
-                  totalPaid,
-                  remainingAmt,
-                  isCompleted,
-                  repaymentState: isCompleted ? 'completed' : (totalPaid > 0 ? 'active' : 'unpaid')
-                });
+                allExecutedCases.push(extractCaseData(c, v, ch, sg));
               }
             });
           });
         });
       });
 
-      // Filter Cases
+      // Global Aggregate Financial Metrics
+      let sumTotalExecuted = 0;
+      let sumTotalPaid = 0;
+      let sumMonthlyActiveInstallments = 0;
+      let completedCount = 0;
+      let activeCount = 0;
+      let unpaidCount = 0;
+
+      allExecutedCases.forEach(item => {
+        sumTotalExecuted += item.totalAmt;
+        sumTotalPaid += item.totalPaid;
+        if (item.isCompleted) {
+          completedCount++;
+        } else {
+          if (item.totalPaid > 0) activeCount++;
+          else unpaidCount++;
+          sumMonthlyActiveInstallments += item.monthlyAmt;
+        }
+      });
+
+      const sumTotalRemaining = Math.max(0, sumTotalExecuted - sumTotalPaid);
+      const overallPaidPercentage = sumTotalExecuted > 0 ? Math.round((sumTotalPaid / sumTotalExecuted) * 100) : 0;
+
+      // Group executed visits with summaries
+      const visitsWithExecuted = activeVisits.map(v => {
+        const vCases = [];
+        (v.churches || []).forEach(ch => {
+          (ch.servantsGroups || []).forEach(sg => {
+            (sg.cases || []).forEach(c => {
+              if (c.status === 'executed') {
+                vCases.push(extractCaseData(c, v, ch, sg));
+              }
+            });
+          });
+        });
+
+        if (vCases.length === 0) return null;
+
+        const totalVal = vCases.reduce((s, c) => s + c.totalAmt, 0);
+        const paidVal = vCases.reduce((s, c) => s + c.totalPaid, 0);
+        const remVal = Math.max(0, totalVal - paidVal);
+        const activeInst = vCases.filter(c => !c.isCompleted).reduce((s, c) => s + c.monthlyAmt, 0);
+        const compCount = vCases.filter(c => c.isCompleted).length;
+        const actCount = vCases.filter(c => !c.isCompleted && c.totalPaid > 0).length;
+        const unpCount = vCases.filter(c => !c.isCompleted && c.totalPaid === 0).length;
+        const progressPct = totalVal > 0 ? Math.round((paidVal / totalVal) * 100) : 0;
+
+        return {
+          visit: v,
+          cases: vCases,
+          count: vCases.length,
+          totalVal,
+          paidVal,
+          remVal,
+          activeInst,
+          compCount,
+          actCount,
+          unpCount,
+          progressPct
+        };
+      }).filter(Boolean);
+
+      // Selected Visit Data if in detail mode
+      const selectedVisitData = selectedVisitIdForDetails
+        ? visitsWithExecuted.find(item => item.visit.id === selectedVisitIdForDetails)
+        : null;
+
+      // Filtered Cases for Global Flat Table view
       const filteredCases = allExecutedCases.filter(item => {
         if (filterStatus === 'completed' && !item.isCompleted) return false;
         if (filterStatus === 'active' && (item.isCompleted || item.totalPaid === 0)) return false;
@@ -4509,41 +4591,37 @@
           const nameMatch = normalizeArabicText(item.caseObj.caseName || '').includes(normSearch);
           const typeMatch = normalizeArabicText(item.caseObj.executedProjectType || item.caseObj.projectType || '').includes(normSearch);
           const churchMatch = normalizeArabicText(item.churchName || '').includes(normSearch);
-          if (!nameMatch && !typeMatch && !churchMatch) return false;
+          const idMatch = normalizeArabicText(item.caseObj.nationalId || '').includes(normSearch);
+          if (!nameMatch && !typeMatch && !churchMatch && !idMatch) return false;
         }
 
         return true;
       });
 
-      // Aggregate Financial Metrics
-      let sumTotalExecuted = 0;
-      let sumTotalPaid = 0;
-      let sumMonthlyActiveInstallments = 0; // القسط الشهري المجمع للحالات الجارية
-      let completedCount = 0;
-      let activeCount = 0;
-      let unpaidCount = 0;
-
-      allExecutedCases.forEach(item => {
-        sumTotalExecuted += item.totalAmt;
-        sumTotalPaid += item.totalPaid;
-        if (item.isCompleted) {
-          completedCount++;
-        } else {
-          if (item.totalPaid > 0) activeCount++;
-          else unpaidCount++;
-          // Sum monthly installments for active/uncompleted cases
-          sumMonthlyActiveInstallments += item.monthlyAmt;
+      // Filtered Visits for Visits Record Grid
+      const filteredVisits = visitsWithExecuted.filter(item => {
+        if (filterRegion) {
+          const hasRegion = item.cases.some(c => c.regionName === filterRegion);
+          if (!hasRegion) return false;
         }
+        if (filterSearch.trim()) {
+          const norm = normalizeArabicText(filterSearch);
+          const locMatch = normalizeArabicText(item.visit.location || '').includes(norm);
+          const dateMatch = (item.visit.date || '').includes(filterSearch.trim());
+          const caseMatch = item.cases.some(c => 
+            normalizeArabicText(c.caseObj.caseName || '').includes(norm) ||
+            normalizeArabicText(c.caseObj.executedProjectType || c.caseObj.projectType || '').includes(norm)
+          );
+          if (!locMatch && !dateMatch && !caseMatch) return false;
+        }
+        return true;
       });
-
-      const sumTotalRemaining = Math.max(0, sumTotalExecuted - sumTotalPaid);
-      const overallPaidPercentage = sumTotalExecuted > 0 ? Math.round((sumTotalPaid / sumTotalExecuted) * 100) : 0;
 
       // Unique Regions & Churches for Filter
       const uniqueRegions = Array.from(new Set(allExecutedCases.map(i => i.regionName).filter(Boolean))).sort();
       const uniqueChurches = Array.from(new Set(allExecutedCases.filter(i => !filterRegion || i.regionName === filterRegion).map(i => i.churchName).filter(Boolean))).sort();
 
-      // Handle updating payments
+      // Handle updating payments from InstallmentModal
       const handleSavePayments = (updatedPayments) => {
         if (!activeModalCaseInfo) return;
         const { visitId, churchId, groupId, caseObj } = activeModalCaseInfo;
@@ -4561,7 +4639,9 @@
           } : sg)
         } : ch);
 
-        onUpdateVisit({ ...targetVisit, churches: updatedChurches });
+        const updatedVisit = { ...targetVisit, churches: updatedChurches };
+        onUpdateVisit(updatedVisit);
+
         // Update local modal object
         setActiveModalCaseInfo(prev => ({
           ...prev,
@@ -4584,7 +4664,9 @@
         ];
         aoa.push(headers);
 
-        filteredCases.forEach((item, idx) => {
+        const casesToExport = selectedVisitData ? selectedVisitData.cases : filteredCases;
+
+        casesToExport.forEach((item, idx) => {
           const lastPaymentDate = item.payments.length > 0 
             ? item.payments[item.payments.length - 1].paidDate 
             : '—';
@@ -4631,7 +4713,7 @@
                   <h2 className="text-lg sm:text-xl font-bold text-[#002f6c]">متابعة الأقساط والتحصيل الدوري</h2>
                 </div>
                 <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                  إدارة ومتابعة سداد المستفيدين للمشاريع المنفذة دورياً وتسجيل دفعات السداد بسهولة
+                  إدارة ومتابعة سداد المستفيدين للمشاريع المنفذة مقسمة بسجل الزيارات والمناطق والكنائس
                 </p>
               </div>
 
@@ -4666,28 +4748,11 @@
                   <FileSpreadsheet size={15} />
                   <span>تصدير (Excel)</span>
                 </button>
-
-                {/* Visit Switcher (defaults to all) */}
-                <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 shrink-0">
-                  <span className="text-xs font-semibold text-gray-600">نطاق العرض:</span>
-                  <select
-                    value={selectedVisitId}
-                    onChange={(e) => setSelectedVisitId(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-[#002f6c] outline-none cursor-pointer"
-                  >
-                    <option value="all">🌐 كل الزيارات والمشاريع المجمعة (شامل)</option>
-                    {activeVisits.map(v => (
-                      <option key={v.id} value={v.id}>
-                        {v.location || 'زيارة'} ({v.date})
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
             </div>
           </div>
 
-          {/* Aggregate Financial Metrics Cards */}
+          {/* Global Aggregate Financial Metrics Cards (Always visible as requested) */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
@@ -4755,207 +4820,797 @@
             </div>
           </div>
 
-          {/* Filter Bar */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
-            {/* Status Tabs */}
-            <div className="flex flex-wrap gap-2 border-b border-gray-100 pb-3">
-              <button
-                type="button"
-                onClick={() => setFilterStatus('all')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  filterStatus === 'all' 
-                    ? 'bg-[#002f6c] text-white shadow-sm' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                🌐 كل الحالات ({formatNumber(allExecutedCases.length)})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterStatus('active')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  filterStatus === 'active' 
-                    ? 'bg-amber-600 text-white shadow-sm' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                🔄 جاري السداد ({formatNumber(activeCount)})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterStatus('completed')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  filterStatus === 'completed' 
-                    ? 'bg-emerald-600 text-white shadow-sm' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                ✅ مكتمل السداد ({formatNumber(completedCount)})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterStatus('unpaid')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  filterStatus === 'unpaid' 
-                    ? 'bg-rose-600 text-white shadow-sm' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                ⚠️ لم يبدأ السداد ({formatNumber(unpaidCount)})
-              </button>
-            </div>
+          {/* ========================================================= */}
+          {/* VIEW MODE 1: DETAILED VISIT VIEW (PARTITIONED LIKE ARCHIVE) */}
+          {/* ========================================================= */}
+          {selectedVisitData ? (() => {
+            const v = selectedVisitData.visit;
+            
+            // Build hierarchical structure for the selected visit
+            const churchesInVisit = (v.churches || []).map(ch => {
+              const groupsInChurch = (ch.servantsGroups || []).map(sg => {
+                const executedCases = (sg.cases || []).filter(c => {
+                  if (c.status !== 'executed') return false;
 
-            {/* Region / Church / Search Inputs */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={filterSearch}
-                  onChange={(e) => setFilterSearch(e.target.value)}
-                  placeholder="بحث باسم المستفيد أو نوع المشروع..."
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-gray-200 focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] outline-none"
-                />
-                <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
-              </div>
+                  const totalAmt = parseFloat(c.executedProjectValue || c.projectValue) || 0;
+                  const payments = c.payments || [];
+                  const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                  const remainingAmt = Math.max(0, totalAmt - totalPaid);
+                  const isCompleted = remainingAmt <= 0 && totalAmt > 0;
 
-              <div>
-                <select
-                  value={filterRegion}
-                  onChange={(e) => { setFilterRegion(e.target.value); setFilterChurch(''); }}
-                  className="w-full py-2 px-3 text-xs rounded-xl border border-gray-200 focus:border-[#002f6c] outline-none bg-white font-medium"
-                >
-                  <option value="">🗺️ كل المناطق ({formatNumber(uniqueRegions.length)})</option>
-                  {uniqueRegions.map(r => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
-              </div>
+                  if (filterStatus === 'completed' && !isCompleted) return false;
+                  if (filterStatus === 'active' && (isCompleted || totalPaid === 0)) return false;
+                  if (filterStatus === 'unpaid' && (isCompleted || totalPaid > 0)) return false;
 
-              <div>
-                <select
-                  value={filterChurch}
-                  onChange={(e) => setFilterChurch(e.target.value)}
-                  className="w-full py-2 px-3 text-xs rounded-xl border border-gray-200 focus:border-[#002f6c] outline-none bg-white font-medium"
-                >
-                  <option value="">⛪ كل الكنائس ({formatNumber(uniqueChurches.length)})</option>
-                  {uniqueChurches.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
+                  if (filterSearch.trim()) {
+                    const normSearch = normalizeArabicText(filterSearch);
+                    const nMatch = normalizeArabicText(c.caseName || '').includes(normSearch);
+                    const tMatch = normalizeArabicText(c.executedProjectType || c.projectType || '').includes(normSearch);
+                    const idMatch = normalizeArabicText(c.nationalId || '').includes(normSearch);
+                    if (!nMatch && !tMatch && !idMatch) return false;
+                  }
 
-          {/* Cases Table */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-              <span className="font-bold text-xs sm:text-sm text-gray-800">
-                قائمة الحالات المنفذة ومتابعة السداد ({formatNumber(filteredCases.length)} حالة)
-              </span>
-            </div>
+                  return true;
+                });
 
-            {filteredCases.length === 0 ? (
-              <div className="p-12 text-center text-gray-400 text-sm">
-                لا توجد حالات منفذة مطابقة لمعايير البحث الحالية. يمكنك إضافة مشاريع سابقة يدوياً أو استيرادها من Excel.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs">
-                  <thead className="bg-[#002f6c] text-white">
-                    <tr>
-                      <th className="p-3">#</th>
-                      <th className="p-3">اسم المستفيد</th>
-                      <th className="p-3">الكنيسة / المنطقة</th>
-                      <th className="p-3">نوع المشروع المنفذ</th>
-                      <th className="p-3 font-sans">أصل المبلغ</th>
-                      <th className="p-3 font-sans">القسط والمدة</th>
-                      <th className="p-3 font-sans">المسدد / المتبقي</th>
-                      <th className="p-3">نسبة السداد</th>
-                      <th className="p-3 text-center">حالة السداد</th>
-                      <th className="p-3 text-center">إجراء السداد</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 bg-white">
-                    {filteredCases.map((item, idx) => {
-                      const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
+                if (executedCases.length === 0) return null;
+                return { ...sg, cases: executedCases };
+              }).filter(Boolean);
+
+              if (groupsInChurch.length === 0) return null;
+              return { ...ch, servantsGroups: groupsInChurch };
+            }).filter(Boolean);
+
+            // Group churches by regionName
+            const groupedByRegion = churchesInVisit.reduce((acc, ch) => {
+              const r = ch.regionName || 'منطقة غير محددة';
+              if (!acc[r]) acc[r] = [];
+              acc[r].push(ch);
+              return acc;
+            }, {});
+
+            return (
+              <div className="space-y-5">
+                {/* Back button & Selected Visit Banner */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedVisitIdForDetails(null); setFilterSearch(''); setFilterStatus('all'); }}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#002f6c] bg-blue-50 hover:bg-blue-100 px-3.5 py-2 rounded-xl transition-colors border border-blue-200 shadow-sm"
+                    >
+                      <ChevronRight size={16} />
+                      <span>العودة لسجل الزيارات المنفذة</span>
+                    </button>
+
+                    <div className="text-xs text-gray-500 font-sans flex items-center gap-2">
+                      <span className="bg-emerald-50 text-emerald-700 font-bold px-3 py-1 rounded-full border border-emerald-200">
+                        {formatNumber(selectedVisitData.count)} مشروع منفذ بالزيارة
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pt-2 border-t border-gray-100">
+                    <div>
+                      <div className="flex items-center gap-2 text-lg sm:text-xl font-bold text-[#002f6c]">
+                        <span>🏛️</span>
+                        <span>{v.location || 'زيارة بدون اسم'}</span>
+                        <span className="text-gray-400 font-normal text-sm font-sans flex items-center gap-1 mr-2">
+                          <Calendar size={14} /> {v.date}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        تفاصيل سداد وأقساط مشاريع هذه الزيارة مقسمة حسب المناطق والكنائس ومجموعات الخدام
+                      </p>
+                    </div>
+
+                    {/* Visit Quick Metrics Chips */}
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <span className="bg-blue-50 text-blue-900 border border-blue-200 px-3 py-1 rounded-xl text-xs font-bold font-sans">
+                        المصروف: {formatNumber(selectedVisitData.totalVal)} ج.م
+                      </span>
+                      <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-xl text-xs font-bold font-sans">
+                        المحصل: {formatNumber(selectedVisitData.paidVal)} ج.م ({selectedVisitData.progressPct}%)
+                      </span>
+                      <span className="bg-rose-50 text-rose-800 border border-rose-200 px-3 py-1 rounded-xl text-xs font-bold font-sans">
+                        المتبقي: {formatNumber(selectedVisitData.remVal)} ج.م
+                      </span>
+                      <span className="bg-amber-50 text-amber-900 border border-amber-200 px-3 py-1 rounded-xl text-xs font-bold font-sans">
+                        القسط الشهري: {formatNumber(selectedVisitData.activeInst)} ج.م/شهر
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Visit-level Filters & Search */}
+                  <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    {/* Status Tabs */}
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('all')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                          filterStatus === 'all' 
+                            ? 'bg-[#002f6c] text-white shadow-sm' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        الكل ({formatNumber(selectedVisitData.count)})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('active')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                          filterStatus === 'active' 
+                            ? 'bg-amber-600 text-white shadow-sm' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        🔄 جاري ({formatNumber(selectedVisitData.actCount)})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('completed')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                          filterStatus === 'completed' 
+                            ? 'bg-emerald-600 text-white shadow-sm' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        ✅ مكتمل ({formatNumber(selectedVisitData.compCount)})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('unpaid')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                          filterStatus === 'unpaid' 
+                            ? 'bg-rose-600 text-white shadow-sm' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        ⏳ لم يبدأ ({formatNumber(selectedVisitData.unpCount)})
+                      </button>
+                    </div>
+
+                    {/* Search inside visit */}
+                    <div className="relative w-full sm:w-64">
+                      <input
+                        type="text"
+                        value={filterSearch}
+                        onChange={(e) => setFilterSearch(e.target.value)}
+                        placeholder="بحث باسم المستفيد أو نوع المشروع..."
+                        className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 focus:border-[#002f6c] outline-none"
+                      />
+                      <Search size={14} className="absolute left-2.5 top-2 text-gray-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hierarchical Breakdown: Regions -> Churches -> Cases (Partitioned like Archive) */}
+                {Object.keys(groupedByRegion).length === 0 ? (
+                  <div className="bg-white rounded-2xl p-12 text-center text-gray-400 text-sm border border-gray-100 shadow-sm">
+                    لا توجد مشاريع منفذة تطابق معايير البحث داخل هذه الزيارة.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {Object.entries(groupedByRegion).map(([regionName, churchesInReg]) => {
+                      // Calculate Region Level Stats
+                      let regCasesCount = 0;
+                      let regTotalVal = 0;
+                      let regPaidVal = 0;
+                      churchesInReg.forEach(ch => {
+                        (ch.servantsGroups || []).forEach(sg => {
+                          (sg.cases || []).forEach(c => {
+                            regCasesCount++;
+                            const totalAmt = parseFloat(c.executedProjectValue || c.projectValue) || 0;
+                            const payments = c.payments || [];
+                            const paidAmt = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                            regTotalVal += totalAmt;
+                            regPaidVal += paidAmt;
+                          });
+                        });
+                      });
+
+                      const isRegionExpanded = expandedRegions[regionName] !== false;
+
                       return (
-                        <tr key={item.caseObj.id || idx} className="hover:bg-blue-50/50 transition-colors">
-                          <td className="p-3 font-sans font-bold text-gray-400">{idx + 1}</td>
-                          <td className="p-3 font-bold text-gray-900">
-                            <div>{item.caseObj.caseName}</div>
-                            {item.caseObj.nationalId && (
-                              <div className="text-[10px] text-gray-400 font-sans">{item.caseObj.nationalId}</div>
-                            )}
-                          </td>
-                          <td className="p-3 text-gray-600">
-                            <div className="font-semibold text-gray-800">{item.churchName}</div>
-                            <div className="text-[10px] text-gray-500">
-                              {item.regionName} {item.villageName ? `• ${item.villageName}` : ''}
+                        <div key={regionName} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                          {/* Region Accordion Header */}
+                          <div
+                            onClick={() => toggleRegion(regionName)}
+                            className="p-4 sm:p-5 bg-gradient-to-r from-[#002f6c]/10 to-blue-50/40 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer hover:bg-[#002f6c]/15 transition-colors select-none"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xl">🏛️</span>
+                              <h3 className="font-bold text-base sm:text-lg text-[#002f6c]">{regionName}</h3>
+                              <div className="flex flex-wrap gap-2 items-center mr-2">
+                                <span className="bg-white text-[#002f6c] border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                  ⛪ {formatNumber(churchesInReg.length)} كنائس
+                                </span>
+                                <span className="bg-white text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                  📊 {formatNumber(regCasesCount)} مشاريع منفذة
+                                </span>
+                                <span className="bg-white text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                  💰 {formatNumber(regTotalVal)} ج.م مصروف
+                                </span>
+                                <span className="bg-white text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                  ✅ {formatNumber(regPaidVal)} ج.م مسدد
+                                </span>
+                              </div>
                             </div>
-                          </td>
-                          <td className="p-3">
-                            <span className="bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-full text-[11px] font-medium">
-                              {item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع'}
-                            </span>
-                            {item.caseObj.executionDate && (
-                              <div className="text-[10px] text-gray-400 font-sans mt-0.5">نفذ: {item.caseObj.executionDate}</div>
-                            )}
-                          </td>
-                          <td className="p-3 font-sans font-bold text-gray-900 text-sm">
-                            {formatNumber(item.totalAmt)} ج.م
-                          </td>
-                          <td className="p-3">
-                            <div className="font-sans font-bold text-amber-800">{formatNumber(item.monthlyAmt)} ج.م / شهر</div>
-                            <div className="text-[10px] text-gray-500 font-sans">{item.totalMonths} شهر استحقاق</div>
-                          </td>
-                          <td className="p-3">
-                            <div className="font-sans font-bold text-emerald-700">{formatNumber(item.totalPaid)} ج.م مسدد</div>
-                            <div className="font-sans text-[11px] text-rose-600">متبقي: {formatNumber(item.remainingAmt)} ج.م</div>
-                          </td>
-                          <td className="p-3 w-36">
-                            <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
-                              <span>{pPct}%</span>
+                            <div className="text-gray-500">
+                              {isRegionExpanded ? <ChevronUp size={22} /> : <ChevronDown size={22} />}
                             </div>
-                            <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
-                                style={{ width: `${pPct}%` }}
-                              ></div>
+                          </div>
+
+                          {/* Churches within Region */}
+                          {isRegionExpanded && (
+                            <div className="divide-y divide-gray-100 bg-gray-50/40">
+                              {churchesInReg.map(ch => {
+                                let chCasesCount = 0;
+                                let chTotalVal = 0;
+                                let chPaidVal = 0;
+                                (ch.servantsGroups || []).forEach(sg => {
+                                  (sg.cases || []).forEach(c => {
+                                    chCasesCount++;
+                                    const totalAmt = parseFloat(c.executedProjectValue || c.projectValue) || 0;
+                                    const payments = c.payments || [];
+                                    const paidAmt = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                                    chTotalVal += totalAmt;
+                                    chPaidVal += paidAmt;
+                                  });
+                                });
+
+                                const isChurchExpanded = expandedChurches[ch.id] !== false;
+
+                                return (
+                                  <div key={ch.id} className="bg-white">
+                                    {/* Church Accordion Header */}
+                                    <div
+                                      onClick={() => toggleChurch(ch.id)}
+                                      className="p-3.5 sm:p-4 bg-gray-50 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 cursor-pointer hover:bg-gray-100/80 transition-colors select-none"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <div className="text-gray-400">
+                                          {isChurchExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                        </div>
+                                        <span className="text-base">⛪</span>
+                                        <h4 className="font-bold text-sm sm:text-base text-gray-900">
+                                          {ch.churchName}
+                                          <span className="text-xs font-normal text-gray-500 mr-2">
+                                            ({ch.regionName} {ch.villageName ? `• ${ch.villageName}` : ''})
+                                          </span>
+                                        </h4>
+                                      </div>
+
+                                      <div className="flex flex-wrap items-center gap-2 mr-6 sm:mr-0">
+                                        <span className="bg-white text-gray-700 border border-gray-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                          👥 {formatNumber((ch.servantsGroups || []).length)} مجموعات
+                                        </span>
+                                        <span className="bg-white text-[#002f6c] border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                          📊 {formatNumber(chCasesCount)} مشاريع
+                                        </span>
+                                        <span className="bg-white text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                          💰 {formatNumber(chTotalVal)} ج.م
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Church Cases Table */}
+                                    {isChurchExpanded && (
+                                      <div className="overflow-x-auto">
+                                        <table className="w-full text-right text-xs">
+                                          <thead className="bg-[#002f6c] text-white">
+                                            <tr>
+                                              <th className="p-3">#</th>
+                                              <th className="p-3">الخدام</th>
+                                              <th className="p-3">اسم المستفيد</th>
+                                              <th className="p-3">نوع المشروع المنفذ</th>
+                                              <th className="p-3 font-sans">أصل المبلغ</th>
+                                              <th className="p-3 font-sans">القسط والمدة</th>
+                                              <th className="p-3 font-sans">المسدد / المتبقي</th>
+                                              <th className="p-3">نسبة السداد</th>
+                                              <th className="p-3 text-center">حالة السداد</th>
+                                              <th className="p-3 text-center">إجراء السداد</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-gray-100 bg-white">
+                                            {(() => {
+                                              let serial = 1;
+                                              const rows = [];
+                                              (ch.servantsGroups || []).forEach(sg => {
+                                                (sg.cases || []).forEach(c => {
+                                                  const totalAmt = parseFloat(c.executedProjectValue || c.projectValue) || 0;
+                                                  const monthlyAmt = parseFloat(c.executedInstallmentAmount || c.installmentAmount) || 0;
+                                                  const totalMonths = monthlyAmt > 0 ? Math.ceil(totalAmt / monthlyAmt) : 0;
+                                                  const payments = c.payments || [];
+                                                  const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                                                  const remainingAmt = Math.max(0, totalAmt - totalPaid);
+                                                  const isCompleted = remainingAmt <= 0 && totalAmt > 0;
+                                                  const pPct = totalAmt > 0 ? Math.min(100, Math.round((totalPaid / totalAmt) * 100)) : 0;
+
+                                                  const caseInfo = {
+                                                    visitId: v.id,
+                                                    visitDate: v.date,
+                                                    visitLocation: v.location,
+                                                    churchId: ch.id,
+                                                    churchName: ch.churchName,
+                                                    regionName: ch.regionName,
+                                                    villageName: ch.villageName,
+                                                    groupId: sg.id,
+                                                    servantsNames: sg.servantsNames,
+                                                    caseObj: c,
+                                                    totalAmt,
+                                                    monthlyAmt,
+                                                    totalMonths,
+                                                    payments,
+                                                    totalPaid,
+                                                    remainingAmt,
+                                                    isCompleted
+                                                  };
+
+                                                  rows.push(
+                                                    <tr key={c.id || serial} className="hover:bg-blue-50/50 transition-colors">
+                                                      <td className="p-3 font-sans font-bold text-gray-400">{serial++}</td>
+                                                      <td className="p-3 text-gray-600 max-w-[130px] truncate" title={sg.servantsNames}>
+                                                        {sg.servantsNames || '—'}
+                                                      </td>
+                                                      <td className="p-3 font-bold text-gray-900">
+                                                        <div>{c.caseName}</div>
+                                                        {c.nationalId && (
+                                                          <div className="text-[10px] text-gray-400 font-sans">{c.nationalId}</div>
+                                                        )}
+                                                      </td>
+                                                      <td className="p-3">
+                                                        <span className="bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-full text-[11px] font-medium">
+                                                          {c.executedProjectType || c.projectType || 'مشروع'}
+                                                        </span>
+                                                        {c.executionDate && (
+                                                          <div className="text-[10px] text-gray-400 font-sans mt-0.5">نفذ: {c.executionDate}</div>
+                                                        )}
+                                                      </td>
+                                                      <td className="p-3 font-sans font-bold text-gray-900 text-sm">
+                                                        {formatNumber(totalAmt)} ج.م
+                                                      </td>
+                                                      <td className="p-3">
+                                                        <div className="font-sans font-bold text-amber-800">{formatNumber(monthlyAmt)} ج.م / شهر</div>
+                                                        <div className="text-[10px] text-gray-500 font-sans">{totalMonths} شهر استحقاق</div>
+                                                      </td>
+                                                      <td className="p-3">
+                                                        <div className="font-sans font-bold text-emerald-700">{formatNumber(totalPaid)} ج.م مسدد</div>
+                                                        <div className="font-sans text-[11px] text-rose-600">متبقي: {formatNumber(remainingAmt)} ج.م</div>
+                                                      </td>
+                                                      <td className="p-3 w-32">
+                                                        <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
+                                                          <span>{pPct}%</span>
+                                                        </div>
+                                                        <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                                          <div 
+                                                            className={`h-full ${isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                                                            style={{ width: `${pPct}%` }}
+                                                          ></div>
+                                                        </div>
+                                                      </td>
+                                                      <td className="p-3 text-center">
+                                                        {isCompleted ? (
+                                                          <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                                            <span>✅</span> مكتمل
+                                                          </span>
+                                                        ) : totalPaid > 0 ? (
+                                                          <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                                            <span>🔄</span> جاري السداد
+                                                          </span>
+                                                        ) : (
+                                                          <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                                            <span>⏳</span> لم يبدأ
+                                                          </span>
+                                                        )}
+                                                      </td>
+                                                      <td className="p-3 text-center">
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => setActiveModalCaseInfo(caseInfo)}
+                                                          className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-colors mx-auto"
+                                                        >
+                                                          <span>💵</span>
+                                                          <span>سداد ومتابعة</span>
+                                                        </button>
+                                                      </td>
+                                                    </tr>
+                                                  );
+                                                });
+                                              });
+                                              return rows;
+                                            })()}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
-                          </td>
-                          <td className="p-3 text-center">
-                            {item.isCompleted ? (
-                              <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                <span>✅</span> مكتمل
-                              </span>
-                            ) : item.totalPaid > 0 ? (
-                              <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                <span>🔄</span> جاري السداد
-                              </span>
-                            ) : (
-                              <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                <span>⏳</span> لم يبدأ
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => setActiveModalCaseInfo(item)}
-                              className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-colors mx-auto"
-                            >
-                              <span>💵</span>
-                              <span>سداد ومتابعة</span>
-                            </button>
-                          </td>
-                        </tr>
+                          )}
+                        </div>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })() : (
+            /* ========================================================= */
+            /* VIEW MODE 2 & 3: VISITS RECORD (CARDS) OR ALL CASES (TABLE) */
+            /* ========================================================= */
+            <div className="space-y-4">
+              {/* View Switcher Tabs: سجل الزيارات المنفذة OR عرض كل الحالات مباشرة */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('visits')}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                      viewMode === 'visits'
+                        ? 'bg-[#002f6c] text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span>🗂️ سجل الزيارات المنفذة</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-sans ${viewMode === 'visits' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-800'}`}>
+                      {formatNumber(visitsWithExecuted.length)} زيارة
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('allCases')}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                      viewMode === 'allCases'
+                        ? 'bg-[#002f6c] text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span>📋 عرض كل الحالات مباشرة</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-sans ${viewMode === 'allCases' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-800'}`}>
+                      {formatNumber(allExecutedCases.length)} حالة
+                    </span>
+                  </button>
+                </div>
+
+                {/* Region Filter & Search Inputs */}
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                  <div className="relative w-full sm:w-56">
+                    <input
+                      type="text"
+                      value={filterSearch}
+                      onChange={(e) => setFilterSearch(e.target.value)}
+                      placeholder={viewMode === 'visits' ? "بحث باسم المنطقة أو التاريخ..." : "بحث باسم المستفيد أو المشروع..."}
+                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 focus:border-[#002f6c] outline-none"
+                    />
+                    <Search size={14} className="absolute left-2.5 top-2 text-gray-400" />
+                  </div>
+
+                  <select
+                    value={filterRegion}
+                    onChange={(e) => { setFilterRegion(e.target.value); setFilterChurch(''); }}
+                    className="w-full sm:w-44 py-1.5 px-2 text-xs rounded-xl border border-gray-200 focus:border-[#002f6c] outline-none bg-white font-medium"
+                  >
+                    <option value="">🗺️ كل المناطق ({formatNumber(uniqueRegions.length)})</option>
+                    {uniqueRegions.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* ---------------------------------------------------- */}
+              {/* SUBVIEW A: VISITS RECORD (GRID OF EXECUTED VISITS)   */}
+              {/* ---------------------------------------------------- */}
+              {viewMode === 'visits' && (
+                <div>
+                  {filteredVisits.length === 0 ? (
+                    <div className="bg-white rounded-2xl p-12 text-center text-gray-400 text-sm border border-gray-100 shadow-sm space-y-3">
+                      <div className="text-3xl">🗂️</div>
+                      <div className="font-bold text-gray-700">لا توجد زيارات بمشاريع منفذة مطابقة لمعايير البحث.</div>
+                      <p className="text-xs text-gray-500">
+                        يمكنك إضافة مشروع سابق يدوياً أو استيراد مشاريع من ملف Excel، أو اعتماد تنفيذ المشاريع من سجل الزيارات.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                      {filteredVisits.map(item => {
+                        const v = item.visit;
+                        const isFullyCollected = item.compCount === item.count;
+
+                        return (
+                          <div
+                            key={v.id}
+                            onClick={() => { setSelectedVisitIdForDetails(v.id); setFilterSearch(''); setFilterStatus('all'); }}
+                            className="bg-white rounded-2xl shadow-sm border border-gray-200 hover:border-[#002f6c]/40 hover:shadow-md transition-all p-5 cursor-pointer flex flex-col justify-between group relative overflow-hidden"
+                          >
+                            {/* Top decorative accent */}
+                            <div className={`absolute top-0 right-0 left-0 h-1.5 ${isFullyCollected ? 'bg-emerald-500' : 'bg-[#002f6c]'}`} />
+
+                            <div className="space-y-3">
+                              {/* Card Header: Location & Date */}
+                              <div className="flex justify-between items-start gap-2 pt-1">
+                                <div>
+                                  <h3 className="font-bold text-base sm:text-lg text-gray-900 group-hover:text-[#002f6c] transition-colors flex items-center gap-1.5">
+                                    <span>🏛️</span>
+                                    <span>{v.location || 'زيارة بدون اسم'}</span>
+                                  </h3>
+                                  <div className="text-xs text-gray-500 font-sans flex items-center gap-1 mt-1">
+                                    <Calendar size={13} className="text-gray-400" />
+                                    <span>تاريخ الزيارة: {v.date}</span>
+                                  </div>
+                                </div>
+
+                                <span className="bg-blue-50 text-[#002f6c] border border-blue-200 px-2.5 py-1 rounded-full text-xs font-bold font-sans whitespace-nowrap shadow-sm">
+                                  📊 {formatNumber(item.count)} مشروع
+                                </span>
+                              </div>
+
+                              {/* Repayment Progress Bar */}
+                              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 space-y-1.5">
+                                <div className="flex justify-between items-center text-xs font-bold font-sans">
+                                  <span className="text-gray-600">نسبة السداد المحصل:</span>
+                                  <span className={item.progressPct >= 100 ? 'text-emerald-700 font-extrabold' : 'text-[#002f6c]'}>
+                                    {item.progressPct}%
+                                  </span>
+                                </div>
+                                <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full transition-all duration-500 ${isFullyCollected ? 'bg-emerald-500' : 'bg-blue-600'}`}
+                                    style={{ width: `${item.progressPct}%` }}
+                                  />
+                                </div>
+                                <div className="flex justify-between items-center text-[10px] text-gray-500 font-sans pt-0.5">
+                                  <span>{formatNumber(item.compCount)} مكتمل</span>
+                                  <span>{formatNumber(item.actCount)} جاري</span>
+                                  <span>{formatNumber(item.unpCount)} لم يبدأ</span>
+                                </div>
+                              </div>
+
+                              {/* Financial Numbers Grid */}
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-100">
+                                  <div className="text-[10px] text-gray-500">المصروف المنفذ</div>
+                                  <div className="font-bold font-sans text-blue-900 text-sm mt-0.5">
+                                    {formatNumber(item.totalVal)} <span className="text-[10px] font-normal">ج.م</span>
+                                  </div>
+                                </div>
+
+                                <div className="bg-emerald-50/50 p-2 rounded-lg border border-emerald-100">
+                                  <div className="text-[10px] text-gray-500">المسدد المحصل</div>
+                                  <div className="font-bold font-sans text-emerald-800 text-sm mt-0.5">
+                                    {formatNumber(item.paidVal)} <span className="text-[10px] font-normal">ج.م</span>
+                                  </div>
+                                </div>
+
+                                <div className="bg-rose-50/50 p-2 rounded-lg border border-rose-100">
+                                  <div className="text-[10px] text-gray-500">المتبقي للتحصيل</div>
+                                  <div className="font-bold font-sans text-rose-800 text-sm mt-0.5">
+                                    {formatNumber(item.remVal)} <span className="text-[10px] font-normal">ج.م</span>
+                                  </div>
+                                </div>
+
+                                <div className="bg-amber-50/50 p-2 rounded-lg border border-amber-100">
+                                  <div className="text-[10px] text-gray-500">القسط الشهري</div>
+                                  <div className="font-bold font-sans text-amber-900 text-sm mt-0.5">
+                                    {formatNumber(item.activeInst)} <span className="text-[10px] font-normal">ج.م</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Card Footer Button */}
+                            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                              <span className="text-xs font-bold text-[#002f6c] group-hover:underline flex items-center gap-1">
+                                <span>فتح تفاصيل ومتابعة الأقساط</span>
+                                <ChevronRight size={14} className="rotate-180 text-[#002f6c]" />
+                              </span>
+
+                              {isFullyCollected ? (
+                                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                                  ✅ مكتمل بالكامل
+                                </span>
+                              ) : (
+                                <span className="bg-gray-100 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                  {formatNumber(item.count - item.compCount)} متبقي
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ---------------------------------------------------- */}
+              {/* SUBVIEW B: ALL CASES (TABLE VIEW)                    */}
+              {/* ---------------------------------------------------- */}
+              {viewMode === 'allCases' && (
+                <div className="space-y-4">
+                  {/* Status Tabs */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+                    <div className="flex flex-wrap gap-2 border-b border-gray-100 pb-3">
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('all')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          filterStatus === 'all' 
+                            ? 'bg-[#002f6c] text-white shadow-sm' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        🌐 كل الحالات ({formatNumber(allExecutedCases.length)})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('active')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          filterStatus === 'active' 
+                            ? 'bg-amber-600 text-white shadow-sm' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        🔄 جاري السداد ({formatNumber(activeCount)})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('completed')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          filterStatus === 'completed' 
+                            ? 'bg-emerald-600 text-white shadow-sm' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        ✅ مكتمل السداد ({formatNumber(completedCount)})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('unpaid')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          filterStatus === 'unpaid' 
+                            ? 'bg-rose-600 text-white shadow-sm' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        ⚠️ لم يبدأ السداد ({formatNumber(unpaidCount)})
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <select
+                          value={filterChurch}
+                          onChange={(e) => setFilterChurch(e.target.value)}
+                          className="w-full py-2 px-3 text-xs rounded-xl border border-gray-200 focus:border-[#002f6c] outline-none bg-white font-medium"
+                        >
+                          <option value="">⛪ كل الكنائس ({formatNumber(uniqueChurches.length)})</option>
+                          {uniqueChurches.map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cases Table */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                      <span className="font-bold text-xs sm:text-sm text-gray-800">
+                        قائمة كل الحالات المنفذة ومتابعة السداد ({formatNumber(filteredCases.length)} حالة)
+                      </span>
+                    </div>
+
+                    {filteredCases.length === 0 ? (
+                      <div className="p-12 text-center text-gray-400 text-sm">
+                        لا توجد حالات منفذة مطابقة لمعايير البحث الحالية. يمكنك إضافة مشاريع سابقة يدوياً أو استيرادها من Excel.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-right text-xs">
+                          <thead className="bg-[#002f6c] text-white">
+                            <tr>
+                              <th className="p-3">#</th>
+                              <th className="p-3">اسم المستفيد</th>
+                              <th className="p-3">الزيارة / الكنيسة</th>
+                              <th className="p-3">نوع المشروع المنفذ</th>
+                              <th className="p-3 font-sans">أصل المبلغ</th>
+                              <th className="p-3 font-sans">القسط والمدة</th>
+                              <th className="p-3 font-sans">المسدد / المتبقي</th>
+                              <th className="p-3">نسبة السداد</th>
+                              <th className="p-3 text-center">حالة السداد</th>
+                              <th className="p-3 text-center">إجراء السداد</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 bg-white">
+                            {filteredCases.map((item, idx) => {
+                              const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
+                              return (
+                                <tr key={item.caseObj.id || idx} className="hover:bg-blue-50/50 transition-colors">
+                                  <td className="p-3 font-sans font-bold text-gray-400">{idx + 1}</td>
+                                  <td className="p-3 font-bold text-gray-900">
+                                    <div>{item.caseObj.caseName}</div>
+                                    {item.caseObj.nationalId && (
+                                      <div className="text-[10px] text-gray-400 font-sans">{item.caseObj.nationalId}</div>
+                                    )}
+                                  </td>
+                                  <td className="p-3 text-gray-600">
+                                    <div className="font-semibold text-gray-800">{item.churchName}</div>
+                                    <div className="text-[10px] text-gray-500">
+                                      {item.visitLocation || 'زيارة'} • {item.regionName} {item.villageName ? `• ${item.villageName}` : ''}
+                                    </div>
+                                  </td>
+                                  <td className="p-3">
+                                    <span className="bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-full text-[11px] font-medium">
+                                      {item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع'}
+                                    </span>
+                                    {item.caseObj.executionDate && (
+                                      <div className="text-[10px] text-gray-400 font-sans mt-0.5">نفذ: {item.caseObj.executionDate}</div>
+                                    )}
+                                  </td>
+                                  <td className="p-3 font-sans font-bold text-gray-900 text-sm">
+                                    {formatNumber(item.totalAmt)} ج.م
+                                  </td>
+                                  <td className="p-3">
+                                    <div className="font-sans font-bold text-amber-800">{formatNumber(item.monthlyAmt)} ج.م / شهر</div>
+                                    <div className="text-[10px] text-gray-500 font-sans">{item.totalMonths} شهر استحقاق</div>
+                                  </td>
+                                  <td className="p-3">
+                                    <div className="font-sans font-bold text-emerald-700">{formatNumber(item.totalPaid)} ج.م مسدد</div>
+                                    <div className="font-sans text-[11px] text-rose-600">متبقي: {formatNumber(item.remainingAmt)} ج.م</div>
+                                  </td>
+                                  <td className="p-3 w-36">
+                                    <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
+                                      <span>{pPct}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                      <div 
+                                        className={`h-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                                        style={{ width: `${pPct}%` }}
+                                      ></div>
+                                    </div>
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    {item.isCompleted ? (
+                                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                        <span>✅</span> مكتمل
+                                      </span>
+                                    ) : item.totalPaid > 0 ? (
+                                      <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                        <span>🔄</span> جاري السداد
+                                      </span>
+                                    ) : (
+                                      <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                        <span>⏳</span> لم يبدأ
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => setActiveModalCaseInfo(item)}
+                                      className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-colors mx-auto"
+                                    >
+                                      <span>💵</span>
+                                      <span>سداد ومتابعة</span>
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Installment Detail Modal */}
           {activeModalCaseInfo && (
@@ -4989,7 +5644,8 @@
       );
     }
 
-    function ExportModal({ visit, onClose }) {
+
+        function ExportModal({ visit, onClose }) {
       const [scope, setScope] = useState('full');
       const [selectedRegion, setSelectedRegion] = useState('');
       const [selectedChurchId, setSelectedChurchId] = useState('');
