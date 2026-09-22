@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1789908299181" />
+  <meta name="app-build-id" content="1790073711544" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -32,10 +32,27 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
+    <!-- Google Fonts: Cairo & IBM Plex Sans Arabic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; background-color: #f8fafc; }
-    .font-sans { font-family: sans-serif; } /* For forcing Western numbers */
+    body {
+      font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      background-color: #f8fafc;
+      letter-spacing: -0.01em;
+    }
+    .font-sans {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    /* Sleek custom scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   </style>
+
 </head>
 <body>
   <div id="root"></div>
@@ -240,6 +257,137 @@
         </div>
       );
     };
+
+    // --- GLOBAL TOAST & NOTIFICATION BUS ---
+    const toastListeners = new Set();
+    const confirmListeners = new Set();
+
+    window.showToast = (message, type = 'info', duration = 3500) => {
+      const id = Date.now() + Math.random().toString(36).substring(2, 7);
+      toastListeners.forEach(fn => fn({ id, message, type, duration }));
+    };
+    window.notifySuccess = (msg) => window.showToast && window.showToast(msg, 'success');
+    window.notifyError = (msg) => window.showToast && window.showToast(msg, 'error');
+    window.notifyWarning = (msg) => window.showToast && window.showToast(msg, 'warning');
+    window.notifyInfo = (msg) => window.showToast && window.showToast(msg, 'info');
+
+    window.showConfirm = ({ title, message, confirmText = 'تأكيد', cancelText = 'إلغاء', isDangerous = false, onConfirm }) => {
+      confirmListeners.forEach(fn => fn({ title, message, confirmText, cancelText, isDangerous, onConfirm }));
+    };
+
+    function ToastContainer() {
+      const [toasts, setToasts] = useState([]);
+
+      useEffect(() => {
+        const handler = (newToast) => {
+          setToasts(prev => [...prev, newToast]);
+          setTimeout(() => {
+            setToasts(prev => prev.filter(t => t.id !== newToast.id));
+          }, newToast.duration || 3500);
+        };
+        toastListeners.add(handler);
+        return () => toastListeners.delete(handler);
+      }, []);
+
+      const removeToast = (id) => setToasts(prev => prev.filter(t => t.id !== id));
+
+      if (toasts.length === 0) return null;
+
+      return (
+        <div className="fixed top-4 left-4 sm:left-6 z-[99999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
+          {toasts.map(t => {
+            const isSuccess = t.type === 'success';
+            const isError = t.type === 'error';
+            const isWarning = t.type === 'warning';
+
+            const bgClass = isSuccess 
+              ? 'bg-emerald-800/95 border-emerald-400 text-white shadow-emerald-900/30' 
+              : isError 
+              ? 'bg-rose-800/95 border-rose-400 text-white shadow-rose-900/30' 
+              : isWarning 
+              ? 'bg-amber-800/95 border-amber-400 text-white shadow-amber-900/30' 
+              : 'bg-[#002f6c]/95 border-blue-400 text-white shadow-blue-900/30';
+
+            const icon = isSuccess ? '✅' : isError ? '❌' : isWarning ? '⚠️' : 'ℹ️';
+
+            return (
+              <div
+                key={t.id}
+                onClick={() => removeToast(t.id)}
+                className={`pointer-events-auto rounded-2xl p-3.5 shadow-2xl border flex items-center gap-3 backdrop-blur-md transition-all duration-300 transform translate-y-0 opacity-100 cursor-pointer animate-fade-in ${bgClass}`}
+              >
+                <span className="text-xl shrink-0">{icon}</span>
+                <div className="flex-1 text-xs font-bold leading-relaxed">{t.message}</div>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); removeToast(t.id); }}
+                  className="text-white/60 hover:text-white text-xs p-1"
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function ConfirmDialogModal() {
+      const [dialog, setDialog] = useState(null);
+
+      useEffect(() => {
+        const handler = (cfg) => setDialog(cfg);
+        confirmListeners.add(handler);
+        return () => confirmListeners.delete(handler);
+      }, []);
+
+      if (!dialog) return null;
+
+      const handleConfirm = () => {
+        const cb = dialog.onConfirm;
+        setDialog(null);
+        if (cb) cb();
+      };
+
+      const handleCancel = () => {
+        setDialog(null);
+      };
+
+      return (
+        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 text-right space-y-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 ${dialog.isDangerous ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-[#002f6c]'}`}>
+                {dialog.isDangerous ? '⚠️' : '❓'}
+              </div>
+              <h3 className="font-bold text-base text-gray-900">{dialog.title || 'تأكيد الإجراء'}</h3>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{dialog.message}</p>
+            <div className="flex justify-end gap-2.5 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+              >
+                {dialog.cancelText || 'إلغاء'}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                className={`px-5 py-2 text-xs font-bold text-white rounded-xl shadow-sm transition-all ${
+                  dialog.isDangerous 
+                    ? 'bg-rose-600 hover:bg-rose-700' 
+                    : 'bg-[#002f6c] hover:bg-[#001f4c]'
+                }`}
+              >
+                {dialog.confirmText || 'تأكيد'}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
 
     // --- EXPORT FUNCTION ---
     const handleExportExcel = (visitData, options = { scope: 'full', targetRegion: '', targetChurchId: '', targetChurchObj: null }) => {
@@ -2283,7 +2431,8 @@
                          </div>
                       </div>
                       {expandedChurches[ch.id] && (
-                      <div className="p-0 overflow-x-auto">
+                                            {/* Desktop Table View */}
+                      <div className="hidden md:block p-0 overflow-x-auto">
                          <table className="w-full text-sm text-right">
                             <thead className="bg-[#002f6c] text-white text-xs uppercase">
                                <tr>
@@ -2380,6 +2529,79 @@
                             </tbody>
                          </table>
                       </div>
+
+                      {/* Mobile Touch Cards View */}
+                      <div className="md:hidden divide-y divide-gray-100 p-3 space-y-3 bg-gray-50/60">
+                        {(ch.servantsGroups||[]).map(sg => (
+                          (sg.cases||[]).map(c => {
+                            const isExec = c.status === 'executed';
+                            const hasValDiff = isExec && c.executedProjectValue && c.executedProjectValue !== c.projectValue;
+                            const hasInstDiff = isExec && c.executedInstallmentAmount && c.executedInstallmentAmount !== c.installmentAmount;
+                            const hasTypeDiff = isExec && c.executedProjectType && c.executedProjectType !== c.projectType;
+
+                            return (
+                              <div key={c.id} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
+                                <div className="flex justify-between items-start gap-2">
+                                  <div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] font-bold font-sans bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">#{formatNumber(serialMap[c.id])}</span>
+                                      <span className="font-bold text-sm text-gray-900">{c.name}</span>
+                                    </div>
+                                    <div className="text-[11px] text-gray-500 mt-1">الخدام: {sg.servantsNames || '-'}</div>
+                                  </div>
+                                  <StatusBadge status={c.status || 'initial'} onClick={!isReadOnly ? () => setExecutingCaseInfo({ caseObj: c, churchId: ch.id, groupId: sg.id, churchName: ch.churchName }) : null} />
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2 text-xs">
+                                  <span className="bg-blue-50 text-[#002f6c] border border-blue-200 px-2 py-0.5 rounded-md font-medium text-[11px]">
+                                    🏷️ {hasTypeDiff ? `${c.executedProjectType} (${c.projectType})` : (c.executedProjectType || c.projectType)}
+                                  </span>
+                                  {isExec && c.executionDate && (
+                                    <span className="text-[10px] text-emerald-700 font-sans bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                                      منفذ: {c.executionDate}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-center bg-gray-50 p-2.5 rounded-xl border border-gray-100 text-xs">
+                                  <div>
+                                    <div className="text-[10px] text-gray-500">القيمة المنفذة</div>
+                                    <div className="font-bold font-sans text-emerald-700 mt-0.5">
+                                      {formatNumber(c.executedProjectValue || c.projectValue)} ج.م
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[10px] text-gray-500">القسط الشهري</div>
+                                    <div className="font-bold font-sans text-amber-800 mt-0.5">
+                                      {formatNumber(c.executedInstallmentAmount || c.installmentAmount)} ج.م
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {c.executionNotes && (
+                                  <div className="text-[11px] text-emerald-800 bg-emerald-50 rounded-lg p-2 border border-emerald-100">
+                                    ملاحظات: {c.executionNotes}
+                                  </div>
+                                )}
+
+                                {!isReadOnly && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setExecutingCaseInfo({ caseObj: c, churchId: ch.id, groupId: sg.id, churchName: ch.churchName })}
+                                    className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 ${
+                                      isExec ? 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200' : 'bg-[#002f6c] text-white hover:bg-[#001f4c]'
+                                    }`}
+                                  >
+                                    <Zap size={14} />
+                                    <span>{isExec ? 'تعديل بيانات التنفيذ' : 'تسجيل واعتماد التنفيذ'}</span>
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })
+                        ))}
+                      </div>
+
                       )}
                    </div>
                 ))}
@@ -3130,7 +3352,8 @@
 
                                 {/* Church Body: Cases Table */}
                                 {expandedChurches[ch.id] && (
-                                  <div className="p-0 overflow-x-auto">
+                                                                    {/* Desktop Table View */}
+                                  <div className="hidden md:block p-0 overflow-x-auto">
                                     <table className="w-full text-sm text-right">
                                       <thead className="bg-[#002f6c] text-white text-xs">
                                         <tr>
@@ -3234,39 +3457,22 @@
                                                   )}
                                                 </td>
                                                 <td className="px-3 py-3 text-center">
-                                                  <div className="flex items-center justify-center gap-1.5">
-                                                    {!isReadOnly && !isExec && (
+                                                  {!isReadOnly && (
+                                                    <div className="flex items-center justify-center gap-1.5">
                                                       <button 
-                                                        onClick={() => handleSingleQuickExecute(c, ch.id, sg.id)} 
-                                                        className="bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-300 p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-sm"
-                                                        title="اعتماد فوري للتنفيذ بنفس القيمة المعتمدة"
+                                                        onClick={() => setExecutingCaseInfo({ caseObj: c, churchId: ch.id, groupId: sg.id, churchName: ch.churchName })}
+                                                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1 ${
+                                                          isExec 
+                                                            ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' 
+                                                            : 'bg-[#002f6c] text-white hover:bg-[#001f4c]'
+                                                        }`}
+                                                        title="اعتماد أو تعديل تفاصيل تنفيذ الحالة"
                                                       >
-                                                        <span>⚡</span>
-                                                        <span>اعتماد</span>
+                                                        <Zap size={13} />
+                                                        <span>{isExec ? 'تعديل' : 'اعتماد'}</span>
                                                       </button>
-                                                    )}
-
-                                                    {!isReadOnly && (
-                                                      <button 
-                                                        onClick={() => setExecutingCaseInfo({ caseObj: c, churchId: ch.id, groupId: sg.id, churchName: ch.churchName })} 
-                                                        className="bg-blue-50 text-[#002f6c] hover:bg-blue-600 hover:text-white border border-blue-200 p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1"
-                                                        title="تعديل القيمة المنفذة أو القسط الفعلي"
-                                                      >
-                                                        <Edit2 size={13} />
-                                                        <span>تعديل</span>
-                                                      </button>
-                                                    )}
-
-                                                    {!isReadOnly && isExec && (
-                                                      <button 
-                                                        onClick={() => handleRevertToInitial(c.id, ch.id, sg.id)} 
-                                                        className="text-gray-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"
-                                                        title="إلغاء الاعتماد والعودة للموافقة المبدئية"
-                                                      >
-                                                        <RotateCcw size={14} />
-                                                      </button>
-                                                    )}
-                                                  </div>
+                                                    </div>
+                                                  )}
                                                 </td>
                                               </tr>
                                             );
@@ -3275,6 +3481,91 @@
                                       </tbody>
                                     </table>
                                   </div>
+
+                                  {/* Mobile Touch Cards View */}
+                                  <div className="md:hidden divide-y divide-gray-100 p-3 space-y-3 bg-gray-50/60">
+                                    {(ch.servantsGroups || []).map(sg => (
+                                      (sg.cases || []).map(c => {
+                                        const isExec = c.status === 'executed';
+                                        const hasValDiff = isExec && c.executedProjectValue && c.executedProjectValue !== c.projectValue;
+                                        const hasInstDiff = isExec && c.executedInstallmentAmount && c.executedInstallmentAmount !== c.installmentAmount;
+                                        const hasTypeDiff = isExec && c.executedProjectType && c.executedProjectType !== c.projectType;
+
+                                        return (
+                                          <div key={c.id} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
+                                            <div className="flex justify-between items-start gap-2">
+                                              <div className="flex items-start gap-2">
+                                                <input 
+                                                  type="checkbox" 
+                                                  checked={!!selectedCaseIds[c.id]} 
+                                                  onChange={() => toggleSelectCase(c.id)} 
+                                                  className="w-4 h-4 rounded text-[#002f6c] cursor-pointer mt-1"
+                                                />
+                                                <div>
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span className="text-[10px] font-bold font-sans bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">#{formatNumber(serialMap[c.id])}</span>
+                                                    <span className="font-bold text-sm text-gray-900">{c.name}</span>
+                                                  </div>
+                                                  <div className="text-[11px] text-gray-500 mt-1">الخدام: {sg.servantsNames || '-'}</div>
+                                                </div>
+                                              </div>
+                                              <StatusBadge 
+                                                status={c.status || 'initial'} 
+                                                onClick={!isReadOnly ? () => setExecutingCaseInfo({ caseObj: c, churchId: ch.id, groupId: sg.id, churchName: ch.churchName }) : null} 
+                                              />
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-2 text-xs">
+                                              <span className="bg-blue-50 text-[#002f6c] border border-blue-200 px-2 py-0.5 rounded-md font-medium text-[11px]">
+                                                🏷️ {hasTypeDiff ? `${c.executedProjectType} (${c.projectType})` : (c.executedProjectType || c.projectType)}
+                                              </span>
+                                              {isExec && c.executionDate && (
+                                                <span className="text-[10px] text-emerald-700 font-sans bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                                                  منفذ في: {c.executionDate}
+                                                </span>
+                                              )}
+                                            </div>
+
+                                            <div className="grid grid-cols-3 gap-2 text-center bg-gray-50 p-2.5 rounded-xl border border-gray-100 text-xs">
+                                              <div>
+                                                <div className="text-[10px] text-gray-500">القيمة المعتمدة</div>
+                                                <div className="font-bold font-sans text-gray-700 mt-0.5">{formatNumber(c.projectValue)} ج.م</div>
+                                              </div>
+                                              <div>
+                                                <div className="text-[10px] text-gray-500">القيمة المنفذة</div>
+                                                <div className="font-bold font-sans text-emerald-700 mt-0.5">{formatNumber(c.executedProjectValue || c.projectValue)} ج.م</div>
+                                              </div>
+                                              <div>
+                                                <div className="text-[10px] text-gray-500">القسط المنفذ</div>
+                                                <div className="font-bold font-sans text-amber-800 mt-0.5">{formatNumber(c.executedInstallmentAmount || c.installmentAmount)} ج.م</div>
+                                              </div>
+                                            </div>
+
+                                            {c.executionNotes && (
+                                              <div className="text-[11px] text-emerald-800 bg-emerald-50 rounded-lg p-2 border border-emerald-100">
+                                                ملاحظات التنفيذ: {c.executionNotes}
+                                              </div>
+                                            )}
+
+                                            {!isReadOnly && (
+                                              <button 
+                                                onClick={() => setExecutingCaseInfo({ caseObj: c, churchId: ch.id, groupId: sg.id, churchName: ch.churchName })}
+                                                className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 ${
+                                                  isExec 
+                                                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' 
+                                                    : 'bg-[#002f6c] text-white hover:bg-[#001f4c]'
+                                                }`}
+                                              >
+                                                <Zap size={14} />
+                                                <span>{isExec ? 'تعديل تفاصيل التنفيذ' : 'اعتماد وتنفيذ الحالة'}</span>
+                                              </button>
+                                            )}
+                                          </div>
+                                        );
+                                      })
+                                    ))}
+                                  </div>
+
                                 )}
                               </div>
                             );
@@ -3347,7 +3638,7 @@
         e.preventDefault();
         const amt = parseFloat(newAmount);
         if (!amt || amt <= 0) {
-          alert('يرجى إدخال مبلغ صحيح للسداد.');
+          window.notifyWarning('يرجى إدخال مبلغ صحيح للسداد.');
           return;
         }
 
@@ -3360,6 +3651,7 @@
 
         const updatedPayments = [...payments, newPayment];
         onSavePayments(updatedPayments);
+        window.notifySuccess(`تم بنجاح تسجيل دفعة سداد بمبلغ ${formatNumber(amt)} ج.م`);
         setNewNotes('');
         const newRem = Math.max(0, remainingAmount - amt);
         if (newRem > 0 && monthlyAmount > 0) {
@@ -3370,11 +3662,20 @@
       };
 
       const handleDeletePayment = (paymentId) => {
-        if (confirm('هل أنت متأكد من حذف هذه الدفعة المسجلة؟')) {
-          const updatedPayments = payments.filter(p => p.id !== paymentId);
-          onSavePayments(updatedPayments);
-        }
+        window.showConfirm({
+          title: 'حذف دفعة سداد',
+          message: 'هل أنت متأكد من حذف هذه الدفعة المسجلة؟ سيتم إعادة حساب الرصيد والمتبقي تلقائياً.',
+          confirmText: 'نعم، حذف الدفعة',
+          cancelText: 'إلغاء',
+          isDangerous: true,
+          onConfirm: () => {
+            const updatedPayments = payments.filter(p => p.id !== paymentId);
+            onSavePayments(updatedPayments);
+            window.notifySuccess('تم حذف الدفعة المسجلة بنجاح.');
+          }
+        });
       };
+
 
       // Generate expected monthly schedule with early deduction from the LAST installments
       const startDate = caseObj.executionDate ? new Date(caseObj.executionDate) : new Date();
@@ -4656,7 +4957,7 @@
       // Export Installments Report to Excel
       const handleExportInstallmentsExcel = () => {
         if (typeof XLSX === 'undefined') {
-          alert('مكتبة الإكسيل غير متوفرة.');
+          window.notifyError('مكتبة الإكسيل غير متوفرة حالياً.');
           return;
         }
 
@@ -4704,6 +5005,7 @@
         XLSX.utils.book_append_sheet(wb, ws, 'متابعة_الأقساط');
         const filename = `تقرير_الأقساط_والسداد_${new Date().toISOString().split('T')[0]}.xlsx`;
         XLSX.writeFile(wb, filename);
+        window.notifySuccess('تم تصدير كشف الأقساط إلى Excel بنجاح!');
       };
 
       return (
@@ -4756,7 +5058,7 @@
             </div>
           </div>
 
-          {/* Global Aggregate Financial Metrics Cards (Always visible as requested) */}
+          {/* Global Aggregate Financial Metrics Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
@@ -4766,7 +5068,7 @@
               <div className="text-lg sm:text-xl font-bold font-sans text-[#002f6c] mt-2">
                 {formatNumber(sumTotalExecuted)} <span className="text-xs font-normal">ج.م</span>
               </div>
-              <div className="text-[11px] text-gray-400 font-sans mt-1">
+              <div className="text-[11px] text-gray-500 font-sans mt-1">
                 {formatNumber(allExecutedCases.length)} مشروع منفذ
               </div>
             </div>
@@ -4779,7 +5081,7 @@
               <div className="text-lg sm:text-xl font-bold font-sans text-emerald-700 mt-2">
                 {formatNumber(sumTotalPaid)} <span className="text-xs font-normal">ج.م</span>
               </div>
-              <div className="text-[11px] text-emerald-600 font-sans mt-1">
+              <div className="text-[11px] text-emerald-600 font-sans mt-1 font-bold">
                 نسبة التحصيل: {overallPaidPercentage}%
               </div>
             </div>
@@ -4805,7 +5107,7 @@
               <div className="text-lg sm:text-xl font-bold font-sans text-amber-800 mt-2">
                 {formatNumber(sumMonthlyActiveInstallments)} <span className="text-xs font-normal">ج.م/شهر</span>
               </div>
-              <div className="text-[11px] text-amber-600 font-sans mt-1">
+              <div className="text-[11px] text-amber-700 font-sans mt-1">
                 متوقع شهرياً من {formatNumber(activeCount + unpaidCount)} حالة جارية
               </div>
             </div>
@@ -4899,7 +5201,7 @@
                       <div className="flex items-center gap-2 text-lg sm:text-xl font-bold text-[#002f6c]">
                         <span>🏛️</span>
                         <span>{v.location || 'زيارة بدون اسم'}</span>
-                        <span className="text-gray-400 font-normal text-sm font-sans flex items-center gap-1 mr-2">
+                        <span className="text-gray-500 font-normal text-sm font-sans flex items-center gap-1 mr-2">
                           <Calendar size={14} /> {v.date}
                         </span>
                       </div>
@@ -5099,136 +5401,221 @@
                                       </div>
                                     </div>
 
-                                    {/* Church Cases Table */}
-                                    {isChurchExpanded && (
-                                      <div className="overflow-x-auto">
-                                        <table className="w-full text-right text-xs">
-                                          <thead className="bg-[#002f6c] text-white">
-                                            <tr>
-                                              <th className="p-3">#</th>
-                                              <th className="p-3">الخدام</th>
-                                              <th className="p-3">اسم المستفيد</th>
-                                              <th className="p-3">نوع المشروع المنفذ</th>
-                                              <th className="p-3 font-sans">أصل المبلغ</th>
-                                              <th className="p-3 font-sans">القسط والمدة</th>
-                                              <th className="p-3 font-sans">المسدد / المتبقي</th>
-                                              <th className="p-3">نسبة السداد</th>
-                                              <th className="p-3 text-center">حالة السداد</th>
-                                              <th className="p-3 text-center">إجراء السداد</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody className="divide-y divide-gray-100 bg-white">
-                                            {(() => {
-                                              let serial = 1;
-                                              const rows = [];
-                                              (ch.servantsGroups || []).forEach(sg => {
-                                                (sg.cases || []).forEach(c => {
-                                                  const totalAmt = parseFloat(c.executedProjectValue || c.projectValue) || 0;
-                                                  const monthlyAmt = parseFloat(c.executedInstallmentAmount || c.installmentAmount) || 0;
-                                                  const totalMonths = monthlyAmt > 0 ? Math.ceil(totalAmt / monthlyAmt) : 0;
-                                                  const payments = c.payments || [];
-                                                  const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                                                  const remainingAmt = Math.max(0, totalAmt - totalPaid);
-                                                  const isCompleted = remainingAmt <= 0 && totalAmt > 0;
-                                                  const pPct = totalAmt > 0 ? Math.min(100, Math.round((totalPaid / totalAmt) * 100)) : 0;
+                                    {/* Church Cases Container (Desktop Table + Mobile Cards) */}
+                                    {isChurchExpanded && (() => {
+                                      let serial = 1;
+                                      const casesList = [];
+                                      (ch.servantsGroups || []).forEach(sg => {
+                                        (sg.cases || []).forEach(c => {
+                                          const totalAmt = parseFloat(c.executedProjectValue || c.projectValue) || 0;
+                                          const monthlyAmt = parseFloat(c.executedInstallmentAmount || c.installmentAmount) || 0;
+                                          const totalMonths = monthlyAmt > 0 ? Math.ceil(totalAmt / monthlyAmt) : 0;
+                                          const payments = c.payments || [];
+                                          const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                                          const remainingAmt = Math.max(0, totalAmt - totalPaid);
+                                          const isCompleted = remainingAmt <= 0 && totalAmt > 0;
+                                          const pPct = totalAmt > 0 ? Math.min(100, Math.round((totalPaid / totalAmt) * 100)) : 0;
 
-                                                  const caseInfo = {
-                                                    visitId: v.id,
-                                                    visitDate: v.date,
-                                                    visitLocation: v.location,
-                                                    churchId: ch.id,
-                                                    churchName: ch.churchName,
-                                                    regionName: ch.regionName,
-                                                    villageName: ch.villageName,
-                                                    groupId: sg.id,
-                                                    servantsNames: sg.servantsNames,
-                                                    caseObj: c,
-                                                    totalAmt,
-                                                    monthlyAmt,
-                                                    totalMonths,
-                                                    payments,
-                                                    totalPaid,
-                                                    remainingAmt,
-                                                    isCompleted
-                                                  };
+                                          casesList.push({
+                                            serial: serial++,
+                                            visitId: v.id,
+                                            visitDate: v.date,
+                                            visitLocation: v.location,
+                                            churchId: ch.id,
+                                            churchName: ch.churchName,
+                                            regionName: ch.regionName,
+                                            villageName: ch.villageName,
+                                            groupId: sg.id,
+                                            servantsNames: sg.servantsNames,
+                                            caseObj: c,
+                                            totalAmt,
+                                            monthlyAmt,
+                                            totalMonths,
+                                            payments,
+                                            totalPaid,
+                                            remainingAmt,
+                                            isCompleted,
+                                            pPct
+                                          });
+                                        });
+                                      });
 
-                                                  rows.push(
-                                                    <tr key={c.id || serial} className="hover:bg-blue-50/50 transition-colors">
-                                                      <td className="p-3 font-sans font-bold text-gray-400">{serial++}</td>
-                                                      <td className="p-3 text-gray-600 max-w-[130px] truncate" title={sg.servantsNames}>
-                                                        {sg.servantsNames || '—'}
-                                                      </td>
-                                                      <td className="p-3 font-bold text-gray-900">
-                                                        <div>{c.caseName}</div>
-                                                        {c.nationalId && (
-                                                          <div className="text-[10px] text-gray-400 font-sans">{c.nationalId}</div>
-                                                        )}
-                                                      </td>
-                                                      <td className="p-3">
-                                                        <span className="bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-full text-[11px] font-medium">
-                                                          {c.executedProjectType || c.projectType || 'مشروع'}
+                                      return (
+                                        <div>
+                                          {/* Desktop Table View (Hidden on mobile < 768px) */}
+                                          <div className="hidden md:block overflow-x-auto">
+                                            <table className="w-full text-right text-xs">
+                                              <thead className="bg-[#002f6c] text-white">
+                                                <tr>
+                                                  <th className="p-3">#</th>
+                                                  <th className="p-3">الخدام</th>
+                                                  <th className="p-3">اسم المستفيد</th>
+                                                  <th className="p-3">نوع المشروع المنفذ</th>
+                                                  <th className="p-3 font-sans">أصل المبلغ</th>
+                                                  <th className="p-3 font-sans">القسط والمدة</th>
+                                                  <th className="p-3 font-sans">المسدد / المتبقي</th>
+                                                  <th className="p-3">نسبة السداد</th>
+                                                  <th className="p-3 text-center">حالة السداد</th>
+                                                  <th className="p-3 text-center">إجراء السداد</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody className="divide-y divide-gray-100 bg-white">
+                                                {casesList.map(item => (
+                                                  <tr key={item.caseObj.id || item.serial} className="hover:bg-blue-50/50 transition-colors">
+                                                    <td className="p-3 font-sans font-bold text-gray-400">{item.serial}</td>
+                                                    <td className="p-3 text-gray-600 max-w-[130px] truncate" title={item.servantsNames}>
+                                                      {item.servantsNames || '—'}
+                                                    </td>
+                                                    <td className="p-3 font-bold text-gray-900">
+                                                      <div>{item.caseObj.caseName}</div>
+                                                      {item.caseObj.nationalId && (
+                                                        <div className="text-[10px] text-gray-500 font-sans">{item.caseObj.nationalId}</div>
+                                                      )}
+                                                    </td>
+                                                    <td className="p-3">
+                                                      <span className="bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-full text-[11px] font-medium">
+                                                        {item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع'}
+                                                      </span>
+                                                      {item.caseObj.executionDate && (
+                                                        <div className="text-[10px] text-gray-500 font-sans mt-0.5">نفذ: {item.caseObj.executionDate}</div>
+                                                      )}
+                                                    </td>
+                                                    <td className="p-3 font-sans font-bold text-gray-900 text-sm">
+                                                      {formatNumber(item.totalAmt)} ج.م
+                                                    </td>
+                                                    <td className="p-3">
+                                                      <div className="font-sans font-bold text-amber-800">{formatNumber(item.monthlyAmt)} ج.م / شهر</div>
+                                                      <div className="text-[10px] text-gray-500 font-sans">{item.totalMonths} شهر استحقاق</div>
+                                                    </td>
+                                                    <td className="p-3">
+                                                      <div className="font-sans font-bold text-emerald-700">{formatNumber(item.totalPaid)} ج.م مسدد</div>
+                                                      <div className="font-sans text-[11px] text-rose-600 font-bold">متبقي: {formatNumber(item.remainingAmt)} ج.م</div>
+                                                    </td>
+                                                    <td className="p-3 w-32">
+                                                      <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
+                                                        <span>{item.pPct}%</span>
+                                                      </div>
+                                                      <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                                        <div 
+                                                          className={`h-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                                                          style={{ width: `${item.pPct}%` }}
+                                                        ></div>
+                                                      </div>
+                                                    </td>
+                                                    <td className="p-3 text-center">
+                                                      {item.isCompleted ? (
+                                                        <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                                          <span>✅</span> مكتمل
                                                         </span>
-                                                        {c.executionDate && (
-                                                          <div className="text-[10px] text-gray-400 font-sans mt-0.5">نفذ: {c.executionDate}</div>
-                                                        )}
-                                                      </td>
-                                                      <td className="p-3 font-sans font-bold text-gray-900 text-sm">
-                                                        {formatNumber(totalAmt)} ج.م
-                                                      </td>
-                                                      <td className="p-3">
-                                                        <div className="font-sans font-bold text-amber-800">{formatNumber(monthlyAmt)} ج.م / شهر</div>
-                                                        <div className="text-[10px] text-gray-500 font-sans">{totalMonths} شهر استحقاق</div>
-                                                      </td>
-                                                      <td className="p-3">
-                                                        <div className="font-sans font-bold text-emerald-700">{formatNumber(totalPaid)} ج.م مسدد</div>
-                                                        <div className="font-sans text-[11px] text-rose-600">متبقي: {formatNumber(remainingAmt)} ج.م</div>
-                                                      </td>
-                                                      <td className="p-3 w-32">
-                                                        <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
-                                                          <span>{pPct}%</span>
-                                                        </div>
-                                                        <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                                                          <div 
-                                                            className={`h-full ${isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
-                                                            style={{ width: `${pPct}%` }}
-                                                          ></div>
-                                                        </div>
-                                                      </td>
-                                                      <td className="p-3 text-center">
-                                                        {isCompleted ? (
-                                                          <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                                            <span>✅</span> مكتمل
-                                                          </span>
-                                                        ) : totalPaid > 0 ? (
-                                                          <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                                            <span>🔄</span> جاري السداد
-                                                          </span>
-                                                        ) : (
-                                                          <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                                            <span>⏳</span> لم يبدأ
-                                                          </span>
-                                                        )}
-                                                      </td>
-                                                      <td className="p-3 text-center">
-                                                        <button
-                                                          type="button"
-                                                          onClick={() => setActiveModalCaseInfo(caseInfo)}
-                                                          className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-colors mx-auto"
-                                                        >
-                                                          <span>💵</span>
-                                                          <span>سداد ومتابعة</span>
-                                                        </button>
-                                                      </td>
-                                                    </tr>
-                                                  );
-                                                });
-                                              });
-                                              return rows;
-                                            })()}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    )}
+                                                      ) : item.totalPaid > 0 ? (
+                                                        <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                                          <span>🔄</span> جاري
+                                                        </span>
+                                                      ) : (
+                                                        <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                                          <span>⏳</span> لم يبدأ
+                                                        </span>
+                                                      )}
+                                                    </td>
+                                                    <td className="p-3 text-center">
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => setActiveModalCaseInfo(item)}
+                                                        className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-colors mx-auto"
+                                                      >
+                                                        <span>💵</span>
+                                                        <span>سداد ومتابعة</span>
+                                                      </button>
+                                                    </td>
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          </div>
+
+                                          {/* Mobile Touch Cards View (Shown only on mobile < 768px) */}
+                                          <div className="md:hidden divide-y divide-gray-100 p-3 space-y-3 bg-gray-50/60">
+                                            {casesList.map(item => (
+                                              <div key={item.caseObj.id || item.serial} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
+                                                <div className="flex justify-between items-start gap-2">
+                                                  <div>
+                                                    <div className="font-bold text-sm text-gray-900">{item.caseObj.caseName}</div>
+                                                    {item.caseObj.nationalId && (
+                                                      <div className="text-[11px] text-gray-500 font-sans mt-0.5">رقم قومي: {item.caseObj.nationalId}</div>
+                                                    )}
+                                                    <div className="text-[11px] text-gray-500 mt-1">الخدام: {item.servantsNames || '—'}</div>
+                                                  </div>
+                                                  {item.isCompleted ? (
+                                                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
+                                                      ✅ مكتمل
+                                                    </span>
+                                                  ) : item.totalPaid > 0 ? (
+                                                    <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
+                                                      🔄 جاري
+                                                    </span>
+                                                  ) : (
+                                                    <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
+                                                      ⏳ لم يبدأ
+                                                    </span>
+                                                  )}
+                                                </div>
+
+                                                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                                                  <span className="bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-md text-[11px] font-medium">
+                                                    🏷️ {item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع'}
+                                                  </span>
+                                                  {item.caseObj.executionDate && (
+                                                    <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md text-[10px] font-sans">
+                                                      تاريخ التنفيذ: {item.caseObj.executionDate}
+                                                    </span>
+                                                  )}
+                                                </div>
+
+                                                {/* 3-col Numbers Grid */}
+                                                <div className="grid grid-cols-3 gap-2 text-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                                                  <div>
+                                                    <div className="text-[10px] text-gray-500">أصل المبلغ</div>
+                                                    <div className="font-bold text-xs font-sans text-gray-900 mt-0.5">{formatNumber(item.totalAmt)} ج.م</div>
+                                                  </div>
+                                                  <div>
+                                                    <div className="text-[10px] text-gray-500">المسدد</div>
+                                                    <div className="font-bold text-xs font-sans text-emerald-700 mt-0.5">{formatNumber(item.totalPaid)} ج.م</div>
+                                                  </div>
+                                                  <div>
+                                                    <div className="text-[10px] text-gray-500">المتبقي</div>
+                                                    <div className="font-bold text-xs font-sans text-rose-600 mt-0.5">{formatNumber(item.remainingAmt)} ج.م</div>
+                                                  </div>
+                                                </div>
+
+                                                {/* Installment & Progress Bar */}
+                                                <div className="space-y-1">
+                                                  <div className="flex justify-between text-[11px] text-gray-600 font-sans">
+                                                    <span>القسط: <strong className="text-amber-800">{formatNumber(item.monthlyAmt)}</strong> ج.م / شهر ({item.totalMonths} شهر)</span>
+                                                    <span className="font-bold text-[#002f6c]">{item.pPct}%</span>
+                                                  </div>
+                                                  <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                                    <div 
+                                                      className={`h-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                                                      style={{ width: `${item.pPct}%` }}
+                                                    />
+                                                  </div>
+                                                </div>
+
+                                                {/* Action Button */}
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setActiveModalCaseInfo(item)}
+                                                  className="w-full bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition-colors"
+                                                >
+                                                  <span>💵</span>
+                                                  <span>سداد ومتابعة الأقساط</span>
+                                                </button>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 );
                               })}
@@ -5432,7 +5819,7 @@
               )}
 
               {/* ---------------------------------------------------- */}
-              {/* SUBVIEW B: ALL CASES (TABLE VIEW)                    */}
+              {/* SUBVIEW B: ALL CASES (TABLE + MOBILE CARDS VIEW)     */}
               {/* ---------------------------------------------------- */}
               {viewMode === 'allCases' && (
                 <div className="space-y-4">
@@ -5501,7 +5888,7 @@
                     </div>
                   </div>
 
-                  {/* Cases Table */}
+                  {/* Cases Container */}
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                       <span className="font-bold text-xs sm:text-sm text-gray-800">
@@ -5514,100 +5901,189 @@
                         لا توجد حالات منفذة مطابقة لمعايير البحث الحالية. يمكنك إضافة مشاريع سابقة يدوياً أو استيرادها من Excel.
                       </div>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-right text-xs">
-                          <thead className="bg-[#002f6c] text-white">
-                            <tr>
-                              <th className="p-3">#</th>
-                              <th className="p-3">اسم المستفيد</th>
-                              <th className="p-3">الزيارة / الكنيسة</th>
-                              <th className="p-3">نوع المشروع المنفذ</th>
-                              <th className="p-3 font-sans">أصل المبلغ</th>
-                              <th className="p-3 font-sans">القسط والمدة</th>
-                              <th className="p-3 font-sans">المسدد / المتبقي</th>
-                              <th className="p-3">نسبة السداد</th>
-                              <th className="p-3 text-center">حالة السداد</th>
-                              <th className="p-3 text-center">إجراء السداد</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100 bg-white">
-                            {filteredCases.map((item, idx) => {
-                              const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
-                              return (
-                                <tr key={item.caseObj.id || idx} className="hover:bg-blue-50/50 transition-colors">
-                                  <td className="p-3 font-sans font-bold text-gray-400">{idx + 1}</td>
-                                  <td className="p-3 font-bold text-gray-900">
-                                    <div>{item.caseObj.caseName}</div>
+                      <div>
+                        {/* Desktop Table View (Hidden on mobile < 768px) */}
+                        <div className="hidden md:block overflow-x-auto">
+                          <table className="w-full text-right text-xs">
+                            <thead className="bg-[#002f6c] text-white">
+                              <tr>
+                                <th className="p-3">#</th>
+                                <th className="p-3">اسم المستفيد</th>
+                                <th className="p-3">الزيارة / الكنيسة</th>
+                                <th className="p-3">نوع المشروع المنفذ</th>
+                                <th className="p-3 font-sans">أصل المبلغ</th>
+                                <th className="p-3 font-sans">القسط والمدة</th>
+                                <th className="p-3 font-sans">المسدد / المتبقي</th>
+                                <th className="p-3">نسبة السداد</th>
+                                <th className="p-3 text-center">حالة السداد</th>
+                                <th className="p-3 text-center">إجراء السداد</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 bg-white">
+                              {filteredCases.map((item, idx) => {
+                                const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
+                                return (
+                                  <tr key={item.caseObj.id || idx} className="hover:bg-blue-50/50 transition-colors">
+                                    <td className="p-3 font-sans font-bold text-gray-400">{idx + 1}</td>
+                                    <td className="p-3 font-bold text-gray-900">
+                                      <div>{item.caseObj.caseName}</div>
+                                      {item.caseObj.nationalId && (
+                                        <div className="text-[10px] text-gray-500 font-sans">{item.caseObj.nationalId}</div>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-gray-600">
+                                      <div className="font-semibold text-gray-800">{item.churchName}</div>
+                                      <div className="text-[10px] text-gray-500">
+                                        {item.visitLocation || 'زيارة'} • {item.regionName} {item.villageName ? `• ${item.villageName}` : ''}
+                                      </div>
+                                    </td>
+                                    <td className="p-3">
+                                      <span className="bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-full text-[11px] font-medium">
+                                        {item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع'}
+                                      </span>
+                                      {item.caseObj.executionDate && (
+                                        <div className="text-[10px] text-gray-500 font-sans mt-0.5">نفذ: {item.caseObj.executionDate}</div>
+                                      )}
+                                    </td>
+                                    <td className="p-3 font-sans font-bold text-gray-900 text-sm">
+                                      {formatNumber(item.totalAmt)} ج.م
+                                    </td>
+                                    <td className="p-3">
+                                      <div className="font-sans font-bold text-amber-800">{formatNumber(item.monthlyAmt)} ج.م / شهر</div>
+                                      <div className="text-[10px] text-gray-500 font-sans">{item.totalMonths} شهر استحقاق</div>
+                                    </td>
+                                    <td className="p-3">
+                                      <div className="font-sans font-bold text-emerald-700">{formatNumber(item.totalPaid)} ج.م مسدد</div>
+                                      <div className="font-sans text-[11px] text-rose-600 font-bold">متبقي: {formatNumber(item.remainingAmt)} ج.م</div>
+                                    </td>
+                                    <td className="p-3 w-36">
+                                      <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
+                                        <span>{pPct}%</span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                        <div 
+                                          className={`h-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                                          style={{ width: `${pPct}%` }}
+                                        ></div>
+                                      </div>
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      {item.isCompleted ? (
+                                        <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                          <span>✅</span> مكتمل
+                                        </span>
+                                      ) : item.totalPaid > 0 ? (
+                                        <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                          <span>🔄</span> جاري
+                                        </span>
+                                      ) : (
+                                        <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                          <span>⏳</span> لم يبدأ
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveModalCaseInfo(item)}
+                                        className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-colors mx-auto"
+                                      >
+                                        <span>💵</span>
+                                        <span>سداد ومتابعة</span>
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Mobile Touch Cards View (Shown only on mobile < 768px) */}
+                        <div className="md:hidden divide-y divide-gray-100 p-3 space-y-3 bg-gray-50/60">
+                          {filteredCases.map((item, idx) => {
+                            const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
+                            return (
+                              <div key={item.caseObj.id || idx} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
+                                <div className="flex justify-between items-start gap-2">
+                                  <div>
+                                    <div className="font-bold text-sm text-gray-900">{item.caseObj.caseName}</div>
                                     {item.caseObj.nationalId && (
-                                      <div className="text-[10px] text-gray-400 font-sans">{item.caseObj.nationalId}</div>
+                                      <div className="text-[11px] text-gray-500 font-sans mt-0.5">رقم قومي: {item.caseObj.nationalId}</div>
                                     )}
-                                  </td>
-                                  <td className="p-3 text-gray-600">
-                                    <div className="font-semibold text-gray-800">{item.churchName}</div>
-                                    <div className="text-[10px] text-gray-500">
-                                      {item.visitLocation || 'زيارة'} • {item.regionName} {item.villageName ? `• ${item.villageName}` : ''}
+                                    <div className="text-[11px] text-gray-600 font-medium mt-1">
+                                      ⛪ {item.churchName} ({item.regionName} {item.villageName ? `• ${item.villageName}` : ''})
                                     </div>
-                                  </td>
-                                  <td className="p-3">
-                                    <span className="bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-full text-[11px] font-medium">
-                                      {item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع'}
+                                  </div>
+                                  {item.isCompleted ? (
+                                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
+                                      ✅ مكتمل
                                     </span>
-                                    {item.caseObj.executionDate && (
-                                      <div className="text-[10px] text-gray-400 font-sans mt-0.5">نفذ: {item.caseObj.executionDate}</div>
-                                    )}
-                                  </td>
-                                  <td className="p-3 font-sans font-bold text-gray-900 text-sm">
-                                    {formatNumber(item.totalAmt)} ج.م
-                                  </td>
-                                  <td className="p-3">
-                                    <div className="font-sans font-bold text-amber-800">{formatNumber(item.monthlyAmt)} ج.م / شهر</div>
-                                    <div className="text-[10px] text-gray-500 font-sans">{item.totalMonths} شهر استحقاق</div>
-                                  </td>
-                                  <td className="p-3">
-                                    <div className="font-sans font-bold text-emerald-700">{formatNumber(item.totalPaid)} ج.م مسدد</div>
-                                    <div className="font-sans text-[11px] text-rose-600">متبقي: {formatNumber(item.remainingAmt)} ج.م</div>
-                                  </td>
-                                  <td className="p-3 w-36">
-                                    <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
-                                      <span>{pPct}%</span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                                      <div 
-                                        className={`h-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
-                                        style={{ width: `${pPct}%` }}
-                                      ></div>
-                                    </div>
-                                  </td>
-                                  <td className="p-3 text-center">
-                                    {item.isCompleted ? (
-                                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                        <span>✅</span> مكتمل
-                                      </span>
-                                    ) : item.totalPaid > 0 ? (
-                                      <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                        <span>🔄</span> جاري السداد
-                                      </span>
-                                    ) : (
-                                      <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                        <span>⏳</span> لم يبدأ
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="p-3 text-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => setActiveModalCaseInfo(item)}
-                                      className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-colors mx-auto"
-                                    >
-                                      <span>💵</span>
-                                      <span>سداد ومتابعة</span>
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                                  ) : item.totalPaid > 0 ? (
+                                    <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
+                                      🔄 جاري
+                                    </span>
+                                  ) : (
+                                    <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
+                                      ⏳ لم يبدأ
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                                  <span className="bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-md text-[11px] font-medium">
+                                    🏷️ {item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع'}
+                                  </span>
+                                  {item.caseObj.executionDate && (
+                                    <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md text-[10px] font-sans">
+                                      تاريخ التنفيذ: {item.caseObj.executionDate}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* 3-col Numbers Grid */}
+                                <div className="grid grid-cols-3 gap-2 text-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                                  <div>
+                                    <div className="text-[10px] text-gray-500">أصل المبلغ</div>
+                                    <div className="font-bold text-xs font-sans text-gray-900 mt-0.5">{formatNumber(item.totalAmt)} ج.م</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[10px] text-gray-500">المسدد</div>
+                                    <div className="font-bold text-xs font-sans text-emerald-700 mt-0.5">{formatNumber(item.totalPaid)} ج.م</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[10px] text-gray-500">المتبقي</div>
+                                    <div className="font-bold text-xs font-sans text-rose-600 mt-0.5">{formatNumber(item.remainingAmt)} ج.م</div>
+                                  </div>
+                                </div>
+
+                                {/* Installment & Progress Bar */}
+                                <div className="space-y-1">
+                                  <div className="flex justify-between text-[11px] text-gray-600 font-sans">
+                                    <span>القسط: <strong className="text-amber-800">{formatNumber(item.monthlyAmt)}</strong> ج.م / شهر ({item.totalMonths} شهر)</span>
+                                    <span className="font-bold text-[#002f6c]">{pPct}%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                    <div 
+                                      className={`h-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                                      style={{ width: `${pPct}%` }}
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Action Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveModalCaseInfo(item)}
+                                  className="w-full bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition-colors"
+                                >
+                                  <span>💵</span>
+                                  <span>سداد ومتابعة الأقساط</span>
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -5649,7 +6125,7 @@
     }
 
 
-        function ExportModal({ visit, onClose }) {
+            function ExportModal({ visit, onClose }) {
       const [scope, setScope] = useState('full');
       const [selectedRegion, setSelectedRegion] = useState('');
       const [selectedChurchId, setSelectedChurchId] = useState('');
@@ -5827,11 +6303,17 @@ function App() {
       };
 
       const handleDeleteVisit = async (visitId) => {
-        if (confirm('هل أنت متأكد من نقل هذه الزيارة إلى سلة المهملات؟')) {
-            if(isReadOnly) { alert('عذراً، أنت في وضع المشاهدة فقط.'); return; }
+        window.showConfirm({
+          title: 'نقل إلى سلة المهملات',
+          message: 'هل أنت متأكد من نقل هذه الزيارة إلى سلة المهملات؟ يمكنك استعادتها خلال 30 يوماً.',
+          confirmText: 'نقل للسلة',
+          cancelText: 'إلغاء',
+          isDangerous: true,
+          onConfirm: async () => {
+            if(isReadOnly) { window.notifyWarning('عذراً، أنت في وضع المشاهدة فقط.'); return; }
             try {
                 await db.collection('visits').doc(visitId).update({ isDeleted: true, deletedAt: Date.now() });
-                alert('تم نقل الزيارة إلى سلة المهملات (يمكنك استعادتها خلال 30 يوماً)');
+                window.notifySuccess('تم نقل الزيارة إلى سلة المهملات بنجاح.');
                 if (currentVisitId === visitId) {
                      const newId = uuidv4();
                      setData({ visitId: newId, location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() });
@@ -5839,62 +6321,87 @@ function App() {
                 }
             } catch (e) {
                 console.error(e);
-                alert('حدث خطأ أثناء النقل لسلة المهملات.');
+                window.notifyError('حدث خطأ أثناء النقل لسلة المهملات.');
             }
-        }
+          }
+        });
       };
 
       const handleRestoreVisit = async (visitId) => {
-          if (isReadOnly) { alert('عذراً، أنت في وضع المشاهدة فقط.'); return; }
+          if (isReadOnly) { window.notifyWarning('عذراً، أنت في وضع المشاهدة فقط.'); return; }
           try {
               await db.collection('visits').doc(visitId).update({ isDeleted: false, deletedAt: firebase.firestore.FieldValue.delete() });
+              window.notifySuccess('تم استعادة الزيارة من سلة المهملات بنجاح!');
           } catch (e) {
               console.error(e);
-              alert('حدث خطأ أثناء الاستعادة.');
+              window.notifyError('حدث خطأ أثناء الاستعادة.');
           }
       };
 
       const handlePermanentDelete = async (visitId) => {
-          if (confirm('هل أنت متأكد من حذف هذه الزيارة نهائياً للأبد؟ لا يمكن التراجع عن هذا الإجراء.')) {
-              if (isReadOnly) { alert('عذراً، أنت في وضع المشاهدة فقط.'); return; }
+          window.showConfirm({
+            title: 'حذف نهائي للأبد',
+            message: 'هل أنت متأكد من حذف هذه الزيارة نهائياً للأبد؟ لا يمكن التراجع عن هذا الإجراء إطلاقاً.',
+            confirmText: 'نعم، حذف نهائي',
+            cancelText: 'إلغاء',
+            isDangerous: true,
+            onConfirm: async () => {
+              if (isReadOnly) { window.notifyWarning('عذراً، أنت في وضع المشاهدة فقط.'); return; }
               try {
                   await db.collection('visits').doc(visitId).delete();
+                  window.notifySuccess('تم حذف الزيارة نهائياً للأبد.');
               } catch (e) {
                   console.error(e);
-                  alert('حدث خطأ أثناء الحذف النهائي.');
+                  window.notifyError('حدث خطأ أثناء الحذف النهائي.');
               }
-          }
+            }
+          });
       };
 
       const handleEmptyTrash = async () => {
           const deletedVisits = allVisits.filter(v => v.isDeleted);
           if (deletedVisits.length === 0) return;
-          if (confirm('هل أنت متأكد من إفراغ سلة المهملات بالكامل؟ سيتم حذف جميع الزيارات المحذوفة نهائياً.')) {
-              if (isReadOnly) { alert('عذراً، أنت في وضع المشاهدة فقط.'); return; }
+          window.showConfirm({
+            title: 'تفريغ سلة المهملات',
+            message: 'هل أنت متأكد من إفراغ سلة المهملات بالكامل؟ سيتم حذف جميع الزيارات المحذوفة نهائياً للأبد.',
+            confirmText: 'تفريغ السلة بالكامل',
+            cancelText: 'إلغاء',
+            isDangerous: true,
+            onConfirm: async () => {
+              if (isReadOnly) { window.notifyWarning('عذراً، أنت في وضع المشاهدة فقط.'); return; }
               try {
                   const batch = db.batch();
                   deletedVisits.forEach(v => {
                       batch.delete(db.collection('visits').doc(v.id));
                   });
                   await batch.commit();
+                  window.notifySuccess('تم إفراغ سلة المهملات بالكامل.');
               } catch(e) {
                   console.error(e);
-                  alert('حدث خطأ أثناء إفراغ سلة المهملات.');
+                  window.notifyError('حدث خطأ أثناء إفراغ سلة المهملات.');
               }
-          }
+            }
+          });
       };
 
       const handleEndVisit = () => {
         if(isReadOnly) return;
-        if(confirm("هل أنت متأكد من حفظ وإنهاء هذه الزيارة والبدء في زيارة جديدة؟")) {
+        window.showConfirm({
+          title: 'إنهاء وبدء زيارة جديدة',
+          message: 'هل أنت متأكد من حفظ وإنهاء هذه الزيارة والبدء في تسجيل زيارة جديدة؟',
+          confirmText: 'نعم، بدء زيارة جديدة',
+          cancelText: 'إلغاء',
+          onConfirm: () => {
             const newId = uuidv4();
             const emptyData = { visitId: newId, location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() };
             setCurrentVisitId(newId);
             setData(emptyData);
-            // Optionally save the new empty shell so it exists
             if (db && !isReadOnly) db.collection('visits').doc(newId).set(emptyData);
-        }
+            window.notifySuccess('تم بدء زيارة جديدة بنجاح.');
+          }
+        });
       };
+
 
       return (
         <div className="min-h-screen bg-[#f8fafc] text-gray-900 selection:bg-[#002f6c] selection:text-white pb-20">
@@ -6067,7 +6574,9 @@ function App() {
                    onEmptyTrash={handleEmptyTrash} 
                 />
              )}
-             {showExportModal && exportVisitData && (
+             <ToastContainer />
+           <ConfirmDialogModal />
+           {showExportModal && exportVisitData && (
                  <ExportModal visit={exportVisitData} onClose={() => setShowExportModal(false)} />
              )}
           </main>
@@ -6097,7 +6606,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1789908299181";
+      const CLIENT_BUILD_ID = "1790073711544";
       let initialEtag = null;
       let isUpdating = false;
 
