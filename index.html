@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790074548635" />
+  <meta name="app-build-id" content="1790074845151" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -3354,7 +3354,8 @@
 
                                 {/* Church Body: Cases Table */}
                                 {expandedChurches[ch.id] && (
-                                                                    {/* Desktop Table View */}
+                                  <div>
+                                    {/* Desktop Table View */}
                                   <div className="hidden md:block p-0 overflow-x-auto">
                                     <table className="w-full text-sm text-right">
                                       <thead className="bg-[#002f6c] text-white text-xs">
@@ -3567,7 +3568,7 @@
                                       })
                                     ))}
                                   </div>
-
+                                   </div>
                                 )}
                               </div>
                             );
@@ -6971,7 +6972,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790074548635";
+      const CLIENT_BUILD_ID = "1790074845151";
       let initialEtag = null;
       let isUpdating = false;
 
@@ -7112,4 +7113,3 @@ function App() {
   </script>
 </body>
 </html>
-
