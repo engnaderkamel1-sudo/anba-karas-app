@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790145088241" />
+  <meta name="app-build-id" content="1790145706066" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -262,6 +262,103 @@
           </button>}
         </div>
       );
+    };
+
+    // --- DYNAMIC PROJECT DICTIONARY HELPERS ---
+    // Loads user-defined project categories and aliases from localStorage / visits
+    const PROJECT_DICT_STORAGE_KEY = 'anba_karas_project_dictionary_v1';
+
+    const getStoredProjectDictionary = () => {
+      try {
+        const raw = localStorage.getItem(PROJECT_DICT_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {
+        console.error('Error loading project dictionary from storage:', e);
+      }
+      return null;
+    };
+
+    const saveStoredProjectDictionary = (dict) => {
+      try {
+        localStorage.setItem(PROJECT_DICT_STORAGE_KEY, JSON.stringify(dict));
+      } catch (e) {
+        console.error('Error saving project dictionary:', e);
+      }
+    };
+
+    // Scans all visits to extract all raw project names entered in the app
+    const extractAppProjectNames = (allVisits = []) => {
+      const names = new Set();
+      (allVisits || []).filter(v => !v.isDeleted).forEach(v => {
+        (v.churches || []).forEach(ch => {
+          (ch.servantsGroups || []).forEach(sg => {
+            (sg.cases || []).forEach(c => {
+              const t = (c.executedProjectType || c.projectType || '').trim();
+              if (t) names.add(t);
+            });
+          });
+        });
+      });
+      return Array.from(names).sort();
+    };
+
+    // Builds the effective dictionary from stored rules + any newly discovered project types from visits
+    const buildEffectiveProjectDictionary = (allVisits = []) => {
+      const stored = getStoredProjectDictionary() || [];
+      const appProjects = extractAppProjectNames(allVisits);
+
+      // Start with stored categories
+      const dict = stored.map(cat => ({
+        id: cat.id || uuidv4(),
+        name: cat.name.trim(),
+        aliases: Array.isArray(cat.aliases) ? cat.aliases.map(a => a.trim()).filter(Boolean) : []
+      }));
+
+      // Find any projects in the app that aren't mapped yet
+      const mappedNormalized = new Set();
+      dict.forEach(cat => {
+        mappedNormalized.add(normalizeArabicText(cat.name));
+        cat.aliases.forEach(a => mappedNormalized.add(normalizeArabicText(a)));
+      });
+
+      appProjects.forEach(rawName => {
+        const norm = normalizeArabicText(rawName);
+        if (!mappedNormalized.has(norm)) {
+          // Add as its own project category
+          dict.push({
+            id: uuidv4(),
+            name: rawName,
+            aliases: []
+          });
+          mappedNormalized.add(norm);
+        }
+      });
+
+      return dict;
+    };
+
+    // Given any raw project name (e.g. 'غنم' or 'ماعز'), returns the canonical project category name
+    const resolveCanonicalProject = (rawName, dictionary = []) => {
+      if (!rawName || !String(rawName).trim()) return 'غير محدد';
+      const clean = String(rawName).trim();
+      const norm = normalizeArabicText(clean);
+
+      for (const cat of dictionary) {
+        if (normalizeArabicText(cat.name) === norm) {
+          return cat.name;
+        }
+        if (Array.isArray(cat.aliases)) {
+          for (const alias of cat.aliases) {
+            if (normalizeArabicText(alias) === norm) {
+              return cat.name;
+            }
+          }
+        }
+      }
+      return clean;
     };
 
 // ================================================================
@@ -4832,7 +4929,9 @@
       // Unique lists for auto-suggest
       const existingRegions = Array.from(new Set(activeVisits.flatMap(v => (v.churches || []).map(ch => ch.regionName)).filter(Boolean))).sort();
       const existingChurches = Array.from(new Set(activeVisits.flatMap(v => (v.churches || []).map(ch => ch.churchName)).filter(Boolean))).sort();
-      const existingTypes = Array.from(new Set(activeVisits.flatMap(v => (v.churches || []).flatMap(ch => (ch.servantsGroups || []).flatMap(sg => (sg.cases || []).map(c => c.executedProjectType || c.projectType)))).filter(Boolean))).sort();
+      const rawTypes = activeVisits.flatMap(v => (v.churches || []).flatMap(ch => (ch.servantsGroups || []).flatMap(sg => (sg.cases || []).map(c => c.executedProjectType || c.projectType))));
+      const dictTypes = buildEffectiveProjectDictionary(allVisits).map(c => c.name);
+      const existingTypes = Array.from(new Set([...rawTypes, ...dictTypes].filter(Boolean))).sort();
 
       // Target visit selector
       const legacyVisitTitle = 'مشاريع سابقة (قبل استخدام التطبيق)';
@@ -5472,6 +5571,256 @@
 
     // --- PAGE: INSTALLMENTS & REPAYMENT TRACKING (PHASE 2 & 3) ---
 // ================================================================
+// MODULE: components/ProjectDictionaryModal.js
+// ================================================================
+    // =========================================================================
+    // --- COMPONENT: PROJECT DICTIONARY MANAGEMENT MODAL ---
+    // =========================================================================
+    function ProjectDictionaryModal({ allVisits, isOpen, onClose, onDictionaryUpdated }) {
+      const [dictionary, setDictionary] = useState([]);
+      const [newCategoryName, setNewCategoryName] = useState('');
+      const [newAliasInputs, setNewAliasInputs] = useState({});
+      const [searchFilter, setSearchFilter] = useState('');
+
+      useEffect(() => {
+        if (isOpen) {
+          const dict = buildEffectiveProjectDictionary(allVisits);
+          setDictionary(dict);
+        }
+      }, [isOpen, allVisits]);
+
+      if (!isOpen) return null;
+
+      const handleAddCategory = (e) => {
+        e.preventDefault();
+        const trimmed = newCategoryName.trim();
+        if (!trimmed) return;
+
+        const norm = normalizeArabicText(trimmed);
+        const exists = dictionary.some(c => normalizeArabicText(c.name) === norm);
+        if (exists) {
+          alert('هذا المشروع مسجل بالفعل في القاموس!');
+          return;
+        }
+
+        const updated = [
+          { id: uuidv4(), name: trimmed, aliases: [] },
+          ...dictionary
+        ];
+        setDictionary(updated);
+        saveStoredProjectDictionary(updated);
+        setNewCategoryName('');
+        if (onDictionaryUpdated) onDictionaryUpdated(updated);
+      };
+
+      const handleRemoveCategory = (catId) => {
+        const cat = dictionary.find(c => c.id === catId);
+        if (!cat) return;
+
+        if (confirm(`هل تريد حذف تصنيف "${cat.name}" من القاموس؟ (ستعود مسمياته كمشاريع فردية)`)) {
+          const updated = dictionary.filter(c => c.id !== catId);
+          setDictionary(updated);
+          saveStoredProjectDictionary(updated);
+          if (onDictionaryUpdated) onDictionaryUpdated(updated);
+        }
+      };
+
+      const handleAddAlias = (catId) => {
+        const inputVal = (newAliasInputs[catId] || '').trim();
+        if (!inputVal) return;
+
+        const normInput = normalizeArabicText(inputVal);
+        const updated = dictionary.map(c => {
+          if (c.id === catId) {
+            const alreadyAlias = (c.aliases || []).some(a => normalizeArabicText(a) === normInput);
+            if (alreadyAlias) return c;
+            return {
+              ...c,
+              aliases: [...(c.aliases || []), inputVal]
+            };
+          }
+          // Remove from other categories if present as alias or name
+          return {
+            ...c,
+            aliases: (c.aliases || []).filter(a => normalizeArabicText(a) !== normInput)
+          };
+        });
+
+        // Also if input was a standalone category, merge it in
+        const filtered = updated.filter(c => c.id === catId || normalizeArabicText(c.name) !== normInput);
+
+        setDictionary(filtered);
+        saveStoredProjectDictionary(filtered);
+        setNewAliasInputs(prev => ({ ...prev, [catId]: '' }));
+        if (onDictionaryUpdated) onDictionaryUpdated(filtered);
+      };
+
+      const handleRemoveAlias = (catId, aliasToRemove) => {
+        const updated = dictionary.map(c => {
+          if (c.id === catId) {
+            return {
+              ...c,
+              aliases: (c.aliases || []).filter(a => a !== aliasToRemove)
+            };
+          }
+          return c;
+        });
+        setDictionary(updated);
+        saveStoredProjectDictionary(updated);
+        if (onDictionaryUpdated) onDictionaryUpdated(updated);
+      };
+
+      const filteredDictionary = dictionary.filter(cat => {
+        if (!searchFilter.trim()) return true;
+        const q = normalizeArabicText(searchFilter);
+        return normalizeArabicText(cat.name).includes(q) ||
+               (cat.aliases || []).some(a => normalizeArabicText(a).includes(q));
+      });
+
+      return (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm p-3 sm:p-6 flex items-center justify-center animate-fade-in" onClick={onClose}>
+          <div 
+            className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-[#002f6c] p-4 sm:p-5 text-white flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl">📚</span>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg">قاموس وضبط مسميات المشاريع</h3>
+                  <p className="text-xs text-blue-200 mt-0.5">
+                    توحيد المسميات المتشابهة (مثل: خرفان، غنم، ماعز) لضمان دقة التحليلات والإحصائيات
+                  </p>
+                </div>
+              </div>
+              <button onClick={onClose} className="text-white/80 hover:text-white p-1 rounded-lg transition-colors">
+                <X size={22} />
+              </button>
+            </div>
+
+            {/* Quick Add Form + Search */}
+            <div className="p-4 sm:p-5 bg-gray-50 border-b border-gray-200 space-y-3 shrink-0">
+              <form onSubmit={handleAddCategory} className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={e => setNewCategoryName(e.target.value)}
+                  placeholder="اسم مشروع رئيسي جديد (مثال: تروسيكل، خرفان، بقالة...)"
+                  className="flex-1 bg-white border border-gray-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-medium outline-none focus:border-[#002f6c]"
+                />
+                <button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <Plus size={16} />
+                  <span>إضافة مشروع جديد</span>
+                </button>
+              </form>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchFilter}
+                  onChange={e => setSearchFilter(e.target.value)}
+                  placeholder="بحث في أسماء ومرادفات المشاريع المسجلة..."
+                  className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-[#002f6c]"
+                />
+              </div>
+            </div>
+
+            {/* Dictionary List */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1 divide-y divide-gray-100">
+              {filteredDictionary.length === 0 ? (
+                <div className="py-12 text-center text-gray-400 text-xs sm:text-sm">
+                  لا توجد مشاريع مطابقة.
+                </div>
+              ) : (
+                filteredDictionary.map(cat => (
+                  <div key={cat.id} className="pt-3.5 first:pt-0 space-y-2">
+                    <div className="flex justify-between items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🏷️</span>
+                        <span className="font-bold text-sm text-[#002f6c]">{cat.name}</span>
+                        <span className="bg-blue-50 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full font-sans">
+                          {cat.aliases?.length ? `${cat.aliases.length} مرادفات` : 'اسم مباشر'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCategory(cat.id)}
+                        className="text-gray-400 hover:text-red-600 p-1 text-xs"
+                        title="حذف هذا المشروع من القاموس"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+
+                    {/* Aliases Chips */}
+                    <div className="flex flex-wrap items-center gap-1.5 pr-6">
+                      <span className="text-[11px] text-gray-500 font-medium ml-1">يُحسب معه تلقائياً:</span>
+                      {(!cat.aliases || cat.aliases.length === 0) ? (
+                        <span className="text-[11px] text-gray-400 italic">لا توجد مرادفات إضافية</span>
+                      ) : (
+                        cat.aliases.map(alias => (
+                          <span
+                            key={alias}
+                            className="bg-amber-50 text-amber-900 border border-amber-200/80 px-2 py-0.5 rounded-lg text-xs font-medium flex items-center gap-1 shadow-xs"
+                          >
+                            <span>{alias}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAlias(cat.id, alias)}
+                              className="text-amber-700 hover:text-red-700 ml-0.5 text-xs font-bold"
+                              title="إزالة هذا المرادف"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Inline Add Alias Box */}
+                    <div className="flex items-center gap-2 pr-6 pt-1 max-w-sm">
+                      <input
+                        type="text"
+                        value={newAliasInputs[cat.id] || ''}
+                        onChange={e => setNewAliasInputs({ ...newAliasInputs, [cat.id]: e.target.value })}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddAlias(cat.id); } }}
+                        placeholder={`أضف مسمى بديل لـ "${cat.name}" (مثل: غنم، ماعز...)`}
+                        className="flex-1 bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:border-[#002f6c]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddAlias(cat.id)}
+                        className="bg-blue-50 text-[#002f6c] border border-blue-200 hover:bg-[#002f6c] hover:text-white px-2.5 py-1 rounded-lg text-xs font-bold transition-colors"
+                      >
+                        + دمج
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-3.5 bg-gray-50 border-t border-gray-200 flex justify-between items-center text-xs text-gray-500 shrink-0">
+              <span>إجمالي المشاريع المضبوطة بالقاموس: <strong className="font-sans text-gray-800">{dictionary.length}</strong></span>
+              <button
+                type="button"
+                onClick={onClose}
+                className="bg-[#002f6c] hover:bg-[#001f4c] text-white font-bold px-4 py-1.5 rounded-xl transition-colors"
+              >
+                حفظ وإغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+// ================================================================
 // MODULE: pages/InstallmentsPage.js
 // ================================================================
     function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
@@ -5505,7 +5854,14 @@
       const [activeModalCaseInfo, setActiveModalCaseInfo] = useState(null);
       const [showAddLegacyModal, setShowAddLegacyModal] = useState(false);
       const [showImportLegacyModal, setShowImportLegacyModal] = useState(false);
+      const [showProjectDictModal, setShowProjectDictModal] = useState(false);
       const [batchPaymentConfig, setBatchPaymentConfig] = useState(null);
+
+      // Project Dictionary (Loaded from visits + user-defined rules)
+      const [projectDictionary, setProjectDictionary] = useState(() => buildEffectiveProjectDictionary(allVisits));
+      useEffect(() => {
+        setProjectDictionary(buildEffectiveProjectDictionary(allVisits));
+      }, [allVisits]);
 
       // Helper to compute case stats
       const extractCaseData = (c, v, ch, sg) => {
@@ -5927,6 +6283,83 @@
         return list;
       }, [geoRegionsData, filterRegion, filterSearch]);
 
+      // Compute Analytics Data by Project Category using the Dynamic Project Dictionary
+      const projectAnalyticsData = useMemo(() => {
+        const statsMap = {};
+        let grandTotalCases = 0;
+        let grandTotalValue = 0;
+        let grandTotalPaid = 0;
+        let grandTotalRemaining = 0;
+        let grandTotalExempted = 0;
+        let grandTotalOverdue = 0;
+
+        allExecutedCases.forEach(item => {
+          const rawType = item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع غير محدد';
+          const canonicalName = resolveCanonicalProject(rawType, projectDictionary);
+
+          if (!statsMap[canonicalName]) {
+            statsMap[canonicalName] = {
+              name: canonicalName,
+              rawTypes: new Set(),
+              count: 0,
+              totalValue: 0,
+              totalPaid: 0,
+              totalRemaining: 0,
+              totalExempted: 0,
+              overdueCount: 0,
+              overdueAmount: 0,
+              completedCount: 0,
+              cases: []
+            };
+          }
+
+          const s = statsMap[canonicalName];
+          s.rawTypes.add(rawType);
+          s.count++;
+          s.totalValue += item.totalAmt;
+          s.totalPaid += item.totalPaid;
+          s.totalRemaining += item.remainingAmt;
+          s.totalExempted += item.exemptedAmount;
+          if (item.isCompleted) s.completedCount++;
+          if (item.isOverdue) {
+            s.overdueCount++;
+            s.overdueAmount += item.overdueAmount;
+          }
+          s.cases.push(item);
+
+          grandTotalCases++;
+          grandTotalValue += item.totalAmt;
+          grandTotalPaid += item.totalPaid;
+          grandTotalRemaining += item.remainingAmt;
+          grandTotalExempted += item.exemptedAmount;
+          if (item.isOverdue) grandTotalOverdue += item.overdueAmount;
+        });
+
+        const list = Object.values(statsMap).map(s => {
+          const pctOfTotal = grandTotalCases > 0 ? Math.round((s.count / grandTotalCases) * 100) : 0;
+          const paidPct = s.totalValue > 0 ? Math.round((s.totalPaid / s.totalValue) * 100) : 0;
+          return {
+            ...s,
+            rawTypesList: Array.from(s.rawTypes),
+            pctOfTotal,
+            paidPct
+          };
+        }).sort((a, b) => b.count - a.count);
+
+        return {
+          list,
+          grandTotalCases,
+          grandTotalValue,
+          grandTotalPaid,
+          grandTotalRemaining,
+          grandTotalExempted,
+          grandTotalOverdue
+        };
+      }, [allExecutedCases, projectDictionary]);
+
+      // Selected project category in Analytics view to drill-down cases
+      const [selectedAnalyticsCategory, setSelectedAnalyticsCategory] = useState(null);
+
       // Handle updating payments from InstallmentModal
       const handleSavePayments = (updatedPayments, caseMeta = {}) => {
         if (!activeModalCaseInfo) return;
@@ -6123,8 +6556,8 @@
                 </p>
               </div>
 
-              {/* Actions: Add Legacy Project + Import from Excel + Export */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full lg:w-auto">
+              {/* Actions: Add Legacy Project + Import from Excel + Export + Dictionary */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full lg:w-auto">
                 <button
                   type="button"
                   onClick={() => setShowAddLegacyModal(true)}
@@ -6146,7 +6579,7 @@
                 >
                   <Upload size={18} className="shrink-0 text-teal-100" />
                   <div className="flex flex-col text-right">
-                    <span className="text-xs font-bold">استيراد نزلات قديمة (Excel)</span>
+                    <span className="text-xs font-bold">استيراد نزلات (Excel)</span>
                     <span className="text-[10px] text-teal-100 font-medium">رفع شيت المشاريع التاريخية</span>
                   </div>
                 </button>
@@ -6159,8 +6592,21 @@
                 >
                   <FileSpreadsheet size={18} className="shrink-0 text-emerald-100" />
                   <div className="flex flex-col text-right">
-                    <span className="text-xs font-bold">تصدير كشف التحصيل (Excel)</span>
-                    <span className="text-[10px] text-emerald-100 font-medium">تحميل جدول الأقساط والمتأخرات</span>
+                    <span className="text-xs font-bold">تصدير التحصيل (Excel)</span>
+                    <span className="text-[10px] text-emerald-100 font-medium">تحميل الأقساط والمتأخرات</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowProjectDictModal(true)}
+                  className="bg-purple-700 hover:bg-purple-800 text-white py-2 px-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all text-right"
+                  title="ضبط وتوحيد مسميات المشاريع (خرفان، غنم، تروسيكل...)"
+                >
+                  <span className="text-base shrink-0">📚</span>
+                  <div className="flex flex-col text-right">
+                    <span className="text-xs font-bold">قاموس المشاريع</span>
+                    <span className="text-[10px] text-purple-200 font-medium">توحيد الأسماء وإضافة مشروع</span>
                   </div>
                 </button>
               </div>
@@ -6956,6 +7402,21 @@
                     <span>📋 عرض كل الحالات مباشرة</span>
                     <span className={`px-2 py-0.5 rounded-full text-[11px] font-sans ${viewMode === 'allCases' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-800'}`}>
                       {formatNumber(allExecutedCases.length)} حالة
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setViewMode('analytics'); setSelectedAnalyticsCategory(null); }}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                      viewMode === 'analytics'
+                        ? 'bg-purple-700 text-white shadow-sm ring-2 ring-purple-400/30'
+                        : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200'
+                    }`}
+                  >
+                    <span>📊 تحليل وتوزيع المشاريع</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-sans ${viewMode === 'analytics' ? 'bg-white/20 text-white' : 'bg-purple-200 text-purple-900'}`}>
+                      {formatNumber(projectAnalyticsData.list.length)} أنشطة
                     </span>
                   </button>
                 </div>
@@ -7873,6 +8334,335 @@
                   </div>
                 </div>
               )}
+
+              {/* ---------------------------------------------------- */}
+              {/* SUBVIEW D: PROJECT ANALYTICS & DISTRIBUTION VIEW     */}
+              {/* ---------------------------------------------------- */}
+              {viewMode === 'analytics' && (
+                <div className="space-y-5 animate-fade-in">
+                  {/* Top Analytics Banner */}
+                  <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">📊</span>
+                        <h3 className="font-bold text-base sm:text-lg">تحليل وتوزيع المشاريع والأنشطة بالخدمة</h3>
+                      </div>
+                      <p className="text-xs text-purple-200 mt-1">
+                        إحصائيات تفصيلية لمجموعات الأنشطة وفقاً للقاموس الذكي الموحد (عدد الحالات، القيمة، والنسبة)
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowProjectDictModal(true)}
+                      className="bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-xs shrink-0"
+                    >
+                      <span>📚</span>
+                      <span>إدارة قاموس المشاريع</span>
+                    </button>
+                  </div>
+
+                  {/* Analytics KPI Summary Row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                      <span className="text-xs text-gray-500 font-medium">إجمالي الأنشطة المعتمدة</span>
+                      <div className="text-xl sm:text-2xl font-bold font-sans text-purple-900 mt-1">
+                        {formatNumber(projectAnalyticsData.list.length)}
+                      </div>
+                      <span className="text-[10px] text-gray-400">نشاط / مشروع مختلف</span>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                      <span className="text-xs text-gray-500 font-medium">إجمالي الحالات المنفذة</span>
+                      <div className="text-xl sm:text-2xl font-bold font-sans text-[#002f6c] mt-1">
+                        {formatNumber(projectAnalyticsData.grandTotalCases)}
+                      </div>
+                      <span className="text-[10px] text-gray-400">مستفيد بجميع الزيارات</span>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                      <span className="text-xs text-gray-500 font-medium">إجمالي المبالغ المنفذة</span>
+                      <div className="text-xl sm:text-2xl font-bold font-sans text-emerald-700 mt-1">
+                        {formatNumber(projectAnalyticsData.grandTotalValue)} <span className="text-xs font-normal">ج.م</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400">تكلفة المشاريع الإجمالية</span>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                      <span className="text-xs text-gray-500 font-medium">إجمالي المسدد ونسبة التحصيل</span>
+                      <div className="text-xl sm:text-2xl font-bold font-sans text-emerald-800 mt-1">
+                        {formatNumber(projectAnalyticsData.grandTotalPaid)} <span className="text-xs font-normal">ج.م</span>
+                      </div>
+                      <span className="text-[10px] text-emerald-600 font-bold font-sans">
+                        {projectAnalyticsData.grandTotalValue > 0 ? Math.round((projectAnalyticsData.grandTotalPaid / projectAnalyticsData.grandTotalValue) * 100) : 0}% تم تحصيله
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Project Categories Grid / Cards */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-gray-100 pb-3">
+                      <div>
+                        <h4 className="font-bold text-sm sm:text-base text-gray-900">
+                          ترتيب المشاريع حسب الأكثر عدداً وتنفيذاً
+                        </h4>
+                        <p className="text-xs text-gray-500">
+                          اضغط على أي مشروع لعرض حالاته وتفاصيل سداده ومتابعتها مباشرة
+                        </p>
+                      </div>
+
+                      {selectedAnalyticsCategory && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedAnalyticsCategory(null)}
+                          className="text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-xl border border-purple-200 transition-colors"
+                        >
+                          إلغاء التحديد وتصفح كل المشاريع
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                      {projectAnalyticsData.list.map((item, idx) => {
+                        const isSelected = selectedAnalyticsCategory === item.name;
+                        return (
+                          <div
+                            key={item.name || idx}
+                            onClick={() => setSelectedAnalyticsCategory(isSelected ? null : item.name)}
+                            className={`p-4 rounded-2xl border transition-all cursor-pointer select-none space-y-3 ${
+                              isSelected
+                                ? 'bg-purple-50/80 border-purple-500 shadow-md ring-2 ring-purple-400/30'
+                                : 'bg-gray-50/60 hover:bg-blue-50/40 border-gray-200 hover:border-blue-300'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start gap-2">
+                              <div>
+                                <div className="font-bold text-sm sm:text-base text-[#002f6c] flex items-center gap-1.5">
+                                  <span>🏷️</span>
+                                  <span>{item.name}</span>
+                                </div>
+                                {item.rawTypesList.length > 1 && (
+                                  <div className="text-[10px] text-gray-500 mt-0.5">
+                                    يشمل مسميات: {item.rawTypesList.join(' • ')}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="bg-purple-100 text-purple-900 border border-purple-200 font-bold px-2.5 py-0.5 rounded-full text-xs font-sans shrink-0">
+                                {item.pctOfTotal}% من الإجمالي
+                              </span>
+                            </div>
+
+                            {/* Numbers Row */}
+                            <div className="grid grid-cols-3 gap-1.5 bg-white p-2.5 rounded-xl border border-gray-100 text-center">
+                              <div>
+                                <div className="text-[10px] text-gray-500">الحالات</div>
+                                <div className="font-bold text-xs font-sans text-gray-900 mt-0.5">{formatNumber(item.count)} حالة</div>
+                              </div>
+                              <div>
+                                <div className="text-[10px] text-gray-500">أصل المبلغ</div>
+                                <div className="font-bold text-xs font-sans text-gray-900 mt-0.5">{formatNumber(item.totalValue)} ج.م</div>
+                              </div>
+                              <div>
+                                <div className="text-[10px] text-gray-500">المحصل</div>
+                                <div className="font-bold text-xs font-sans text-emerald-700 mt-0.5">{formatNumber(item.totalPaid)} ج.م</div>
+                              </div>
+                            </div>
+
+                            {/* Progress Bar of Collection */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] font-sans">
+                                <span className="text-gray-500">نسبة تحصيل المشروع:</span>
+                                <span className="font-bold text-emerald-700">{item.paidPct}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-emerald-500 rounded-full" 
+                                  style={{ width: `${item.paidPct}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Overdue / Arrears notice if any */}
+                            {item.overdueCount > 0 ? (
+                              <div className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg font-sans font-bold flex items-center justify-between">
+                                <span>⚠️ متأخرات: {formatNumber(item.overdueAmount)} ج.م</span>
+                                <span>({item.overdueCount} حالة)</span>
+                              </div>
+                            ) : (
+                              <div className="text-[11px] text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg font-medium flex items-center gap-1">
+                                <span>✅</span>
+                                <span>السداد منتظم بالكامل</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Drill-down cases section for the selected project */}
+                  {selectedAnalyticsCategory && (() => {
+                    const selectedCatObj = projectAnalyticsData.list.find(c => c.name === selectedAnalyticsCategory);
+                    const casesToShow = selectedCatObj ? selectedCatObj.cases : [];
+
+                    return (
+                      <div className="bg-white rounded-2xl shadow-sm border border-purple-200 overflow-hidden space-y-3 p-4 sm:p-5 animate-fade-in">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-gray-100 pb-3">
+                          <div>
+                            <h4 className="font-bold text-sm sm:text-base text-purple-900 flex items-center gap-2">
+                              <span>📋</span>
+                              <span>حالات مشروع: «{selectedAnalyticsCategory}» ({formatNumber(casesToShow.length)} حالة)</span>
+                            </h4>
+                            <p className="text-xs text-gray-500">
+                              إجمالي القيمة المنفذة: {formatNumber(selectedCatObj?.totalValue || 0)} ج.م • المسدد: {formatNumber(selectedCatObj?.totalPaid || 0)} ج.م • المتبقي: {formatNumber(selectedCatObj?.totalRemaining || 0)} ج.م
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Cases Table */}
+                        <div className="hidden md:block overflow-x-auto">
+                          <table className="w-full text-right text-xs">
+                            <thead className="bg-[#002f6c] text-white">
+                              <tr>
+                                <th className="p-3">#</th>
+                                <th className="p-3">اسم المستفيد</th>
+                                <th className="p-3">الكنيسة والمنطقة</th>
+                                <th className="p-3">المسمى المسجل</th>
+                                <th className="p-3 font-sans">أصل المبلغ</th>
+                                <th className="p-3 font-sans">المسدد / المتبقي</th>
+                                <th className="p-3">نسبة السداد</th>
+                                <th className="p-3 text-center">الحالة</th>
+                                <th className="p-3 text-center">الإجراء</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {casesToShow.map((item, idx) => {
+                                const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
+                                return (
+                                  <tr key={item.caseObj.id || idx} className="hover:bg-purple-50/40 transition-colors">
+                                    <td className="p-3 font-sans font-bold text-gray-400">{idx + 1}</td>
+                                    <td className="p-3 font-bold text-gray-900">
+                                      <div>{item.caseObj.caseName}</div>
+                                      {item.caseObj.nationalId && (
+                                        <div className="text-[10px] text-gray-500 font-sans">{item.caseObj.nationalId}</div>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-gray-700">
+                                      <div>⛪ {item.churchName}</div>
+                                      <div className="text-[10px] text-gray-500">{item.regionName} {item.villageName ? `• ${item.villageName}` : ''}</div>
+                                    </td>
+                                    <td className="p-3">
+                                      <span className="bg-purple-50 text-purple-800 border border-purple-200 px-2 py-0.5 rounded-md text-[11px] font-medium">
+                                        {item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع'}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 font-sans font-bold text-gray-900">
+                                      {formatNumber(item.totalAmt)} ج.م
+                                    </td>
+                                    <td className="p-3">
+                                      <div className="font-sans font-bold text-emerald-700">{formatNumber(item.totalPaid)} ج.م مسدد</div>
+                                      {item.isExempted ? (
+                                        <div className="font-sans text-[11px] text-purple-700 font-bold">معفى: {formatNumber(item.exemptedAmount)} ج.م</div>
+                                      ) : (
+                                        <div className="font-sans text-[11px] text-rose-600 font-bold">متبقي: {formatNumber(item.remainingAmt)} ج.م</div>
+                                      )}
+                                    </td>
+                                    <td className="p-3 w-28">
+                                      <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
+                                        <span>{pPct}%</span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                        <div 
+                                          className={`h-full ${item.isExempted ? 'bg-purple-600' : item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                                          style={{ width: `${pPct}%` }}
+                                        />
+                                      </div>
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      {item.isExempted ? (
+                                        <span className="bg-purple-100 text-purple-800 border border-purple-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                          💜 معفى
+                                        </span>
+                                      ) : item.isCompleted ? (
+                                        <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                          ✅ مكتمل
+                                        </span>
+                                      ) : item.isOverdue ? (
+                                        <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full text-[10px] font-bold font-sans">
+                                          ⚠️ متأخر ({item.overdueCount})
+                                        </span>
+                                      ) : item.totalPaid > 0 ? (
+                                        <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                          🔄 جاري
+                                        </span>
+                                      ) : (
+                                        <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                          ⏳ لم يبدأ
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveModalCaseInfo(item)}
+                                        className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1 mx-auto"
+                                      >
+                                        <span>💵</span>
+                                        <span>سداد ومتابعة</span>
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Cases Mobile Touch Cards */}
+                        <div className="md:hidden space-y-2.5">
+                          {casesToShow.map((item, idx) => (
+                            <div key={item.caseObj.id || idx} className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2.5">
+                              <div className="flex justify-between items-start gap-2">
+                                <div>
+                                  <div className="font-bold text-xs sm:text-sm text-gray-900">{item.caseObj.caseName}</div>
+                                  <div className="text-[10px] text-gray-500">⛪ {item.churchName} ({item.regionName})</div>
+                                </div>
+                                <span className="bg-purple-100 text-purple-800 border border-purple-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                                  {item.caseObj.executedProjectType || item.caseObj.projectType}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-1 bg-white p-2 rounded-lg border border-gray-100 text-center text-xs">
+                                <div>
+                                  <div className="text-[9px] text-gray-500">أصل المبلغ</div>
+                                  <div className="font-bold font-sans text-gray-800">{formatNumber(item.totalAmt)} ج.م</div>
+                                </div>
+                                <div>
+                                  <div className="text-[9px] text-gray-500">المسدد</div>
+                                  <div className="font-bold font-sans text-emerald-700">{formatNumber(item.totalPaid)} ج.م</div>
+                                </div>
+                                <div>
+                                  <div className="text-[9px] text-gray-500">المتبقي</div>
+                                  <div className="font-bold font-sans text-rose-600">{formatNumber(item.remainingAmt)} ج.م</div>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setActiveModalCaseInfo(item)}
+                                className="w-full bg-[#002f6c] text-white text-xs font-bold py-2 px-3 rounded-lg shadow-xs flex items-center justify-center gap-1.5"
+                              >
+                                <span>💵</span>
+                                <span>سداد ومتابعة الأقساط</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           )}
 
@@ -7912,6 +8702,16 @@
               targetCases={batchPaymentConfig.targetCases}
               onConfirm={handleExecuteBatchPayment}
               onClose={() => setBatchPaymentConfig(null)}
+            />
+          )}
+
+          {/* Project Dictionary Modal (قاموس وضبط المشاريع وإضافة مشروع جديد) */}
+          {showProjectDictModal && (
+            <ProjectDictionaryModal
+              allVisits={allVisits}
+              isOpen={showProjectDictModal}
+              onClose={() => setShowProjectDictModal(false)}
+              onDictionaryUpdated={(newDict) => setProjectDictionary(newDict)}
             />
           )}
         </div>
@@ -8855,7 +9655,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790145088241";
+      const CLIENT_BUILD_ID = "1790145706066";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
