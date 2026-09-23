@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790145032360" />
+  <meta name="app-build-id" content="1790145088241" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -3048,35 +3048,73 @@
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 w-full lg:w-auto justify-end">
-              {!isReadOnly && (
-                <button 
-                  onClick={() => setShowImportModal(true)} 
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-xl shadow-sm transition-all"
-                  title="رفع كشف الإكسيل لمسؤول القرية"
-                >
-                  <Upload size={18} />
-                  <span>استيراد كشف الإكسيل</span>
-                </button>
-              )}
-
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full lg:w-auto">
+              {/* 1. Export Button */}
               <button 
+                type="button"
                 onClick={() => onExport(currentVisit)} 
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-[#d4af37] text-[#8a7222] hover:bg-amber-50 text-xs sm:text-sm font-bold px-4 py-2.5 rounded-xl transition-all"
+                className="flex items-center justify-center gap-2.5 bg-amber-50/60 border-2 border-amber-400 text-amber-900 hover:bg-amber-100 py-2.5 px-3.5 rounded-xl transition-all shadow-xs text-right"
               >
-                <Download size={18} />
-                <span>تصدير كشف الزيارة</span>
+                <Download size={20} className="text-amber-700 shrink-0" />
+                <div className="flex flex-col text-right">
+                  <span className="text-xs sm:text-sm font-bold">تحميل كشف للميدان (Excel)</span>
+                  <span className="text-[10px] text-amber-700 font-medium">طباعة أو إرسال لمسؤول القرية</span>
+                </div>
               </button>
 
+              {/* 2. Import Button */}
               {!isReadOnly && (
                 <button 
-                  onClick={triggerApproveEntireVisit} 
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs sm:text-sm font-bold px-5 py-2.5 rounded-xl shadow-md transition-all ring-2 ring-[#002f6c]/20"
+                  type="button"
+                  onClick={() => setShowImportModal(true)} 
+                  className="flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-3.5 rounded-xl shadow-sm transition-all text-right"
                 >
-                  <span>🚀</span>
-                  <span>اعتماد الزيارة بالكامل للتنفيذ</span>
+                  <Upload size={20} className="shrink-0 text-emerald-100" />
+                  <div className="flex flex-col text-right">
+                    <span className="text-xs sm:text-sm font-bold">رفع كشف التنفيذ (Excel)</span>
+                    <span className="text-[10px] text-emerald-100 font-medium">تحديث واعتماد تلقائي من الملف</span>
+                  </div>
                 </button>
               )}
+
+              {/* 3. Bulk Approve Button */}
+              {!isReadOnly && (
+                <button 
+                  type="button"
+                  onClick={triggerApproveEntireVisit} 
+                  className="flex items-center justify-center gap-2 bg-[#002f6c] hover:bg-[#001f4c] text-white py-2.5 px-4 rounded-xl shadow-md transition-all text-right ring-2 ring-[#002f6c]/20"
+                >
+                  <span className="text-lg shrink-0">🚀</span>
+                  <div className="flex flex-col text-right">
+                    <span className="text-xs sm:text-sm font-bold">اعتماد الزيارة بالكامل</span>
+                    <span className="text-[10px] text-blue-200 font-medium">تأكيد تنفيذ كل الحالات دفعة واحدة</span>
+                  </div>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Explanatory Guidance Banner for Mobile and New Users */}
+          <div className="bg-gradient-to-r from-blue-50/90 via-amber-50/50 to-emerald-50/80 border border-blue-200/80 rounded-2xl p-3.5 sm:p-4 text-xs shadow-xs">
+            <div className="flex items-start gap-2.5">
+              <span className="text-base sm:text-lg shrink-0">💡</span>
+              <div className="space-y-1 text-gray-700 leading-relaxed">
+                <span className="font-bold text-[#002f6c] block text-xs sm:text-sm">كيف تتم دورة اعتماد وتنفيذ مشاريع الزيارة؟</span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-medium text-[11px] sm:text-xs">
+                  <div className="bg-white/80 p-2 rounded-lg border border-amber-200/70 flex items-center gap-2">
+                    <span className="font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">1</span>
+                    <span><strong>حمّل كشف الميدان (Excel)</strong> وابعته لمسؤول القرية للتسجيل أثناء النزول.</span>
+                  </div>
+                  <div className="bg-white/80 p-2 rounded-lg border border-emerald-200/70 flex items-center gap-2">
+                    <span className="font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">2</span>
+                    <span><strong>ارفع الملف المعدل</strong> بعد انتهاء النزول ليعتمد التطبيق الحالات تلقائياً.</span>
+                  </div>
+                  <div className="bg-white/80 p-2 rounded-lg border border-blue-200/70 flex items-center gap-2">
+                    <span className="font-bold text-blue-800 bg-blue-100 px-1.5 py-0.5 rounded">3</span>
+                    <span>أو اضغط <strong>اعتماد الزيارة بالكامل</strong> لو اتنفذت بنفس القيم بدون تعديلات.</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -6086,35 +6124,44 @@
               </div>
 
               {/* Actions: Add Legacy Project + Import from Excel + Export */}
-              <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full lg:w-auto">
                 <button
                   type="button"
                   onClick={() => setShowAddLegacyModal(true)}
-                  className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
+                  className="bg-[#002f6c] hover:bg-[#001f4c] text-white py-2 px-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all text-right"
                   title="إضافة نزلة / مشاريع سابقة يدوياً"
                 >
-                  <Plus size={15} />
-                  <span>إضافة نزلة سابقة</span>
+                  <Plus size={18} className="shrink-0 text-blue-200" />
+                  <div className="flex flex-col text-right">
+                    <span className="text-xs font-bold">إضافة نزلة سابقة</span>
+                    <span className="text-[10px] text-blue-200 font-medium">تسجيل يدوي لحالة قديمة</span>
+                  </div>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setShowImportLegacyModal(true)}
-                  className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
+                  className="bg-teal-700 hover:bg-teal-800 text-white py-2 px-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all text-right"
                   title="استيراد مشاريع قديمة من ملف إكسيل"
                 >
-                  <Upload size={15} />
-                  <span>استيراد من Excel</span>
+                  <Upload size={18} className="shrink-0 text-teal-100" />
+                  <div className="flex flex-col text-right">
+                    <span className="text-xs font-bold">استيراد نزلات قديمة (Excel)</span>
+                    <span className="text-[10px] text-teal-100 font-medium">رفع شيت المشاريع التاريخية</span>
+                  </div>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleExportInstallmentsExcel}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all text-right"
                   title="تصدير كشف التحصيل لإكسيل"
                 >
-                  <FileSpreadsheet size={15} />
-                  <span>تصدير (Excel)</span>
+                  <FileSpreadsheet size={18} className="shrink-0 text-emerald-100" />
+                  <div className="flex flex-col text-right">
+                    <span className="text-xs font-bold">تصدير كشف التحصيل (Excel)</span>
+                    <span className="text-[10px] text-emerald-100 font-medium">تحميل جدول الأقساط والمتأخرات</span>
+                  </div>
                 </button>
               </div>
             </div>
@@ -8808,7 +8855,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790145032360";
+      const CLIENT_BUILD_ID = "1790145088241";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
