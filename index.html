@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790074845151" />
+  <meta name="app-build-id" content="1790141488267" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -58,6 +58,9 @@
   <div id="root"></div>
 
   <script type="text/babel" data-type="module">
+// ================================================================
+// MODULE: config/firebase.js
+// ================================================================
     // --- FIREBASE INITIALIZATION ---
     const firebaseConfig = {
       apiKey: "AIzaSyDpzXjAZ-VQfwNs_2yjMyQdhuOKl1khNUQ",
@@ -92,6 +95,9 @@
     const urlParams = new URLSearchParams(window.location.search);
     const isReadOnly = urlParams.get('mode') === 'view' || urlParams.get('readonly') === 'true';
 
+// ================================================================
+// MODULE: utils/helpersAndIcons.js
+// ================================================================
     // --- UTILS & HELPERS ---
     const uuidv4 = () => {
       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -258,6 +264,9 @@
       );
     };
 
+// ================================================================
+// MODULE: components/ToastsAndConfirms.js
+// ================================================================
     // --- GLOBAL TOAST & NOTIFICATION BUS ---
     const toastListeners = new Set();
     const confirmListeners = new Set();
@@ -632,6 +641,9 @@
     };
 
     // --- EXECUTION MODAL ---
+// ================================================================
+// MODULE: components/ExecutionModal.js
+// ================================================================
     function ExecutionModal({ caseData, churchName, onSave, onClose }) {
       const [status, setStatus] = useState(caseData?.status || 'executed');
       const [executedProjectType, setExecutedProjectType] = useState(caseData?.executedProjectType || caseData?.projectType || '');
@@ -1358,6 +1370,9 @@
     }
 
     // --- PAGE 1: ACTIVE VISIT ENTRY ---
+// ================================================================
+// MODULE: pages/ActiveVisitForm.js
+// ================================================================
     function ActiveVisitForm({ data, updateData, onEndVisit, onExport }) {
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
       const [executingCaseInfo, setExecutingCaseInfo] = useState(null);
@@ -1949,6 +1964,9 @@
     }
 
     // --- PAGE 2: ARCHIVE & ANALYTICS ---
+// ================================================================
+// MODULE: pages/ArchivePage.js
+// ================================================================
     function ArchivePage({ allVisits, onViewDetails, onEditVisit, onDeleteVisit }) {
       if (allVisits.length === 0) {
         return (
@@ -1991,6 +2009,9 @@
 
 
     // --- TRASH PAGE ---
+// ================================================================
+// MODULE: pages/TrashPage.js
+// ================================================================
     function TrashPage({ deletedVisits, onRestore, onPermanentDelete, onEmptyTrash }) {
       if (deletedVisits.length === 0) {
         return (
@@ -2049,6 +2070,9 @@
       );
     }
 
+// ================================================================
+// MODULE: pages/ArchiveDetails.js
+// ================================================================
     function ArchiveDetails({ visit, onBack, onExport, onUpdateVisit }) {
       const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'initial' | 'executed' | 'cancelled'
       const [executingCaseInfo, setExecutingCaseInfo] = useState(null);
@@ -2704,6 +2728,9 @@
     }
 
     // --- PAGE: PROJECTS EXECUTION & APPROVAL DASHBOARD ---
+// ================================================================
+// MODULE: pages/ExecutionPage.js
+// ================================================================
     function ExecutionPage({ allVisits, onUpdateVisit, onExport }) {
       const activeVisits = (allVisits || []).filter(v => !v.isDeleted);
       const [selectedVisitId, setSelectedVisitId] = useState(() => activeVisits[0]?.id || null);
@@ -3618,6 +3645,9 @@
     // =========================================================================
 
     // Modal to record payment or view installment schedule for a case
+// ================================================================
+// MODULE: components/InstallmentModal.js
+// ================================================================
     function InstallmentModal({ caseObj, churchName, regionName, onSavePayments, onClose }) {
       const totalAmount = parseFloat(caseObj.executedProjectValue || caseObj.projectValue) || 0;
       const monthlyAmount = parseFloat(caseObj.executedInstallmentAmount || caseObj.installmentAmount) || 0;
@@ -4106,6 +4136,9 @@
     // =========================================================================
     // --- COMPONENT: ADD LEGACY PROJECT MODAL (MANUAL INPUT) ---
     // =========================================================================
+// ================================================================
+// MODULE: components/AddLegacyProjectModal.js
+// ================================================================
     function AddLegacyProjectModal({ allVisits, onUpdateVisit, onClose }) {
       const activeVisits = (allVisits || []).filter(v => !v.isDeleted);
 
@@ -4444,6 +4477,9 @@
     // =========================================================================
     // --- COMPONENT: IMPORT LEGACY PROJECTS FROM EXCEL MODAL ---
     // =========================================================================
+// ================================================================
+// MODULE: components/ImportLegacyExcelModal.js
+// ================================================================
     function ImportLegacyExcelModal({ allVisits, onUpdateVisit, onClose }) {
       const activeVisits = (allVisits || []).filter(v => !v.isDeleted);
       const [fileName, setFileName] = useState('');
@@ -4748,6 +4784,9 @@
     }
 
     // --- PAGE: INSTALLMENTS & REPAYMENT TRACKING (PHASE 2 & 3) ---
+// ================================================================
+// MODULE: pages/InstallmentsPage.js
+// ================================================================
     function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
       const activeVisits = (allVisits || []).filter(v => !v.isDeleted);
 
@@ -6128,6 +6167,9 @@
     }
 
 
+// ================================================================
+// MODULE: components/ExportModal.js
+// ================================================================
             function ExportModal({ visit, onClose }) {
       const [scope, setScope] = useState('full');
       const [selectedRegion, setSelectedRegion] = useState('');
@@ -6222,6 +6264,9 @@
     }
 
     // --- GLOBAL UNIVERSAL SEARCH MODAL (OMNIBOX) ---
+// ================================================================
+// MODULE: components/GlobalSearchModal.js
+// ================================================================
     function GlobalSearchModal({ isOpen, onClose, allVisits, onNavigateToCase, onQuickPay }) {
       const [searchQuery, setSearchQuery] = useState('');
       const [filterCategory, setFilterCategory] = useState('all'); // 'all' | 'beneficiary' | 'church' | 'notes'
@@ -6489,6 +6534,9 @@
     }
 
 
+// ================================================================
+// MODULE: App.js
+// ================================================================
 function App() {
       const [activeTab, setActiveTab] = useState('execution'); // 'execution' | 'archive' | 'entry' | 'archiveDetails'
       const [showExportModal, setShowExportModal] = useState(false);
@@ -6972,7 +7020,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790074845151";
+      const CLIENT_BUILD_ID = "1790141488267";
       let initialEtag = null;
       let isUpdating = false;
 
