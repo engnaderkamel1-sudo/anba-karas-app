@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790147758973" />
+  <meta name="app-build-id" content="1790148484808" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -217,6 +217,11 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
 // --- ICONS FOR REPAYMENT & INSTALLMENTS ---
     const DollarSign = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
     const CreditCard = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>;
+    const ShieldCheck = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>;
+    const ShieldAlert = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+    const History = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>;
+    const Save = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>;
+    const Clock = ({ size=24, className='' }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
 
     // --- MIC INPUT COMPONENT ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -9774,6 +9779,751 @@ function AnalyticsPage({ allVisits = [], onNavigateToCase, onExport }) {
 
     // --- GLOBAL UNIVERSAL SEARCH MODAL (OMNIBOX) ---
 // ================================================================
+// MODULE: services/backupService.js
+// ================================================================
+// ================================================================
+// SERVICE: Backup, File Versions & Excel Export Service
+// ================================================================
+
+const BackupService = (() => {
+    let backupTimer = null;
+    let hasEditsToday = false;
+
+    // Helper: format YYYY-MM-DD
+    const getTodayDateStr = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    // Build full structured Excel workbook from all visits data
+    const generateAllDataWorkbook = (allVisits = []) => {
+        if (typeof XLSX === 'undefined') {
+            console.error('XLSX library is not loaded');
+            return null;
+        }
+
+        const wb = XLSX.utils.book_new();
+
+        // 1. SHEET: الحالات والزيارات
+        const casesRows = [
+            ['مسلسل', 'مكان الزيارة', 'تاريخ الزيارة', 'اسم المنطقة', 'اسم القرية', 'اسم الكنيسة', 'أسماء الخدام', 'اسم الحالة', 'الرقم القومي', 'الموبايل', 'نوع المشروع المقترح', 'قيمة المشروع (مبدئي)', 'قيمة القسط (مبدئي)', 'حالة المشروع', 'ملاحظات']
+        ];
+
+        // 2. SHEET: مشاريع التنفيذ
+        const projectsRows = [
+            ['مسلسل المشروع', 'تاريخ التنفيذ', 'اسم الحالة', 'الكنيسة', 'القرية', 'المنطقة', 'مكان الزيارة', 'نوع المشروع المقترح', 'نوع المشروع المنفذ', 'القيمة المعتمدة', 'القيمة المنفذة', 'القسط المنفذ', 'حالة التنفيذ', 'ملاحظات']
+        ];
+
+        // 3. SHEET: الأقساط والتحصيل
+        const installmentsRows = [
+            ['مسلسل القسط', 'اسم الحالة', 'الكنيسة', 'المنطقة', 'المشروع المنفذ', 'رقم القسط', 'قيمة القسط المطلوب', 'المبلغ المدفوع', 'المتبقي', 'حالة السداد', 'تاريخ الاستحقاق', 'تاريخ الدفع الفعلي', 'اسم المحصل', 'ملاحظات']
+        ];
+
+        let caseIdx = 1;
+        let projIdx = 1;
+        let instIdx = 1;
+
+        allVisits.filter(v => !v.isDeleted).forEach(visit => {
+            const loc = visit.location || '';
+            const vDate = visit.date || '';
+            (visit.churches || []).forEach(church => {
+                const reg = church.regionName || '';
+                const vil = church.villageName || '';
+                const chName = church.churchName || '';
+                const servants = church.servantName || '';
+
+                (church.cases || []).forEach(c => {
+                    casesRows.push([
+                        caseIdx++,
+                        loc,
+                        vDate,
+                        reg,
+                        vil,
+                        chName,
+                        servants,
+                        c.name || '',
+                        c.nationalId || '',
+                        c.phone || '',
+                        c.projectType || '',
+                        c.projectCost || 0,
+                        c.installmentAmount || 0,
+                        c.status || '',
+                        c.notes || ''
+                    ]);
+
+                    if (c.status === 'منفذ' || c.executedType || c.executedCost) {
+                        projectsRows.push([
+                            projIdx++,
+                            c.executionDate || '',
+                            c.name || '',
+                            chName,
+                            vil,
+                            reg,
+                            loc,
+                            c.projectType || '',
+                            c.executedType || c.projectType || '',
+                            c.projectCost || 0,
+                            c.executedCost || c.projectCost || 0,
+                            c.executedInstallment || c.installmentAmount || 0,
+                            c.status || 'منفذ',
+                            c.notes || ''
+                        ]);
+                    }
+
+                    if (c.installments && Array.isArray(c.installments)) {
+                        c.installments.forEach(inst => {
+                            installmentsRows.push([
+                                instIdx++,
+                                c.name || '',
+                                chName,
+                                reg,
+                                c.executedType || c.projectType || '',
+                                inst.installmentNumber || '',
+                                inst.amountDue || 0,
+                                inst.amountPaid || 0,
+                                (inst.amountDue || 0) - (inst.amountPaid || 0),
+                                inst.status || '',
+                                inst.dueDate || '',
+                                inst.paidDate || '',
+                                inst.collectorName || '',
+                                inst.notes || ''
+                            ]);
+                        });
+                    }
+                });
+            });
+        });
+
+        // 4. SHEET: إحصائيات عامة
+        const summaryRows = [
+            ['البند الإحصائي', 'القيمة'],
+            ['تاريخ إنشاء النسخة', new Date().toLocaleString('ar-EG')],
+            ['إجمالي عدد الزيارات النشطة', allVisits.filter(v => !v.isDeleted).length],
+            ['إجمالي عدد الحالات المسجلة', caseIdx - 1],
+            ['إجمالي المشاريع المنفذة', projIdx - 1],
+            ['إجمالي سجلات الأقساط', instIdx - 1]
+        ];
+
+        const wsCases = XLSX.utils.aoa_to_sheet(casesRows);
+        const wsProjects = XLSX.utils.aoa_to_sheet(projectsRows);
+        const wsInstallments = XLSX.utils.aoa_to_sheet(installmentsRows);
+        const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+
+        XLSX.utils.book_append_sheet(wb, wsSummary, 'ملخص عام');
+        XLSX.utils.book_append_sheet(wb, wsProjects, 'مشاريع التنفيذ');
+        XLSX.utils.book_append_sheet(wb, wsInstallments, 'الأقساط والتحصيل');
+        XLSX.utils.book_append_sheet(wb, wsCases, 'سجل الحالات والزيارات');
+
+        return wb;
+    };
+
+    // Download Excel on device
+    const downloadExcelBackup = (allVisits, customName = '') => {
+        const wb = generateAllDataWorkbook(allVisits);
+        if (!wb) return;
+        const filename = customName || `نسخة_احتياطية_خدمة_الانبا_كاراس_${getTodayDateStr()}.xlsx`;
+        XLSX.writeFile(wb, filename);
+    };
+
+    // Download raw JSON snapshot
+    const downloadJsonBackup = (snapshotData, customName = '') => {
+        const filename = customName || `backup_anba_karas_${getTodayDateStr()}.json`;
+        const blob = new Blob([JSON.stringify(snapshotData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    // Prune Firestore backups keeping only the latest 30 versions
+    const pruneOldBackups = async (dbInstance) => {
+        if (!dbInstance) return;
+        try {
+            const snap = await dbInstance.collection('backups').orderBy('date', 'desc').get();
+            const docs = snap.docs;
+            if (docs.length > 30) {
+                const toDelete = docs.slice(30);
+                const batch = dbInstance.batch();
+                toDelete.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+                console.log(`[BackupService] Pruned ${toDelete.length} old backup(s) to save Firestore storage.`);
+            }
+        } catch (e) {
+            console.warn('[BackupService] Backup pruning error:', e);
+        }
+    };
+
+    // Perform actual save/update of today's backup
+    const commitTodayBackup = async (dbInstance, allVisits) => {
+        if (!dbInstance || !allVisits || allVisits.length === 0) return;
+        const todayStr = getTodayDateStr();
+        const docId = `backup_${todayStr}`;
+
+        try {
+            // Count metrics
+            let totalCases = 0;
+            let totalProjects = 0;
+            allVisits.filter(v => !v.isDeleted).forEach(v => {
+                (v.churches || []).forEach(ch => {
+                    (ch.cases || []).forEach(c => {
+                        totalCases++;
+                        if (c.status === 'منفذ' || c.executedType || c.executedCost) {
+                            totalProjects++;
+                        }
+                    });
+                });
+            });
+
+            // 1. Save to local cache first
+            try {
+                localStorage.setItem(`anba_karas_backup_${todayStr}`, JSON.stringify({
+                    date: todayStr,
+                    updatedAt: Date.now(),
+                    visits: allVisits
+                }));
+            } catch (e) {
+                console.warn('Local backup caching error:', e);
+            }
+
+            // 2. Save/Update in Firestore under 'backups' collection
+            const backupPayload = {
+                date: todayStr,
+                updatedAt: Date.now(),
+                formattedDate: new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+                visitsCount: allVisits.filter(v => !v.isDeleted).length,
+                casesCount: totalCases,
+                projectsCount: totalProjects,
+                data: JSON.stringify(allVisits)
+            };
+
+            await dbInstance.collection('backups').doc(docId).set(backupPayload, { merge: true });
+            console.log(`[BackupService] Today's backup successfully updated: ${docId}`);
+
+            // 3. Keep only latest 30 backups in Firestore
+            await pruneOldBackups(dbInstance);
+
+            // 4. Send to Webhook / Google Drive if configured
+            const driveWebhookUrl = localStorage.getItem('anba_karas_drive_webhook_url');
+            if (driveWebhookUrl) {
+                sendBackupToDriveWebhook(driveWebhookUrl, allVisits, todayStr);
+            }
+
+        } catch (err) {
+            console.error('[BackupService] Failed to commit backup:', err);
+        }
+    };
+
+    // Send backup to Google Apps Script Webhook (for Google Drive auto upload)
+    const sendBackupToDriveWebhook = async (webhookUrl, allVisits, dateStr) => {
+        try {
+            const payload = {
+                action: 'upload_backup',
+                date: dateStr,
+                filename: `نسخة_احتياطية_خدمة_الانبا_كاراس_${dateStr}.json`,
+                timestamp: Date.now(),
+                data: allVisits
+            };
+            await fetch(webhookUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            console.log('[BackupService] Dispatched backup to Google Drive webhook.');
+        } catch (e) {
+            console.warn('[BackupService] Webhook upload error:', e);
+        }
+    };
+
+    // Debounced trigger called whenever ANY edit happens
+    const notifyDataChanged = (dbInstance, allVisits) => {
+        hasEditsToday = true;
+        try {
+            localStorage.setItem('anba_karas_has_edits_' + getTodayDateStr(), 'true');
+        } catch(e) {}
+
+        // Debounce: update backup 5 seconds after edits stop
+        if (backupTimer) clearTimeout(backupTimer);
+        backupTimer = setTimeout(() => {
+            commitTodayBackup(dbInstance, allVisits);
+        }, 5000);
+    };
+
+    // Emergency/Manual immediate snapshot
+    const createManualSnapshot = async (dbInstance, allVisits, label = 'يدوية') => {
+        const todayStr = getTodayDateStr();
+        const timeStr = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
+        const docId = `backup_${todayStr}_${timeStr}`;
+
+        let totalCases = 0;
+        let totalProjects = 0;
+        (allVisits || []).filter(v => !v.isDeleted).forEach(v => {
+            (v.churches || []).forEach(ch => {
+                (ch.cases || []).forEach(c => {
+                    totalCases++;
+                    if (c.status === 'منفذ' || c.executedType) totalProjects++;
+                });
+            });
+        });
+
+        const backupPayload = {
+            date: todayStr,
+            time: timeStr,
+            label,
+            updatedAt: Date.now(),
+            formattedDate: new Date().toLocaleString('ar-EG'),
+            visitsCount: (allVisits || []).filter(v => !v.isDeleted).length,
+            casesCount: totalCases,
+            projectsCount: totalProjects,
+            data: JSON.stringify(allVisits)
+        };
+
+        if (dbInstance) {
+            await dbInstance.collection('backups').doc(docId).set(backupPayload);
+            await pruneOldBackups(dbInstance);
+        }
+        return docId;
+    };
+
+    return {
+        getTodayDateStr,
+        generateAllDataWorkbook,
+        downloadExcelBackup,
+        downloadJsonBackup,
+        commitTodayBackup,
+        notifyDataChanged,
+        createManualSnapshot,
+        pruneOldBackups
+    };
+})();
+
+// ================================================================
+// MODULE: components/BackupVersionsModal.js
+// ================================================================
+// ================================================================
+// COMPONENT: Backup Versions & Restore Modal (File Versions)
+// ================================================================
+
+function BackupVersionsModal({ isOpen, onClose, allVisits, onRestoreSuccess }) {
+    const [backups, setBackups] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isRestoring, setIsRestoring] = useState(false);
+    const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [driveWebhookUrl, setDriveWebhookUrl] = useState(() => {
+        try {
+            return localStorage.getItem('anba_karas_drive_webhook_url') || '';
+        } catch(e) {
+            return '';
+        }
+    });
+    const [showDriveConfig, setShowDriveConfig] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        loadBackups();
+    }, [isOpen]);
+
+    const loadBackups = async () => {
+        setIsLoading(true);
+        try {
+            if (db) {
+                const snap = await db.collection('backups').orderBy('updatedAt', 'desc').limit(30).get();
+                const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setBackups(list);
+            } else {
+                setBackups([]);
+            }
+        } catch (e) {
+            console.error('Error fetching backups:', e);
+            window.notifyError('تعذر تحميل سجل النسخ الاحتياطية.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCreateNow = async () => {
+        if (isReadOnly) {
+            window.notifyWarning('أنت في وضع المشاهدة فقط.');
+            return;
+        }
+        setIsCreatingSnapshot(true);
+        try {
+            await BackupService.createManualSnapshot(db, allVisits, 'نسخة فورية يدوية');
+            window.notifySuccess('تم إنشاء نسخة احتياطية فورية وحفظها بنجاح!');
+            await loadBackups();
+        } catch (e) {
+            console.error(e);
+            window.notifyError('حدث خطأ أثناء أخذ النسخة الاحتياطية.');
+        } finally {
+            setIsCreatingSnapshot(false);
+        }
+    };
+
+    const handleDownloadExcelCurrent = () => {
+        BackupService.downloadExcelBackup(allVisits, `نسخة_كاملة_${BackupService.getTodayDateStr()}.xlsx`);
+    };
+
+    const handleDownloadBackupExcel = (backup) => {
+        try {
+            const parsed = JSON.parse(backup.data || '[]');
+            BackupService.downloadExcelBackup(parsed, `نسخة_${backup.date || backup.id}.xlsx`);
+        } catch (e) {
+            window.notifyError('تعذر تجهيز ملف الإكسيل لهذه النسخة.');
+        }
+    };
+
+    const handleDownloadBackupJson = (backup) => {
+        try {
+            const parsed = JSON.parse(backup.data || '[]');
+            BackupService.downloadJsonBackup(parsed, `backup_${backup.date || backup.id}.json`);
+        } catch (e) {
+            window.notifyError('تعذر تنزيل ملف النسخة.');
+        }
+    };
+
+    const handleRestoreBackup = (backup) => {
+        if (isReadOnly) {
+            window.notifyWarning('أنت في وضع المشاهدة فقط.');
+            return;
+        }
+
+        let parsedData = [];
+        try {
+            parsedData = JSON.parse(backup.data || '[]');
+        } catch (e) {
+            window.notifyError('الملف تالف ولا يمكن قراءته.');
+            return;
+        }
+
+        window.showConfirm({
+            title: `استرجاع نسخة (${backup.date || backup.id})`,
+            message: `⚠️ تنبيه هام: سيتم استرجاع بيانات هذه النسخة (${backup.visitsCount || 0} زيارة و ${backup.casesCount || 0} حالة). سيقوم النظام أولاً بأخذ نسخة أمان احتياطية تلقائية للوضع الحالي قبل الاستبدال. هل تود الاستمرار؟`,
+            confirmText: 'نعم، استرجع النسخة الآن',
+            cancelText: 'إلغاء',
+            isDangerous: true,
+            onConfirm: async () => {
+                setIsRestoring(true);
+                try {
+                    // 1. Create a safety snapshot of current state
+                    await BackupService.createManualSnapshot(db, allVisits, 'نسخة أمان تلقائية قبل الاسترجاع');
+
+                    // 2. Restore each visit to Firestore
+                    const batch = db.batch();
+                    parsedData.forEach(v => {
+                        const ref = db.collection('visits').doc(v.id || v.visitId);
+                        batch.set(ref, v);
+                    });
+                    await batch.commit();
+
+                    window.notifySuccess('تم استرجاع النسخة بنجاح تام وسيعاد تحميل البيانات!');
+                    if (onRestoreSuccess) onRestoreSuccess(parsedData);
+                    onClose();
+                } catch (e) {
+                    console.error('Restore error:', e);
+                    window.notifyError('حدث خطأ أثناء استرجاع النسخة.');
+                } finally {
+                    setIsRestoring(false);
+                }
+            }
+        });
+    };
+
+    const handleImportExternalJson = (e) => {
+        if (isReadOnly) {
+            window.notifyWarning('أنت في وضع المشاهدة فقط.');
+            return;
+        }
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const parsed = JSON.parse(event.target.result);
+                if (!Array.isArray(parsed)) {
+                    window.notifyError('صيغة الملف غير متطابقة. يجب أن يكون ملف مصفوفة زيارات JSON.');
+                    return;
+                }
+
+                window.showConfirm({
+                    title: 'استيراد نسخة احتياطية خارجية',
+                    message: `تم العثور على (${parsed.length}) زيارة في الملف. هل تود استيرادها وحفظها في قاعدة البيانات السحابية؟`,
+                    confirmText: 'تأكيد الاستيراد',
+                    cancelText: 'إلغاء',
+                    onConfirm: async () => {
+                        setIsRestoring(true);
+                        try {
+                            await BackupService.createManualSnapshot(db, allVisits, 'نسخة أمان قبل استيراد خارجي');
+                            const batch = db.batch();
+                            parsed.forEach(v => {
+                                const id = v.id || v.visitId || uuidv4();
+                                const ref = db.collection('visits').doc(id);
+                                batch.set(ref, { ...v, id });
+                            });
+                            await batch.commit();
+                            window.notifySuccess('تم استيراد الملف بنجاح!');
+                            if (onRestoreSuccess) onRestoreSuccess(parsed);
+                            onClose();
+                        } catch (err) {
+                            console.error(err);
+                            window.notifyError('فشل استيراد الملف.');
+                        } finally {
+                            setIsRestoring(false);
+                        }
+                    }
+                });
+            } catch (err) {
+                window.notifyError('الملف المختار ليس بصيغة JSON صحيحة.');
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = ''; // Reset input
+    };
+
+    const saveDriveWebhook = () => {
+        try {
+            localStorage.setItem('anba_karas_drive_webhook_url', driveWebhookUrl.trim());
+            window.notifySuccess('تم حفظ رابط Google Drive Webhook بنجاح!');
+            setShowDriveConfig(false);
+        } catch(e) {
+            window.notifyError('تعذر الحفظ محلياً.');
+        }
+    };
+
+    if (!isOpen) return null;
+
+    const filteredBackups = backups.filter(b => 
+        (b.date || '').includes(searchTerm) ||
+        (b.formattedDate || '').includes(searchTerm) ||
+        (b.label || '').includes(searchTerm)
+    );
+
+    return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-5 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+                
+                {/* Header */}
+                <div className="bg-[#002f6c] p-4 sm:p-5 text-white flex justify-between items-center border-b border-[#001f4c]">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-amber-400/20 p-2 rounded-xl text-amber-300 border border-amber-400/30">
+                            <ShieldCheck size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-lg sm:text-xl text-white flex items-center gap-2">
+                                مركز النسخ الاحتياطي وتاريخ الإصدارات
+                            </h3>
+                            <p className="text-xs text-blue-200 mt-0.5">
+                                حماية البيانات تلقائياً في نهاية كل يوم عمل مع تدوير آمن وحفظ شيتات الإكسيل
+                            </p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="text-white/80 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors">
+                        <X size={24} />
+                    </button>
+                </div>
+
+                {/* Sub-header Actions */}
+                <div className="bg-blue-50/60 p-3 sm:p-4 border-b border-blue-100 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                            onClick={handleCreateNow}
+                            disabled={isCreatingSnapshot || isReadOnly}
+                            className="flex items-center gap-1.5 bg-[#002f6c] hover:bg-[#001f4c] text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold shadow-sm transition-all disabled:opacity-50"
+                        >
+                            <Save size={16} className={isCreatingSnapshot ? "animate-spin" : "text-amber-400"} />
+                            <span>{isCreatingSnapshot ? "جاري إنشاء النسخة..." : "أخذ نسخة فورية الآن"}</span>
+                        </button>
+
+                        <button
+                            onClick={handleDownloadExcelCurrent}
+                            className="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold shadow-sm transition-all"
+                            title="تحميل شيت إكسيل شامل لجميع الزيارات والحالات والمشاريع الحالية"
+                        >
+                            <FileSpreadsheet size={16} />
+                            <span>تحميل إكسيل كامل للبيانات</span>
+                        </button>
+
+                        <label className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold shadow-sm cursor-pointer transition-all">
+                            <Upload size={16} className="text-blue-600" />
+                            <span>استيراد ملف JSON خارجي</span>
+                            <input type="file" accept=".json" onChange={handleImportExternalJson} className="hidden" />
+                        </label>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setShowDriveConfig(!showDriveConfig)}
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium border transition-all ${
+                                driveWebhookUrl ? 'bg-amber-50 text-amber-900 border-amber-300' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                            }`}
+                        >
+                            <Cloud size={16} className={driveWebhookUrl ? "text-amber-600" : "text-gray-400"} />
+                            <span>ربط Google Drive</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Optional Google Drive Webhook Accordion */}
+                {showDriveConfig && (
+                    <div className="bg-amber-50/70 p-4 border-b border-amber-200 text-xs sm:text-sm text-gray-800 animate-fade-in">
+                        <div className="font-bold text-amber-900 mb-1 flex items-center gap-2">
+                            <span>📁</span> إعداد الرفع التلقائي إلى Google Drive (Webhook):
+                        </div>
+                        <p className="text-gray-600 mb-2 leading-relaxed">
+                            يمكنك وضع رابط Google Apps Script Webhook لرفع نسخة شيت الإكسيل والـ JSON يومياً في مجلد مخصص على درايف تلقائياً في الخلفية.
+                        </p>
+                        <div className="flex gap-2">
+                            <input 
+                                type="url" 
+                                placeholder="https://script.google.com/macros/s/.../exec"
+                                value={driveWebhookUrl}
+                                onChange={e => setDriveWebhookUrl(e.target.value)}
+                                className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs bg-white text-left font-mono"
+                                dir="ltr"
+                            />
+                            <button onClick={saveDriveWebhook} className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs">
+                                حفظ الرابط
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Search Bar */}
+                <div className="p-3 bg-white border-b border-gray-100 flex items-center gap-3">
+                    <div className="relative flex-1">
+                        <Search size={16} className="absolute right-3 top-3 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="بحث في تواريخ وأسماء النسخ الاحتياطية..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="w-full pr-9 pl-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-[#002f6c] focus:outline-none transition-all"
+                        />
+                    </div>
+                    <span className="text-xs text-gray-500 font-medium whitespace-nowrap bg-gray-100 px-2.5 py-1.5 rounded-lg">
+                        المعروض: {filteredBackups.length} نسخة (الحد الأقصى للتخزين: 30)
+                    </span>
+                </div>
+
+                {/* Backups List */}
+                <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 bg-[#f8fafc]">
+                    {isLoading ? (
+                        <div className="py-16 text-center text-gray-400 flex flex-col items-center justify-center">
+                            <Clock size={36} className="animate-spin text-[#002f6c] mb-3" />
+                            <p className="font-medium text-gray-600">جاري فحص وتحديث النسخ الاحتياطية السحابية...</p>
+                        </div>
+                    ) : filteredBackups.length === 0 ? (
+                        <div className="py-16 text-center bg-white rounded-xl border border-dashed border-gray-300 p-8">
+                            <ShieldAlert size={42} className="mx-auto text-amber-500 mb-3" />
+                            <h4 className="font-bold text-gray-700 text-base mb-1">لا توجد نسخ احتياطية مسجلة بعد</h4>
+                            <p className="text-xs text-gray-500 max-w-md mx-auto">
+                                يقوم النظام بإنشاء نسخة تلقائياً في نهاية أي يوم يشهد إدخال أو تعديل بيانات، أو يمكنك النقر على زر <strong>"أخذ نسخة فورية الآن"</strong> أعلاه لحفظ أول نسخة سحابية فوراً.
+                            </p>
+                        </div>
+                    ) : (
+                        filteredBackups.map((b) => (
+                            <div key={b.id} className="bg-white border border-gray-200 hover:border-blue-300 rounded-xl p-3.5 sm:p-4 shadow-sm hover:shadow transition-all flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                
+                                {/* Info */}
+                                <div className="flex items-start gap-3">
+                                    <div className="bg-blue-50 text-[#002f6c] p-2.5 rounded-xl border border-blue-100 shrink-0 mt-0.5">
+                                        <History size={20} />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="font-bold text-gray-900 text-sm sm:text-base font-sans">
+                                                {b.date || b.id}
+                                            </span>
+                                            {b.label && (
+                                                <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                    {b.label}
+                                                </span>
+                                            )}
+                                            {b.id === `backup_${BackupService.getTodayDateStr()}` && (
+                                                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+                                                    نسخة اليوم النشطة
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {b.formattedDate || new Date(b.updatedAt).toLocaleString('ar-EG')}
+                                        </p>
+                                        <div className="flex items-center gap-3 mt-2 text-xs text-gray-600 font-medium">
+                                            <span className="bg-gray-100 px-2 py-0.5 rounded">
+                                                🏠 {formatNumber(b.visitsCount || 0)} زيارة
+                                            </span>
+                                            <span className="bg-gray-100 px-2 py-0.5 rounded">
+                                                👥 {formatNumber(b.casesCount || 0)} حالة
+                                            </span>
+                                            <span className="bg-gray-100 px-2 py-0.5 rounded text-amber-800 bg-amber-50">
+                                                ⚡ {formatNumber(b.projectsCount || 0)} مشروع
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex items-center gap-1.5 shrink-0 justify-end border-t md:border-t-0 pt-2 md:pt-0">
+                                    <button
+                                        onClick={() => handleDownloadBackupExcel(b)}
+                                        className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition-colors"
+                                        title="تحميل شيت إكسيل للنسخة"
+                                    >
+                                        <FileSpreadsheet size={14} />
+                                        <span>إكسيل</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleDownloadBackupJson(b)}
+                                        className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-xs font-bold transition-colors"
+                                        title="تحميل ملف JSON كامل"
+                                    >
+                                        <Download size={14} />
+                                        <span>JSON</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleRestoreBackup(b)}
+                                        disabled={isRestoring || isReadOnly}
+                                        className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shadow-sm transition-colors disabled:opacity-50"
+                                        title="استرجاع البيانات من هذا الإصدار"
+                                    >
+                                        <RotateCcw size={14} />
+                                        <span>استرجاع الإصدار</span>
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Footer Info */}
+                <div className="bg-white p-3 border-t border-gray-200 flex items-center justify-between text-xs text-gray-500 px-5">
+                    <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        نظام الحماية اليومي مفعل: يتم تحديث نسخة اليوم دورياً وحذف النسخ الأقدم من 30 يوماً تلقائياً.
+                    </span>
+                    <button onClick={onClose} className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-bold">
+                        إغلاق
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    );
+}
+
+// ================================================================
 // MODULE: components/GlobalSearchModal.js
 // ================================================================
     function GlobalSearchModal({ isOpen, onClose, allVisits, onNavigateToCase, onQuickPay }) {
@@ -10079,6 +10829,7 @@ function App() {
       });
       const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
       const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+      const [showBackupModal, setShowBackupModal] = useState(false);
       const [quickActionModalCase, setQuickActionModalCase] = useState(null);
       const [currentVisitId, setCurrentVisitId] = useState(null);
       const [viewingArchive, setViewingArchive] = useState(null);
@@ -10143,7 +10894,12 @@ function App() {
              const toSave = { ...next, visitId: currentVisitId };
              if (!toSave.createdAt) toSave.createdAt = Date.now();
              db.collection('visits').doc(currentVisitId).set(toSave)
-               .then(() => setSyncStatus('synced'))
+               .then(() => {
+                 setSyncStatus('synced');
+                 if (typeof BackupService !== 'undefined') {
+                   BackupService.notifyDataChanged(db, allVisits);
+                 }
+               })
                .catch(() => setSyncStatus('error'));
           }
           return next;
@@ -10350,10 +11106,16 @@ function App() {
 
             transaction.set(visitRef, finalDoc);
           });
+          if (typeof BackupService !== 'undefined') {
+            BackupService.notifyDataChanged(db, allVisits);
+          }
         } catch (err) {
           console.warn("safeUpdateVisit fallback to direct set:", err);
           try {
             await visitRef.set({ ...upd, updatedAt: Date.now() });
+            if (typeof BackupService !== 'undefined') {
+              BackupService.notifyDataChanged(db, allVisits);
+            }
           } catch(e) {}
         }
       };
@@ -10459,6 +11221,9 @@ function App() {
                 <button onClick={() => { setActiveTab('entry'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'entry' ? 'bg-blue-50 text-[#002f6c] border-r-4 border-[#002f6c] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
                    <Edit2 size={20} /> تسجيل الزيارة الحالية
                 </button>
+                <button onClick={() => { setShowBackupModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-amber-900 bg-amber-50/70 hover:bg-amber-100 border-t border-b border-amber-200/60 font-bold">
+                   <ShieldCheck size={20} className="text-amber-600" /> النسخ الاحتياطي وتاريخ الإصدارات
+                </button>
                 <button onClick={() => { setActiveTab('trash'); setIsSidebarOpen(false); }} className={`flex items-center justify-between mt-auto px-6 py-4 text-right transition-colors border-t border-gray-100 ${activeTab === 'trash' ? 'bg-red-50 text-red-600 border-r-4 border-red-600 font-bold' : 'text-gray-600 hover:bg-red-50 hover:text-red-600'}`}>
                    <div className="flex items-center gap-3"><Trash2 size={20} /> سلة المهملات</div>
                    {allVisits.filter(v => v.isDeleted).length > 0 && (
@@ -10556,6 +11321,16 @@ function App() {
            {showExportModal && exportVisitData && (
                  <ExportModal visit={exportVisitData} onClose={() => setShowExportModal(false)} />
              )}
+           {showBackupModal && (
+                 <BackupVersionsModal 
+                   isOpen={showBackupModal} 
+                   onClose={() => setShowBackupModal(false)} 
+                   allVisits={allVisits} 
+                   onRestoreSuccess={(restoredVisits) => {
+                     setAllVisits(restoredVisits);
+                   }}
+                 />
+             )}
           </main>
            {/* Fullscreen Splash Screen for Saint Anba Karas (3 Seconds) */}
            {showSplash && (
@@ -10634,7 +11409,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790147758973";
+      const CLIENT_BUILD_ID = "1790148484808";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
