@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790141894725" />
+  <meta name="app-build-id" content="1790142466187" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -91,7 +91,7 @@
       }
     }
 
-    const { useState, useEffect, useRef } = React;
+    const { useState, useEffect, useRef, useMemo } = React;
     const urlParams = new URLSearchParams(window.location.search);
     const isReadOnly = urlParams.get('mode') === 'view' || urlParams.get('readonly') === 'true';
 
@@ -4477,6 +4477,11 @@
                             <td className="p-2.5 text-gray-600">
                               <div>{item.churchName || '—'}</div>
                               {item.regionName && <div className="text-[10px] text-gray-400">{item.regionName}</div>}
+                              {item.visitDate && (
+                                <div className="text-[10px] text-blue-600 font-sans mt-0.5">
+                                  🏛️ {item.visitLocation ? `${item.visitLocation} • ` : ''}{item.visitDate}
+                                </div>
+                              )}
                             </td>
                             <td className="p-2.5 font-sans font-bold text-rose-700">
                               {formatNumber(remaining)} ج.م
@@ -5188,6 +5193,12 @@
       const toggleRegion = (reg) => setExpandedRegions(prev => ({ ...prev, [reg]: prev[reg] === false ? true : false }));
       const toggleChurch = (chId) => setExpandedChurches(prev => ({ ...prev, [chId]: prev[chId] === false ? true : false }));
 
+      // Accordion states for Geographic (Region -> Church -> Visits) view
+      const [expandedGeoRegions, setExpandedGeoRegions] = useState({});
+      const [expandedGeoChurches, setExpandedGeoChurches] = useState({});
+      const toggleGeoRegion = (reg) => setExpandedGeoRegions(prev => ({ ...prev, [reg]: prev[reg] === false ? true : false }));
+      const toggleGeoChurch = (key) => setExpandedGeoChurches(prev => ({ ...prev, [key]: prev[key] === false ? true : false }));
+
       // Modals
       const [activeModalCaseInfo, setActiveModalCaseInfo] = useState(null);
       const [showAddLegacyModal, setShowAddLegacyModal] = useState(false);
@@ -5349,6 +5360,143 @@
       const uniqueRegions = Array.from(new Set(allExecutedCases.map(i => i.regionName).filter(Boolean))).sort();
       const uniqueChurches = Array.from(new Set(allExecutedCases.filter(i => !filterRegion || i.regionName === filterRegion).map(i => i.churchName).filter(Boolean))).sort();
 
+      // Group all executed cases by Region -> Church -> Visit for the Geographic View
+      const geoRegionsData = useMemo(() => {
+        const regionsMap = {};
+
+        allExecutedCases.forEach(item => {
+          const rName = item.regionName || 'منطقة غير محددة';
+          const chKey = `${rName}__${item.churchName || 'كنيسة غير محددة'}`;
+          const chName = item.churchName || 'كنيسة غير محددة';
+          const vId = item.visitId;
+
+          if (!regionsMap[rName]) {
+            regionsMap[rName] = {
+              regionName: rName,
+              totalVal: 0,
+              paidVal: 0,
+              remVal: 0,
+              monthlyInst: 0,
+              casesCount: 0,
+              compCount: 0,
+              cases: [],
+              churchesMap: {}
+            };
+          }
+
+          const reg = regionsMap[rName];
+          reg.totalVal += item.totalAmt;
+          reg.paidVal += item.totalPaid;
+          reg.remVal += item.remainingAmt;
+          if (!item.isCompleted) {
+            reg.monthlyInst += item.monthlyAmt;
+          } else {
+            reg.compCount++;
+          }
+          reg.casesCount++;
+          reg.cases.push(item);
+
+          if (!reg.churchesMap[chKey]) {
+            reg.churchesMap[chKey] = {
+              key: chKey,
+              churchName: chName,
+              regionName: rName,
+              villageName: item.villageName || '',
+              totalVal: 0,
+              paidVal: 0,
+              remVal: 0,
+              monthlyInst: 0,
+              casesCount: 0,
+              compCount: 0,
+              cases: [],
+              visitsMap: {}
+            };
+          }
+
+          const ch = reg.churchesMap[chKey];
+          ch.totalVal += item.totalAmt;
+          ch.paidVal += item.totalPaid;
+          ch.remVal += item.remainingAmt;
+          if (!item.isCompleted) {
+            ch.monthlyInst += item.monthlyAmt;
+          } else {
+            ch.compCount++;
+          }
+          ch.casesCount++;
+          ch.cases.push(item);
+
+          if (!ch.visitsMap[vId]) {
+            ch.visitsMap[vId] = {
+              visitId: vId,
+              visitDate: item.visitDate,
+              visitLocation: item.visitLocation,
+              cases: []
+            };
+          }
+
+          ch.visitsMap[vId].cases.push(item);
+        });
+
+        return Object.values(regionsMap).map(reg => ({
+          ...reg,
+          churches: Object.values(reg.churchesMap).map(ch => ({
+            ...ch,
+            visits: Object.values(ch.visitsMap).sort((a, b) => (b.visitDate || '').localeCompare(a.visitDate || ''))
+          })).sort((a, b) => a.churchName.localeCompare(b.churchName, 'ar'))
+        })).sort((a, b) => a.regionName.localeCompare(b.regionName, 'ar'));
+      }, [allExecutedCases]);
+
+      // Filter geoRegionsData based on filterRegion and filterSearch
+      const filteredGeoRegions = useMemo(() => {
+        let list = geoRegionsData;
+        if (filterRegion) {
+          list = list.filter(r => r.regionName === filterRegion);
+        }
+        if (filterSearch.trim()) {
+          const norm = normalizeArabicText(filterSearch);
+          list = list.map(reg => {
+            const regMatches = normalizeArabicText(reg.regionName).includes(norm);
+            const matchingChurches = reg.churches.map(ch => {
+              const chMatches = normalizeArabicText(ch.churchName).includes(norm) ||
+                                normalizeArabicText(ch.villageName).includes(norm);
+              const matchingVisits = ch.visits.map(vItem => {
+                const vMatches = normalizeArabicText(vItem.visitLocation || '').includes(norm) ||
+                                 (vItem.visitDate || '').includes(filterSearch.trim());
+                const matchingCases = vItem.cases.filter(c => 
+                  normalizeArabicText(c.caseObj.caseName || '').includes(norm) ||
+                  normalizeArabicText(c.caseObj.executedProjectType || c.caseObj.projectType || '').includes(norm) ||
+                  normalizeArabicText(c.caseObj.nationalId || '').includes(norm)
+                );
+                if (regMatches || chMatches || vMatches) {
+                  return vItem;
+                }
+                if (matchingCases.length > 0) {
+                  return { ...vItem, cases: matchingCases };
+                }
+                return null;
+              }).filter(Boolean);
+
+              if (regMatches || chMatches) {
+                return ch;
+              }
+              if (matchingVisits.length > 0) {
+                return { ...ch, visits: matchingVisits };
+              }
+              return null;
+            }).filter(Boolean);
+
+            if (regMatches) {
+              return reg;
+            }
+            if (matchingChurches.length > 0) {
+              return { ...reg, churches: matchingChurches };
+            }
+            return null;
+          }).filter(Boolean);
+        }
+        return list;
+      }, [geoRegionsData, filterRegion, filterSearch]);
+
       // Handle updating payments from InstallmentModal
       const handleSavePayments = (updatedPayments) => {
         if (!activeModalCaseInfo) return;
@@ -5400,55 +5548,73 @@
         });
       };
 
-      // Execute batch payment across target visit
+      // Execute batch payment across target visit(s)
       const handleExecuteBatchPayment = (paidDate, notes, selectedCaseIds) => {
         if (!batchPaymentConfig) return;
-        const { visitId } = batchPaymentConfig;
-        const targetVisit = activeVisits.find(v => v.id === visitId);
-        if (!targetVisit) return;
+        const { targetCases } = batchPaymentConfig;
+        const selectedSet = new Set(selectedCaseIds);
+
+        // Group selected cases by visitId
+        const casesByVisit = {};
+        targetCases.forEach(item => {
+          const c = item.caseObj || item;
+          if (selectedSet.has(c.id)) {
+            const vId = item.visitId || c.visitId || batchPaymentConfig.visitId;
+            if (vId) {
+              if (!casesByVisit[vId]) casesByVisit[vId] = [];
+              casesByVisit[vId].push(c.id);
+            }
+          }
+        });
 
         let totalPaidCasesCount = 0;
         let totalPaidAmount = 0;
-        const selectedSet = new Set(selectedCaseIds);
 
-        const updatedChurches = (targetVisit.churches || []).map(ch => ({
-          ...ch,
-          servantsGroups: (ch.servantsGroups || []).map(sg => ({
-            ...sg,
-            cases: (sg.cases || []).map(c => {
-              if (selectedSet.has(c.id)) {
-                const total = parseFloat(c.executedProjectValue || c.projectValue) || 0;
-                const monthly = parseFloat(c.executedInstallmentAmount || c.installmentAmount) || 0;
-                const payments = c.payments || [];
-                const paid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                const remaining = Math.max(0, total - paid);
+        Object.entries(casesByVisit).forEach(([vId, caseIdsList]) => {
+          const targetVisit = activeVisits.find(v => v.id === vId);
+          if (!targetVisit) return;
+          const vCaseSet = new Set(caseIdsList);
 
-                if (remaining > 0) {
-                  const payAmt = monthly > 0 ? Math.min(monthly, remaining) : remaining;
-                  if (payAmt > 0) {
-                    totalPaidCasesCount++;
-                    totalPaidAmount += payAmt;
-                    const newPayment = {
-                      id: uuidv4(),
-                      amount: payAmt,
-                      paidDate: paidDate || new Date().toISOString().split('T')[0],
-                      notes: notes || 'سداد قسط شهري مجمع',
-                      createdAt: Date.now()
-                    };
-                    return {
-                      ...c,
-                      payments: [...payments, newPayment]
-                    };
+          const updatedChurches = (targetVisit.churches || []).map(ch => ({
+            ...ch,
+            servantsGroups: (ch.servantsGroups || []).map(sg => ({
+              ...sg,
+              cases: (sg.cases || []).map(c => {
+                if (vCaseSet.has(c.id)) {
+                  const total = parseFloat(c.executedProjectValue || c.projectValue) || 0;
+                  const monthly = parseFloat(c.executedInstallmentAmount || c.installmentAmount) || 0;
+                  const payments = c.payments || [];
+                  const paid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                  const remaining = Math.max(0, total - paid);
+
+                  if (remaining > 0) {
+                    const payAmt = monthly > 0 ? Math.min(monthly, remaining) : remaining;
+                    if (payAmt > 0) {
+                      totalPaidCasesCount++;
+                      totalPaidAmount += payAmt;
+                      const newPayment = {
+                        id: uuidv4(),
+                        amount: payAmt,
+                        paidDate: paidDate || new Date().toISOString().split('T')[0],
+                        notes: notes || 'سداد قسط شهري مجمع',
+                        createdAt: Date.now()
+                      };
+                      return {
+                        ...c,
+                        payments: [...payments, newPayment]
+                      };
+                    }
                   }
                 }
-              }
-              return c;
-            })
-          }))
-        }));
+                return c;
+              })
+            }))
+          }));
 
-        const updatedVisit = { ...targetVisit, churches: updatedChurches };
-        onUpdateVisit(updatedVisit);
+          const updatedVisit = { ...targetVisit, churches: updatedChurches };
+          onUpdateVisit(updatedVisit);
+        });
+
         setBatchPaymentConfig(null);
         window.notifySuccess(`تم تسجيل سداد القسط بنجاح لعدد (${totalPaidCasesCount}) حالة بإجمالي ${formatNumber(totalPaidAmount)} ج.م.`);
       };
@@ -6205,6 +6371,21 @@
 
                   <button
                     type="button"
+                    onClick={() => setViewMode('regions')}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                      viewMode === 'regions'
+                        ? 'bg-[#002f6c] text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span>🏛️ دليل المناطق والكنائس</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-sans ${viewMode === 'regions' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-800'}`}>
+                      {formatNumber(geoRegionsData.length)} منطقة
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => setViewMode('allCases')}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                       viewMode === 'allCases'
@@ -6226,7 +6407,7 @@
                       type="text"
                       value={filterSearch}
                       onChange={(e) => setFilterSearch(e.target.value)}
-                      placeholder={viewMode === 'visits' ? "بحث باسم المنطقة أو التاريخ..." : "بحث باسم المستفيد أو المشروع..."}
+                      placeholder={viewMode === 'visits' ? "بحث باسم المنطقة أو التاريخ..." : viewMode === 'regions' ? "بحث بالمنطقة أو الكنيسة أو المستفيد..." : "بحث باسم المستفيد أو المشروع..."}
                       className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 focus:border-[#002f6c] outline-none"
                     />
                     <Search size={14} className="absolute left-2.5 top-2 text-gray-400" />
@@ -6375,6 +6556,342 @@
                                 )}
                               </div>
                             </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ---------------------------------------------------- */}
+              {/* SUBVIEW: REGIONS & CHURCHES HIERARCHICAL VIEW        */}
+              {/* ---------------------------------------------------- */}
+              {viewMode === 'regions' && (
+                <div>
+                  {filteredGeoRegions.length === 0 ? (
+                    <div className="bg-white rounded-2xl p-12 text-center text-gray-400 text-sm border border-gray-100 shadow-sm space-y-3">
+                      <div className="text-3xl">🏛️</div>
+                      <div className="font-bold text-gray-700">لا توجد مناطق أو كنائس مطابقة لمعايير البحث.</div>
+                      <p className="text-xs text-gray-500">
+                        تأكد من كتابة الاسم بصورة صحيحة أو إلغاء فلاتر البحث المختارة.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filteredGeoRegions.map(reg => {
+                        const isRegExpanded = expandedGeoRegions[reg.regionName] !== false;
+                        const regProgress = reg.totalVal > 0 ? Math.min(100, Math.round((reg.paidVal / reg.totalVal) * 100)) : 0;
+
+                        return (
+                          <div key={reg.regionName} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                            {/* Region Accordion Header */}
+                            <div
+                              onClick={() => toggleGeoRegion(reg.regionName)}
+                              className="p-4 sm:p-5 bg-gradient-to-r from-[#002f6c]/10 to-blue-50/40 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer hover:bg-[#002f6c]/15 transition-colors select-none"
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xl">🏛️</span>
+                                <h3 className="font-bold text-base sm:text-lg text-[#002f6c]">{reg.regionName}</h3>
+                                <div className="flex flex-wrap gap-2 items-center mr-2">
+                                  <span className="bg-white text-[#002f6c] border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                    ⛪ {formatNumber(reg.churches.length)} كنائس
+                                  </span>
+                                  <span className="bg-white text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                    📊 {formatNumber(reg.casesCount)} مشاريع
+                                  </span>
+                                  <span className="bg-white text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                    💰 {formatNumber(reg.totalVal)} ج.م
+                                  </span>
+                                  <span className="bg-white text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                    ✅ {formatNumber(reg.paidVal)} ج.م ({regProgress}%)
+                                  </span>
+                                  <span className="bg-white text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                    ⏳ {formatNumber(reg.remVal)} ج.م متبقي
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 mr-auto sm:mr-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    triggerBatchPayment(`سداد قسط لمنطقة: ${reg.regionName} (كل النزلات)`, reg.cases, null);
+                                  }}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
+                                  title={`تسجيل سداد قسط لجميع حالات منطقة ${reg.regionName}`}
+                                >
+                                  <CreditCard size={14} />
+                                  <span>سداد المنطقة كلها</span>
+                                </button>
+                                <div className="text-gray-500">
+                                  {isRegExpanded ? <ChevronUp size={22} /> : <ChevronDown size={22} />}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Churches within Region */}
+                            {isRegExpanded && (
+                              <div className="divide-y divide-gray-100 bg-gray-50/30 p-3 sm:p-4 space-y-4">
+                                {reg.churches.map(ch => {
+                                  const isChExpanded = expandedGeoChurches[ch.key] !== false;
+                                  const chProgress = ch.totalVal > 0 ? Math.min(100, Math.round((ch.paidVal / ch.totalVal) * 100)) : 0;
+
+                                  return (
+                                    <div key={ch.key} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                                      {/* Church Header */}
+                                      <div
+                                        onClick={() => toggleGeoChurch(ch.key)}
+                                        className="p-3.5 sm:p-4 bg-gray-50/80 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 cursor-pointer hover:bg-gray-100/90 transition-colors select-none"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <div className="text-gray-400">
+                                            {isChExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                          </div>
+                                          <span className="text-base">⛪</span>
+                                          <h4 className="font-bold text-sm sm:text-base text-gray-900">
+                                            {ch.churchName}
+                                            {ch.villageName && (
+                                              <span className="text-xs font-normal text-gray-500 mr-2">
+                                                • {ch.villageName}
+                                              </span>
+                                            )}
+                                          </h4>
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-2 mr-6 sm:mr-0">
+                                          <span className="bg-white text-blue-900 border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                            🗂️ {formatNumber(ch.visits.length)} زيارات
+                                          </span>
+                                          <span className="bg-white text-gray-700 border border-gray-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                            📊 {formatNumber(ch.casesCount)} مشاريع
+                                          </span>
+                                          <span className="bg-white text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                            ✅ {formatNumber(ch.paidVal)} ج.م ({chProgress}%)
+                                          </span>
+                                          <span className="bg-white text-rose-700 border border-rose-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                            ⏳ {formatNumber(ch.remVal)} ج.م متبقي
+                                          </span>
+                                          <span className="bg-white text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                            📅 {formatNumber(ch.monthlyInst)} ج.م/شهر
+                                          </span>
+
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              triggerBatchPayment(`سداد قسط لكنيسة: ${ch.churchName} (كل النزلات)`, ch.cases, null);
+                                            }}
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-sm flex items-center gap-1 transition-all mr-1"
+                                            title={`تسجيل سداد قسط لجميع حالات كنيسة ${ch.churchName}`}
+                                          >
+                                            <CreditCard size={13} />
+                                            <span>سداد الكنيسة كلها</span>
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      {/* Church Visits and Cases Container */}
+                                      {isChExpanded && (
+                                        <div className="p-3 sm:p-4 space-y-4 bg-gray-50/30">
+                                          {ch.visits.map(vData => {
+                                            return (
+                                              <div key={vData.visitId} className="border border-blue-100 rounded-xl overflow-hidden bg-white shadow-xs">
+                                                {/* Visit Partition Banner */}
+                                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50/40 p-2.5 sm:p-3 border-b border-blue-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="text-sm">🏛️</span>
+                                                    <span className="font-bold text-xs sm:text-sm text-[#002f6c]">{vData.visitLocation || 'زيارة بدون اسم'}</span>
+                                                    <span className="text-xs text-gray-500 font-sans flex items-center gap-1 mr-2">
+                                                      <Calendar size={13} className="text-gray-400" />
+                                                      <span>{vData.visitDate}</span>
+                                                    </span>
+                                                    <span className="bg-white text-[#002f6c] border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-sans">
+                                                      {formatNumber(vData.cases.length)} حالات بهذه النزلة
+                                                    </span>
+                                                  </div>
+
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => triggerBatchPayment(`سداد قسط لنزلة (${vData.visitLocation} - ${vData.visitDate}) بكنيسة ${ch.churchName}`, vData.cases, vData.visitId)}
+                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 shadow-sm"
+                                                    title="تسجيل سداد قسط لحالات هذه النزلة فقط"
+                                                  >
+                                                    <CreditCard size={12} />
+                                                    <span>سداد هذه النزلة ({vData.cases.length})</span>
+                                                  </button>
+                                                </div>
+
+                                                {/* Desktop Table View */}
+                                                <div className="hidden md:block overflow-x-auto">
+                                                  <table className="w-full text-right text-xs">
+                                                    <thead className="bg-gray-50 text-gray-600 font-bold border-b border-gray-200">
+                                                      <tr>
+                                                        <th className="p-3 w-12 text-center">م</th>
+                                                        <th className="p-3">اسم المستفيد</th>
+                                                        <th className="p-3">نوع المشروع المنفذ</th>
+                                                        <th className="p-3">تاريخ التنفيذ</th>
+                                                        <th className="p-3">أصل المبلغ</th>
+                                                        <th className="p-3">القسط الشهري</th>
+                                                        <th className="p-3">المسدد والمتبقي</th>
+                                                        <th className="p-3">نسبة السداد</th>
+                                                        <th className="p-3 text-center">الحالة</th>
+                                                        <th className="p-3 text-center w-28">الإجراءات</th>
+                                                      </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-100">
+                                                      {vData.cases.map((item, cIdx) => {
+                                                        const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
+                                                        return (
+                                                          <tr key={item.caseObj.id || cIdx} className="hover:bg-blue-50/30 transition-colors">
+                                                            <td className="p-3 text-center font-sans text-gray-400 font-bold">{cIdx + 1}</td>
+                                                            <td className="p-3 font-bold text-gray-900">
+                                                              <div>{item.caseObj.caseName}</div>
+                                                              {item.caseObj.nationalId && (
+                                                                <div className="text-[10px] text-gray-400 font-sans mt-0.5">رقم قومي: {item.caseObj.nationalId}</div>
+                                                              )}
+                                                              <div className="text-[10px] text-gray-500 font-normal">الخدام: {item.servantsNames || '—'}</div>
+                                                            </td>
+                                                            <td className="p-3 font-medium text-blue-900">
+                                                              {item.caseObj.executedProjectType || item.caseObj.projectType || '—'}
+                                                            </td>
+                                                            <td className="p-3 font-sans text-gray-500">
+                                                              {item.caseObj.executionDate || '—'}
+                                                            </td>
+                                                            <td className="p-3 font-sans font-bold text-gray-900">
+                                                              {formatNumber(item.totalAmt)} ج.م
+                                                            </td>
+                                                            <td className="p-3">
+                                                              <div className="font-sans font-bold text-amber-800">{formatNumber(item.monthlyAmt)} ج.م / شهر</div>
+                                                              <div className="text-[10px] text-gray-500 font-sans">{item.totalMonths} شهر استحقاق</div>
+                                                            </td>
+                                                            <td className="p-3">
+                                                              <div className="font-sans font-bold text-emerald-700">{formatNumber(item.totalPaid)} ج.م مسدد</div>
+                                                              <div className="font-sans text-[11px] text-rose-600 font-bold">متبقي: {formatNumber(item.remainingAmt)} ج.م</div>
+                                                            </td>
+                                                            <td className="p-3 w-28">
+                                                              <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
+                                                                <span>{pPct}%</span>
+                                                              </div>
+                                                              <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                                                <div 
+                                                                  className={`h-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                                                                  style={{ width: `${pPct}%` }}
+                                                                />
+                                                              </div>
+                                                            </td>
+                                                            <td className="p-3 text-center">
+                                                              {item.isCompleted ? (
+                                                                <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                                                  <span>✅</span> مكتمل
+                                                                </span>
+                                                              ) : item.totalPaid > 0 ? (
+                                                                <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                                                  <span>🔄</span> جاري
+                                                                </span>
+                                                              ) : (
+                                                                <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                                                  <span>⏳</span> لم يبدأ
+                                                                </span>
+                                                              )}
+                                                            </td>
+                                                            <td className="p-3 text-center">
+                                                              <button
+                                                                type="button"
+                                                                onClick={() => setActiveModalCaseInfo(item)}
+                                                                className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1 transition-colors mx-auto"
+                                                              >
+                                                                <span>💵</span>
+                                                                <span>سداد ومتابعة</span>
+                                                              </button>
+                                                            </td>
+                                                          </tr>
+                                                        );
+                                                      })}
+                                                    </tbody>
+                                                  </table>
+                                                </div>
+
+                                                {/* Mobile Touch Cards View */}
+                                                <div className="md:hidden divide-y divide-gray-100 p-2.5 space-y-2.5 bg-gray-50/50">
+                                                  {vData.cases.map((item, cIdx) => {
+                                                    const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
+                                                    return (
+                                                      <div key={item.caseObj.id || cIdx} className="bg-white rounded-xl p-3 border border-gray-200 shadow-xs space-y-2.5">
+                                                        <div className="flex justify-between items-start gap-2">
+                                                          <div>
+                                                            <div className="font-bold text-xs sm:text-sm text-gray-900">{item.caseObj.caseName}</div>
+                                                            {item.caseObj.nationalId && (
+                                                              <div className="text-[10px] text-gray-500 font-sans mt-0.5">رقم قومي: {item.caseObj.nationalId}</div>
+                                                            )}
+                                                            <div className="text-[10px] text-gray-500 mt-0.5">الخدام: {item.servantsNames || '—'}</div>
+                                                          </div>
+                                                          {item.isCompleted ? (
+                                                            <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                                                              ✅ مكتمل
+                                                            </span>
+                                                          ) : item.totalPaid > 0 ? (
+                                                            <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                                                              🔄 جاري
+                                                            </span>
+                                                          ) : (
+                                                            <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                                                              ⏳ لم يبدأ
+                                                            </span>
+                                                          )}
+                                                        </div>
+
+                                                        <div className="grid grid-cols-3 gap-1.5 text-center bg-gray-50 p-2 rounded-lg border border-gray-100">
+                                                          <div>
+                                                            <div className="text-[9px] text-gray-500">أصل المبلغ</div>
+                                                            <div className="font-bold text-[11px] font-sans text-gray-900 mt-0.5">{formatNumber(item.totalAmt)} ج.م</div>
+                                                          </div>
+                                                          <div>
+                                                            <div className="text-[9px] text-gray-500">المسدد</div>
+                                                            <div className="font-bold text-[11px] font-sans text-emerald-700 mt-0.5">{formatNumber(item.totalPaid)} ج.م</div>
+                                                          </div>
+                                                          <div>
+                                                            <div className="text-[9px] text-gray-500">المتبقي</div>
+                                                            <div className="font-bold text-[11px] font-sans text-rose-600 mt-0.5">{formatNumber(item.remainingAmt)} ج.م</div>
+                                                          </div>
+                                                        </div>
+
+                                                        <div className="space-y-1">
+                                                          <div className="flex justify-between text-[10px] text-gray-600 font-sans">
+                                                            <span>القسط: <strong className="text-amber-800">{formatNumber(item.monthlyAmt)}</strong> ج.م / شهر</span>
+                                                            <span className="font-bold text-[#002f6c]">{pPct}%</span>
+                                                          </div>
+                                                          <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                                                            <div 
+                                                              className={`h-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                                                              style={{ width: `${pPct}%` }}
+                                                            />
+                                                          </div>
+                                                        </div>
+
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => setActiveModalCaseInfo(item)}
+                                                          className="w-full bg-[#002f6c] hover:bg-[#001f4c] text-white text-[11px] font-bold py-2 px-3 rounded-lg shadow-xs flex items-center justify-center gap-1.5 transition-colors"
+                                                        >
+                                                          <span>💵</span>
+                                                          <span>سداد ومتابعة الأقساط</span>
+                                                        </button>
+                                                      </div>
+                                                    );
+                                                  })}
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -7553,7 +8070,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790141894725";
+      const CLIENT_BUILD_ID = "1790142466187";
       let initialEtag = null;
       let isUpdating = false;
 
