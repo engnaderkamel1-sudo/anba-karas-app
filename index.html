@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790163527156" />
+  <meta name="app-build-id" content="1790163886889" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -4956,10 +4956,10 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
       const dictTypes = buildEffectiveProjectDictionary(allVisits).map(c => c.name);
       const existingTypes = Array.from(new Set([...rawTypes, ...dictTypes].filter(Boolean))).sort();
 
-      // Target visit selector
-      const legacyVisitTitle = 'مشاريع سابقة (قبل استخدام التطبيق)';
-      const existingLegacyVisit = activeVisits.find(v => v.location === legacyVisitTitle || v.location?.includes('مشاريع سابقة'));
-      const [targetVisitChoice, setTargetVisitChoice] = useState(() => existingLegacyVisit?.id || 'new_legacy');
+      // Target visit selector & custom naming
+      const [targetVisitChoice, setTargetVisitChoice] = useState('new_custom');
+      const [customVisitLocation, setCustomVisitLocation] = useState('');
+      const [customVisitDate, setCustomVisitDate] = useState(() => new Date().toISOString().split('T')[0]);
 
       // Form state
       const [caseName, setCaseName] = useState('');
@@ -5010,13 +5010,18 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
 
         // Determine target visit object
         let targetVisit = null;
-        if (targetVisitChoice === 'new_legacy') {
+        if (targetVisitChoice === 'new_custom') {
+          const cleanLoc = customVisitLocation.trim();
+          if (!cleanLoc) {
+            alert('يرجى كتابة المناطق أو اسم النزلة الجديدة.');
+            return;
+          }
           targetVisit = {
             id: uuidv4(),
-            location: legacyVisitTitle,
-            date: executionDate || new Date().toISOString().split('T')[0],
+            location: cleanLoc,
+            date: customVisitDate || executionDate || new Date().toISOString().split('T')[0],
             churches: [],
-            createdAt: Date.now() - 100000 // slightly in the past
+            createdAt: Date.now() - 100000
           };
         } else {
           targetVisit = activeVisits.find(v => v.id === targetVisitChoice) || activeVisits[0];
@@ -5136,21 +5141,61 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
               </div>
 
               {/* Target Visit Destination */}
-              <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5">
-                <label className="block text-xs font-bold text-blue-900 mb-1.5">حفظ الحالة ضمن زيارة / ملف:</label>
-                <select
-                  value={targetVisitChoice}
-                  onChange={e => setTargetVisitChoice(e.target.value)}
-                  className="w-full bg-white rounded-lg border border-blue-300 p-2 text-xs font-bold text-[#002f6c] outline-none"
-                >
-                  <option value="new_legacy">📁 ملف جديد: "مشاريع سابقة (قبل استخدام التطبيق)"</option>
-                  {existingLegacyVisit && (
-                    <option value={existingLegacyVisit.id}>📁 الملف الحالي: {existingLegacyVisit.location} ({existingLegacyVisit.date})</option>
-                  )}
-                  {activeVisits.filter(v => v.id !== existingLegacyVisit?.id).map(v => (
-                    <option key={v.id} value={v.id}>زيارة: {v.location || 'بدون اسم'} ({v.date})</option>
-                  ))}
-                </select>
+              <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-blue-900 mb-1.5">حفظ الحالة ضمن زيارة / نزلة:</label>
+                  <select
+                    value={targetVisitChoice}
+                    onChange={e => setTargetVisitChoice(e.target.value)}
+                    className="w-full bg-white rounded-lg border border-blue-300 p-2 text-xs font-bold text-[#002f6c] outline-none"
+                  >
+                    <option value="new_custom">➕ إنشاء نزلة جديدة (تحديد المناطق والتاريخ)</option>
+                    {activeVisits.map(v => (
+                      <option key={v.id} value={v.id}>زيارة سابقة: {v.location || 'بدون اسم'} ({v.date || 'بدون تاريخ'})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {targetVisitChoice === 'new_custom' && (
+                  <div className="bg-white p-3 rounded-lg border border-blue-200 space-y-2.5 animate-fade-in shadow-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                          المناطق / مراكز النزلة *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={customVisitLocation}
+                          onChange={e => {
+                            setCustomVisitLocation(e.target.value);
+                            if (!regionName) setRegionName(e.target.value);
+                          }}
+                          placeholder="مثال: مغاغة + ابو قرقاص أو ملوي"
+                          className="w-full rounded-lg border border-gray-300 p-2 text-xs focus:border-[#002f6c] outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                          تاريخ النزلة *
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          value={customVisitDate}
+                          onChange={e => setCustomVisitDate(e.target.value)}
+                          className="w-full rounded-lg border border-gray-300 p-2 text-xs focus:border-[#002f6c] outline-none font-sans"
+                        />
+                      </div>
+                    </div>
+                    <div className="bg-blue-50 text-blue-900 text-[11px] p-2 rounded border border-blue-200 flex flex-wrap items-center justify-between gap-1">
+                      <span className="text-gray-500 font-medium">اسم وتسمية النزلة في التطبيق:</span>
+                      <strong className="font-bold text-[#002f6c]">
+                        زيارة: {customVisitLocation.trim() || 'اسم المناطق'} ({customVisitDate || 'التاريخ'})
+                      </strong>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Beneficiary Info */}
@@ -5343,7 +5388,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
       const activeVisits = (allVisits || []).filter(v => !v.isDeleted);
       const [fileName, setFileName] = useState('');
       const [parsedCases, setParsedCases] = useState([]);
-      const [batchTitle, setBatchTitle] = useState(() => `مشاريع سابقة - مستوردة (${new Date().toISOString().split('T')[0]})`);
+      const [targetVisitChoice, setTargetVisitChoice] = useState('new_custom');
+      const [customVisitLocation, setCustomVisitLocation] = useState('');
+      const [customVisitDate, setCustomVisitDate] = useState(() => new Date().toISOString().split('T')[0]);
       const [isParsing, setIsParsing] = useState(false);
 
       const handleFileUpload = (e) => {
@@ -5420,6 +5467,14 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
               alert('لم نتمكن من قراءة أسماء الحالات من الملف. يرجى التأكد من احتواء الملف على عمود "اسم الحالة".');
             } else {
               setParsedCases(cleanRows);
+              const autoRegions = Array.from(new Set(cleanRows.map(r => r.regionName).filter(r => r && r !== 'عام'))).join(' + ');
+              if (autoRegions) {
+                setCustomVisitLocation(autoRegions);
+              }
+              const validDates = cleanRows.map(r => r.executionDate).filter(Boolean).sort();
+              if (validDates.length > 0) {
+                setCustomVisitDate(validDates[validDates.length - 1]);
+              }
             }
           } catch (err) {
             console.error(err);
@@ -5493,16 +5548,51 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
           churchMap[key].servantsGroups[0].cases.push(caseObj);
         });
 
-        const newVisitObj = {
-          id: uuidv4(),
-          location: batchTitle.trim() || 'مشاريع سابقة مستوردة',
-          date: new Date().toISOString().split('T')[0],
-          churches: Object.values(churchMap),
-          createdAt: Date.now() - 50000
-        };
-
-        onUpdateVisit(newVisitObj);
-        alert(`تم بنجاح استيراد ${formatNumber(parsedCases.length)} مشروعاً سابقاً وإضافتها لصفحة الأقساط!`);
+        if (targetVisitChoice === 'new_custom') {
+          const finalLoc = customVisitLocation.trim();
+          if (!finalLoc) {
+            alert('يرجى تحديد المناطق أو اسم النزلة الجديدة.');
+            return;
+          }
+          const finalDate = customVisitDate || new Date().toISOString().split('T')[0];
+          const newVisitObj = {
+            id: uuidv4(),
+            location: finalLoc,
+            date: finalDate,
+            churches: Object.values(churchMap),
+            createdAt: Date.now() - 50000
+          };
+          onUpdateVisit(newVisitObj);
+        } else {
+          const existing = activeVisits.find(v => v.id === targetVisitChoice);
+          if (existing) {
+            const mergedChurches = [...(existing.churches || [])];
+            Object.values(churchMap).forEach(newCh => {
+              const exIdx = mergedChurches.findIndex(c => normalizeArabicText(c.churchName) === normalizeArabicText(newCh.churchName) && normalizeArabicText(c.regionName) === normalizeArabicText(newCh.regionName));
+              if (exIdx === -1) {
+                mergedChurches.push(newCh);
+              } else {
+                const exCh = { ...mergedChurches[exIdx] };
+                const sGroups = [...(exCh.servantsGroups || [])];
+                if (sGroups.length === 0) {
+                  sGroups.push(newCh.servantsGroups[0]);
+                } else {
+                  sGroups[0] = {
+                    ...sGroups[0],
+                    cases: [...(sGroups[0].cases || []), ...(newCh.servantsGroups[0]?.cases || [])]
+                  };
+                }
+                exCh.servantsGroups = sGroups;
+                mergedChurches[exIdx] = exCh;
+              }
+            });
+            onUpdateVisit({
+              ...existing,
+              churches: mergedChurches
+            });
+          }
+        }
+        alert(`تم بنجاح استيراد ${formatNumber(parsedCases.length)} مشروعاً سابقاً وإضافتها لجدول الأقساط!`);
         onClose();
       };
 
@@ -5556,18 +5646,62 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                 </div>
               )}
 
-              {/* Batch Title input */}
+              {/* Visit Naming & Destination Card */}
               {parsedCases.length > 0 && (
-                <div className="space-y-3">
+                <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-4 space-y-3">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">اسم الزيارة / الدفعة المستوردة:</label>
-                    <input
-                      type="text"
-                      value={batchTitle}
-                      onChange={e => setBatchTitle(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 p-2 text-xs sm:text-sm focus:border-[#002f6c] outline-none"
-                    />
+                    <label className="block text-xs font-bold text-blue-900 mb-1.5">حفظ المشاريع المستوردة ضمن زيارة / نزلة:</label>
+                    <select
+                      value={targetVisitChoice}
+                      onChange={e => setTargetVisitChoice(e.target.value)}
+                      className="w-full bg-white rounded-lg border border-blue-300 p-2 text-xs font-bold text-[#002f6c] outline-none"
+                    >
+                      <option value="new_custom">➕ إنشاء نزلة جديدة مخصصة (تحديد المناطق والتاريخ)</option>
+                      {activeVisits.map(v => (
+                        <option key={v.id} value={v.id}>زيارة سابقة: {v.location || 'بدون اسم'} ({v.date || 'بدون تاريخ'})</option>
+                      ))}
+                    </select>
                   </div>
+
+                  {targetVisitChoice === 'new_custom' && (
+                    <div className="bg-white p-3 rounded-lg border border-blue-200 space-y-2.5 animate-fade-in shadow-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                            المناطق / مراكز النزلة *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={customVisitLocation}
+                            onChange={e => setCustomVisitLocation(e.target.value)}
+                            placeholder="مثال: مغاغة + ابو قرقاص أو ملوي"
+                            className="w-full rounded-lg border border-gray-300 p-2 text-xs focus:border-[#002f6c] outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                            تاريخ النزلة *
+                          </label>
+                          <input
+                            type="date"
+                            required
+                            value={customVisitDate}
+                            onChange={e => setCustomVisitDate(e.target.value)}
+                            className="w-full rounded-lg border border-gray-300 p-2 text-xs focus:border-[#002f6c] outline-none font-sans"
+                          />
+                        </div>
+                      </div>
+                      <div className="bg-blue-50 text-blue-900 text-[11px] p-2 rounded border border-blue-200 flex flex-wrap items-center justify-between gap-1">
+                        <span className="text-gray-500 font-medium">اسم وتسمية النزلة في التطبيق:</span>
+                        <strong className="font-bold text-[#002f6c]">
+                          زيارة: {customVisitLocation.trim() || 'المناطق المحددة'} ({customVisitDate || 'التاريخ'})
+                        </strong>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
                   {/* Summary of imported data */}
                   <div className="grid grid-cols-3 gap-3">
@@ -12780,7 +12914,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790163527156";
+      const CLIENT_BUILD_ID = "1790163886889";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
