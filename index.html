@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790163366995" />
+  <meta name="app-build-id" content="1790163527156" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -4946,7 +4946,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
 // ================================================================
 // MODULE: components/AddLegacyProjectModal.js
 // ================================================================
-    function AddLegacyProjectModal({ allVisits, onUpdateVisit, onClose }) {
+    function AddLegacyProjectModal({ allVisits, onUpdateVisit, onClose, onOpenImportExcel }) {
       const activeVisits = (allVisits || []).filter(v => !v.isDeleted);
 
       // Unique lists for auto-suggest
@@ -5084,7 +5084,57 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
               <button onClick={onClose} className="text-white/80 hover:text-white p-1 rounded-lg transition-colors"><X size={22}/></button>
             </div>
 
+            {/* Mode Switcher Tabs */}
+            <div className="flex border-b border-gray-200 bg-gray-50/80 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  if (onOpenImportExcel) onOpenImportExcel();
+                }}
+                className="flex-1 py-3 px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 text-teal-700 hover:bg-teal-50 transition-all border-b-2 border-transparent"
+              >
+                <FileSpreadsheet size={18} className="text-teal-600" />
+                <span>رفع شيت إكسيل (Excel) مجمع</span>
+                <span className="bg-teal-100 text-teal-800 text-[10px] px-2 py-0.5 rounded-full font-bold">أسرع وأسهل</span>
+              </button>
+
+              <button
+                type="button"
+                className="flex-1 py-3 px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 bg-white text-[#002f6c] border-b-2 border-[#002f6c] shadow-xs"
+              >
+                <span>✍️</span>
+                <span>إدخال يدوي (حالة بحالة)</span>
+              </button>
+            </div>
+
             <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-4">
+              {/* Shortcut Banner to Excel */}
+              <div className="bg-gradient-to-r from-teal-50 via-emerald-50 to-teal-50 border-2 border-teal-300 rounded-2xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-3 text-right">
+                  <div className="p-2.5 bg-teal-600 text-white rounded-xl shadow-xs shrink-0">
+                    <Upload size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-xs sm:text-sm text-teal-950 flex items-center gap-1.5">
+                      <span>هل لديك ملف إكسيل بكل الحالات والمشاريع السابقة؟</span>
+                    </h4>
+                    <p className="text-[11px] text-teal-700 mt-0.5">يمكنك رفع ملف إكسيل كامل وسيتم سحب وإدراج كل الحالات بضغطة زر واحدة دون الحاجة للكتابة اليدوية.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    if (onOpenImportExcel) onOpenImportExcel();
+                  }}
+                  className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap"
+                >
+                  <FileSpreadsheet size={15} />
+                  <span>فتح رفع شيت Excel الآن</span>
+                </button>
+              </div>
+
               {/* Target Visit Destination */}
               <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5">
                 <label className="block text-xs font-bold text-blue-900 mb-1.5">حفظ الحالة ضمن زيارة / ملف:</label>
@@ -6598,12 +6648,12 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                   type="button"
                   onClick={() => setShowImportLegacyModal(true)}
                   className="bg-teal-700 hover:bg-teal-800 text-white py-2 px-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all text-right"
-                  title="استيراد مشاريع قديمة من ملف إكسيل"
+                  title="استيراد مشاريع قديمة دفعة واحدة من ملف إكسيل"
                 >
                   <Upload size={18} className="shrink-0 text-teal-100" />
                   <div className="flex flex-col text-right">
-                    <span className="text-xs font-bold">استيراد نزلات (Excel)</span>
-                    <span className="text-[10px] text-teal-100 font-medium">رفع شيت المشاريع التاريخية</span>
+                    <span className="text-xs font-bold">رفع شيت إكسيل (Excel)</span>
+                    <span className="text-[10px] text-teal-100 font-medium">استيراد كل الحالات دفعة واحدة</span>
                   </div>
                 </button>
 
@@ -8692,6 +8742,10 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
             <AddLegacyProjectModal
               allVisits={allVisits}
               onUpdateVisit={onUpdateVisit}
+              onOpenImportExcel={() => {
+                setShowAddLegacyModal(false);
+                setShowImportLegacyModal(true);
+              }}
               onClose={() => setShowAddLegacyModal(false)}
             />
           )}
@@ -12726,7 +12780,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790163366995";
+      const CLIENT_BUILD_ID = "1790163527156";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
