@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790163165977" />
+  <meta name="app-build-id" content="1790163366995" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -6579,8 +6579,8 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                 </p>
               </div>
 
-              {/* Actions: Add Legacy Project + Import from Excel + Export + Dictionary */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full lg:w-auto">
+              {/* Actions: Add Legacy Project + Import from Excel + Export */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full lg:w-auto">
                 <button
                   type="button"
                   onClick={() => setShowAddLegacyModal(true)}
@@ -6617,19 +6617,6 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                   <div className="flex flex-col text-right">
                     <span className="text-xs font-bold">تصدير التحصيل (Excel)</span>
                     <span className="text-[10px] text-emerald-100 font-medium">تحميل الأقساط والمتأخرات</span>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowProjectDictModal(true)}
-                  className="bg-purple-700 hover:bg-purple-800 text-white py-2 px-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all text-right"
-                  title="ضبط وتوحيد مسميات المشاريع (خرفان، غنم، تروسيكل...)"
-                >
-                  <span className="text-base shrink-0">📚</span>
-                  <div className="flex flex-col text-right">
-                    <span className="text-xs font-bold">قاموس المشاريع</span>
-                    <span className="text-[10px] text-purple-200 font-medium">توحيد الأسماء وإضافة مشروع</span>
                   </div>
                 </button>
               </div>
@@ -12739,7 +12726,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790163165977";
+      const CLIENT_BUILD_ID = "1790163366995";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
