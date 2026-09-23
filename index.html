@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790144838051" />
+  <meta name="app-build-id" content="1790145032360" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -4917,8 +4917,8 @@
               <div className="flex items-center gap-2">
                 <span className="text-2xl">➕</span>
                 <div>
-                  <h3 className="font-bold text-base sm:text-lg">إضافة مشروع سابق (قبل استخدام التطبيق)</h3>
-                  <p className="text-xs text-blue-200 mt-0.5">تسجيل بيانات مشروع منفذ مسبقاً لإدراجه في متابعة وجدول الأقساط</p>
+                  <h3 className="font-bold text-base sm:text-lg">إضافة نزلة سابقة (قبل استخدام التطبيق)</h3>
+                  <p className="text-xs text-blue-200 mt-0.5">تسجيل بيانات نزلة ومشاريع منفذة مسبقاً لإدراجها في متابعة وجدول الأقساط</p>
                 </div>
               </div>
               <button onClick={onClose} className="text-white/80 hover:text-white p-1 rounded-lg transition-colors"><X size={22}/></button>
@@ -6091,10 +6091,10 @@
                   type="button"
                   onClick={() => setShowAddLegacyModal(true)}
                   className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
-                  title="إضافة مشروع سابق يدوياً"
+                  title="إضافة نزلة / مشاريع سابقة يدوياً"
                 >
                   <Plus size={15} />
-                  <span>إضافة مشروع سابق</span>
+                  <span>إضافة نزلة سابقة</span>
                 </button>
 
                 <button
@@ -8808,7 +8808,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790144838051";
+      const CLIENT_BUILD_ID = "1790145032360";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
