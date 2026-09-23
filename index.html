@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790143346462" />
+  <meta name="app-build-id" content="1790144176479" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -8084,6 +8084,89 @@ function App() {
         setQuickActionModalCase(item);
       };
 
+      const safeUpdateVisit = async (upd, reason = 'general') => {
+        if (!db || isReadOnly || !upd || !upd.id) return;
+        const visitRef = db.collection('visits').doc(upd.id);
+
+        try {
+          await db.runTransaction(async (transaction) => {
+            const doc = await transaction.get(visitRef);
+            if (!doc.exists) {
+              transaction.set(visitRef, {
+                ...upd,
+                updatedAt: Date.now()
+              });
+              return;
+            }
+
+            const fresh = doc.data();
+
+            // Smart Merge for Concurrency Protection:
+            // When multiple servants work concurrently on the same visit (e.g. paying installments or updating statuses),
+            // we merge at the church/group/case level so changes by Servant A are preserved when Servant B saves!
+            let mergedChurches = upd.churches || fresh.churches || [];
+
+            if (Array.isArray(fresh.churches) && Array.isArray(upd.churches)) {
+              mergedChurches = upd.churches.map(updCh => {
+                const freshCh = fresh.churches.find(c => c.id === updCh.id);
+                if (!freshCh) return updCh;
+
+                const mergedGroups = (updCh.servantsGroups || []).map(updGrp => {
+                  const freshGrp = (freshCh.servantsGroups || []).find(g => g.id === updGrp.id);
+                  if (!freshGrp) return updGrp;
+
+                  const mergedCases = (updGrp.cases || []).map(updCase => {
+                    const freshCase = (freshGrp.cases || []).find(c => c.id === updCase.id);
+                    if (!freshCase) return updCase;
+
+                    return {
+                      ...freshCase,
+                      ...updCase
+                    };
+                  });
+
+                  (freshGrp.cases || []).forEach(fc => {
+                    if (!mergedCases.some(mc => mc.id === fc.id)) {
+                      mergedCases.push(fc);
+                    }
+                  });
+
+                  return { ...updGrp, cases: mergedCases };
+                });
+
+                (freshCh.servantsGroups || []).forEach(fg => {
+                  if (!mergedGroups.some(mg => mg.id === fg.id)) {
+                    mergedGroups.push(fg);
+                  }
+                });
+
+                return { ...updCh, servantsGroups: mergedGroups };
+              });
+
+              fresh.churches.forEach(fc => {
+                if (!mergedChurches.some(mc => mc.id === fc.id)) {
+                  mergedChurches.push(fc);
+                }
+              });
+            }
+
+            const finalDoc = {
+              ...fresh,
+              ...upd,
+              churches: mergedChurches,
+              updatedAt: Date.now()
+            };
+
+            transaction.set(visitRef, finalDoc);
+          });
+        } catch (err) {
+          console.warn("safeUpdateVisit fallback to direct set:", err);
+          try {
+            await visitRef.set({ ...upd, updatedAt: Date.now() });
+          } catch(e) {}
+        }
+      };
+
       const handleEndVisit = () => {
         if(isReadOnly) return;
         window.showConfirm({
@@ -8246,22 +8329,14 @@ function App() {
              {activeTab === 'execution' && (
                 <ExecutionPage 
                    allVisits={allVisits.filter(v => !v.isDeleted)} 
-                   onUpdateVisit={(upd) => { 
-                      if (db && !isReadOnly) { 
-                         db.collection('visits').doc(upd.id).set(upd); 
-                      } 
-                   }} 
+                   onUpdateVisit={(upd) => safeUpdateVisit(upd, 'execution')} 
                    onExport={openExportModal} 
                 />
              )}
              {activeTab === 'installments' && (
                 <InstallmentsPage 
                    allVisits={allVisits.filter(v => !v.isDeleted)} 
-                   onUpdateVisit={(upd) => { 
-                      if (db && !isReadOnly) { 
-                         db.collection('visits').doc(upd.id).set(upd); 
-                      } 
-                   }} 
+                   onUpdateVisit={(upd) => safeUpdateVisit(upd, 'installments')} 
                    onExport={openExportModal} 
                 />
              )}
@@ -8278,7 +8353,7 @@ function App() {
              )}
              {activeTab === 'archiveDetails' && viewingArchive && (
                 <ArchiveDetails 
-                   visit={viewingArchive} onExport={openExportModal} onUpdateVisit={(upd) => { setViewingArchive(upd); if(db && !isReadOnly) { db.collection('visits').doc(upd.id).set(upd); } }} 
+                   visit={viewingArchive} onExport={openExportModal} onUpdateVisit={(upd) => { setViewingArchive(upd); safeUpdateVisit(upd, 'archive'); }} 
                    onBack={() => { setViewingArchive(null); setActiveTab('archive'); }} 
                 />
              )}
@@ -8303,16 +8378,24 @@ function App() {
              <InstallmentModal
                caseObj={quickActionModalCase.caseObj}
                churchName={quickActionModalCase.churchName}
-               churchId={quickActionModalCase.churchId}
-               groupId={quickActionModalCase.groupId}
-               visitId={quickActionModalCase.visitId}
-               isReadOnly={isReadOnly}
-               onClose={() => setQuickActionModalCase(null)}
-               onUpdateVisit={(upd) => {
-                 if (db && !isReadOnly) {
-                   db.collection('visits').doc(upd.id).set(upd);
-                 }
+               regionName={quickActionModalCase.regionName || ''}
+               onSavePayments={(updatedPayments) => {
+                 const targetVisit = allVisits.find(v => v.id === quickActionModalCase.visitId);
+                 if (!targetVisit) return;
+                 const updatedChurches = (targetVisit.churches || []).map(ch => ch.id === quickActionModalCase.churchId ? {
+                   ...ch,
+                   servantsGroups: (ch.servantsGroups || []).map(sg => sg.id === quickActionModalCase.groupId ? {
+                     ...sg,
+                     cases: (sg.cases || []).map(c => c.id === quickActionModalCase.caseObj.id ? {
+                       ...c,
+                       payments: updatedPayments
+                     } : c)
+                   } : sg)
+                 } : ch);
+                 safeUpdateVisit({ ...targetVisit, churches: updatedChurches }, 'quickActionModal');
+                 setQuickActionModalCase(prev => prev ? ({ ...prev, caseObj: { ...prev.caseObj, payments: updatedPayments } }) : null);
                }}
+               onClose={() => setQuickActionModalCase(null)}
              />
            )}
            <ToastContainer />
@@ -8347,70 +8430,164 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790143346462";
-      let initialEtag = null;
+      const CLIENT_BUILD_ID = "1790144176479";
       let isUpdating = false;
+
+      function isUserActivelyEditing() {
+        try {
+          const activeEl = document.activeElement;
+          const isInputFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+          const isModalOpen = !!document.querySelector('[role="dialog"], #app-installment-modal, .installment-modal');
+          return isInputFocused || isModalOpen;
+        } catch(e) {
+          return false;
+        }
+      }
+
+      function purgeCachesAndReload() {
+        if (window.caches) {
+          caches.keys().then(names => {
+            return Promise.all(names.map(name => caches.delete(name)));
+          }).catch(() => {});
+        }
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(registrations => {
+            registrations.forEach(r => r.unregister());
+          }).catch(() => {});
+        }
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('_v', Date.now());
+        window.location.replace(newUrl.toString());
+      }
 
       function triggerAppReload(reason) {
         if (isUpdating) return;
         isUpdating = true;
-        console.log('[Auto-Updater] New update detected (' + reason + '). Auto-refreshing in 1.2s...');
+        console.log('[Auto-Updater] New update detected (' + reason + '). Initiating auto-refresh...');
+
+        const userBusy = isUserActivelyEditing();
+        let countdown = userBusy ? 15 : 1.2;
 
         try {
+          if (document.getElementById('app-auto-update-banner')) return;
+
           const banner = document.createElement('div');
           banner.id = 'app-auto-update-banner';
           banner.style.cssText = [
             'position: fixed',
-            'top: 18px',
+            'top: 16px',
             'left: 50%',
             'transform: translateX(-50%)',
-            'z-index: 999999',
-            'background: linear-gradient(135deg, #002f6c 0%, #001737 100%)',
+            'z-index: 9999999',
+            'background: linear-gradient(135deg, #02204c 0%, #00122e 100%)',
             'color: #ffffff',
-            'padding: 12px 22px',
+            'padding: 12px 20px',
             'border-radius: 16px',
-            'box-shadow: 0 15px 35px rgba(0,0,0,0.3)',
+            'box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(52,211,153,0.3)',
             'border: 2px solid #34d399',
             'display: flex',
             'align-items: center',
-            'gap: 12px',
-            'font-family: system-ui, -apple-system, sans-serif',
+            'gap: 14px',
+            'font-family: Cairo, system-ui, -apple-system, sans-serif',
             'direction: rtl',
-            'animation: slideDown 0.3s ease-out'
+            'animation: updateSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            'max-width: 92vw',
+            'width: 480px'
           ].join(';');
 
-          banner.innerHTML = '<div style=\"font-size: 24px; animation: spin 1s linear infinite;\">&#128259;</div>' +
-            '<div>' +
-            '  <div style=\"font-weight: bold; font-size: 13px; color: #34d399;\">\u062a\u0645 \u0631\u0641\u0639 \u062a\u0639\u062f\u064a\u0644 \u062c\u062f\u064a\u062f \u0644\u0644\u062a\u0637\u0628\u064a\u0642!</div>' +
-            '  <div style=\"font-size: 11px; color: #cbd5e1; margin-top: 2px;\">\u062c\u0627\u0631\u064a \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u062a\u0637\u0628\u064a\u0642 \u062a\u0644\u0642\u0627\u0626\u064a\u0627\u064b \u0644\u0644\u0646\u0633\u062e\u0629 \u0627\u0644\u0623\u062d\u062f\u062b \u0627\u0644\u0622\u0646...</div>' +
-            '</div>';
+          banner.innerHTML = [
+            '<div style="font-size: 26px; animation: updateSpin 1.2s linear infinite; flex-shrink: 0;">&#128259;</div>',
+            '<div style="flex: 1; min-width: 0;">',
+            '  <div style="font-weight: 800; font-size: 14px; color: #34d399; display: flex; align-items: center; gap: 6px;">',
+            '    <span>تم رفع تعديل جديد للخدمة!</span>',
+            '    <span style="font-size: 11px; background: rgba(52,211,153,0.2); padding: 2px 8px; border-radius: 999px;">تحديث مباشر</span>',
+            '  </div>',
+            '  <div id="app-update-countdown-text" style="font-size: 12px; color: #cbd5e1; margin-top: 2px; line-height: 1.4;">',
+            userBusy ? 'جاري إتاحة ثوانٍ لإنهاء ما تكتبه، سيتم التحديث التلقائي خلال <b id="countdown-sec" style="color: #fde047;">15</b> ثانية...' : 'جاري تحديث التطبيق تلقائياً للنسخة الأحدث الآن...',
+            '  </div>',
+            '</div>',
+            '<button id="app-update-now-btn" style="background: #34d399; color: #02204c; font-weight: 800; font-size: 12px; padding: 7px 14px; border-radius: 10px; border: none; cursor: pointer; white-space: nowrap; flex-shrink: 0; box-shadow: 0 4px 12px rgba(52,211,153,0.3); transition: transform 0.15s ease;">',
+            'تحديث الآن',
+            '</button>'
+          ].join('');
 
-          if (!document.getElementById('auto-update-keyframes')) {
+          if (!document.getElementById('auto-update-styles')) {
             const style = document.createElement('style');
-            style.id = 'auto-update-keyframes';
-            style.textContent = '@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } ' +
-              '@keyframes slideDown { from { transform: translate(-50%, -40px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }';
+            style.id = 'auto-update-styles';
+            style.textContent = '@keyframes updateSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } ' +
+              '@keyframes updateSlideDown { from { transform: translate(-50%, -40px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } } ' +
+              '#app-update-now-btn:active { transform: scale(0.95); }';
             document.head.appendChild(style);
           }
 
           document.body.appendChild(banner);
-        } catch(e) {}
 
-        setTimeout(function() {
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.set('_upd', Date.now());
-          window.location.href = newUrl.toString();
-        }, 1200);
+          const nowBtn = document.getElementById('app-update-now-btn');
+          if (nowBtn) {
+            nowBtn.onclick = function() {
+              nowBtn.disabled = true;
+              nowBtn.textContent = 'جاري التحديث...';
+              purgeCachesAndReload();
+            };
+          }
+
+          if (userBusy) {
+            let remaining = 15;
+            const timer = setInterval(() => {
+              remaining--;
+              const span = document.getElementById('countdown-sec');
+              if (span) span.textContent = remaining;
+              if (remaining <= 0) {
+                clearInterval(timer);
+                purgeCachesAndReload();
+              }
+            }, 1000);
+          } else {
+            setTimeout(purgeCachesAndReload, 1200);
+          }
+        } catch(e) {
+          setTimeout(purgeCachesAndReload, 1200);
+        }
       }
 
-      async function checkServerHeaders() {
+      // Check 1: Real-time Firestore version document
+      function initFirestoreVersionListener() {
+        const tryListen = () => {
+          if (window.firebase && window.firebase.apps && window.firebase.apps.length) {
+            try {
+              const db = window.firebase.firestore();
+              db.collection('system').doc('app_version').onSnapshot((doc) => {
+                if (doc.exists) {
+                  const data = doc.data();
+                  if (data && data.buildId && CLIENT_BUILD_ID && data.buildId !== CLIENT_BUILD_ID) {
+                    triggerAppReload('firestore_push');
+                  }
+                }
+              }, (err) => {
+                // Silently ignore permission/network errors on real-time listener
+              });
+              return true;
+            } catch(e) {
+              return false;
+            }
+          }
+          return false;
+        };
+
+        if (!tryListen()) {
+          setTimeout(tryListen, 2500);
+        }
+      }
+
+      // Check 2: Fetch /version.json
+      async function checkVersionJson() {
         if (isUpdating) return;
         if (!window.location.protocol.startsWith('http')) return;
 
         try {
-          const url = window.location.origin + window.location.pathname + '?_check_upd=' + Date.now();
+          const url = window.location.origin + '/version.json?_t=' + Date.now();
           const res = await fetch(url, {
-            method: 'HEAD',
+            method: 'GET',
             cache: 'no-store',
             headers: {
               'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -8418,25 +8595,20 @@ function App() {
             }
           });
 
-          if (!res.ok) return;
-
-          const etag = res.headers.get('etag') || res.headers.get('last-modified') || res.headers.get('x-vercel-id');
-          if (!etag) {
-            checkMetaTagVersion();
-            return;
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.buildId && CLIENT_BUILD_ID && data.buildId !== CLIENT_BUILD_ID) {
+              triggerAppReload('version_json_mismatch');
+              return;
+            }
           }
+        } catch(e) {}
 
-          if (!initialEtag) {
-            initialEtag = etag;
-            return;
-          }
-
-          if (etag !== initialEtag) {
-            triggerAppReload('etag_changed');
-          }
-        } catch(err) {}
+        // Fallback: check index.html meta tag
+        checkMetaTagVersion();
       }
 
+      // Check 3: Check meta tag on index.html
       async function checkMetaTagVersion() {
         if (isUpdating) return;
         if (!window.location.protocol.startsWith('http')) return;
@@ -8466,17 +8638,22 @@ function App() {
       }
 
       function performUpdateCheck() {
-        checkServerHeaders();
+        checkVersionJson();
       }
 
-      // Initial check after 4 seconds
-      setTimeout(performUpdateCheck, 4000);
+      // 1. Hook up Firestore Real-time Push
+      initFirestoreVersionListener();
 
-      // Periodic check every 15 seconds
-      setInterval(performUpdateCheck, 15000);
+      // 2. Initial static checks (at 2s and 6s)
+      setTimeout(performUpdateCheck, 2000);
+      setTimeout(performUpdateCheck, 6000);
 
-      // Check immediately when user focuses back on window or switches to tab
+      // 3. Periodic polling every 12 seconds
+      setInterval(performUpdateCheck, 12000);
+
+      // 4. Check immediately upon returning to the window/tab or phone unlock
       window.addEventListener('focus', performUpdateCheck);
+      window.addEventListener('online', performUpdateCheck);
       document.addEventListener('visibilitychange', function() {
         if (document.visibilityState === 'visible') {
           performUpdateCheck();
@@ -8484,6 +8661,7 @@ function App() {
       });
 
       window.__checkForUpdates = performUpdateCheck;
+      window.__triggerAppReload = triggerAppReload;
     })();
   </script>
 </body>
