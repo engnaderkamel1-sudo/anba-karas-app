@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790145886936" />
+  <meta name="app-build-id" content="1790146114185" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -9647,46 +9647,30 @@ function App() {
            {showSplash && (
              <div 
                className="fixed inset-0 z-[99999] flex flex-col items-center justify-between bg-gradient-to-b from-[#021329] via-[#05264a] to-[#010c1c] text-white select-none transition-opacity duration-700 p-4 sm:p-6"
-               onClick={() => setShowSplash(false)}
              >
-               {/* Top Bar with Skip Button & App Title */}
-               <div className="w-full flex items-center justify-between max-w-2xl pt-2">
-                 <div className="flex items-center gap-2">
-                   <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></div>
-                   <span className="text-xs sm:text-sm font-bold text-amber-300 tracking-wide">بركة صلواته تكون معنا</span>
-                 </div>
-                 <button
-                   onClick={(e) => { e.stopPropagation(); setShowSplash(false); }}
-                   className="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 hover:text-white text-xs sm:text-sm font-semibold border border-white/20 backdrop-blur-md transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
-                 >
-                   <span>تخطي</span>
-                   <span>✕</span>
-                 </button>
-               </div>
+               {/* Empty top spacing for balanced vertical centering */}
+               <div className="w-full h-4"></div>
 
                {/* Center Image Container - Maximize image size while preserving aspect ratio */}
                <div className="relative flex-1 w-full max-w-lg flex flex-col items-center justify-center my-auto py-2">
-                 <div className="relative group max-h-[75vh] w-auto flex items-center justify-center">
+                 <div className="relative group max-h-[78vh] w-auto flex items-center justify-center">
                    {/* Golden Halo glow effect behind the icon */}
                    <div className="absolute inset-0 bg-amber-500/25 blur-3xl rounded-full scale-105 animate-pulse pointer-events-none"></div>
                    
                    <img 
                      src={typeof ANBA_KARAS_SPLASH_IMAGE !== "undefined" ? ANBA_KARAS_SPLASH_IMAGE : ""}
                      alt="القديس الأنبا كاراس السائح" 
-                     className="relative z-10 max-h-[72vh] max-w-[92vw] object-contain rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.8)] border-2 border-amber-400/40"
+                     className="relative z-10 max-h-[75vh] max-w-[92vw] object-contain rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.8)] border-2 border-amber-400/40"
                    />
                  </div>
                </div>
 
-               {/* Bottom Section: Title & 3-Second Loading Bar */}
+               {/* Bottom Section: Exact requested title & 3-Second Loading Bar */}
                <div className="w-full max-w-md flex flex-col items-center gap-3 pb-4">
-                 <div className="text-center">
+                 <div className="text-center px-4">
                    <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-100 drop-shadow">
-                     خدمة القديس الأنبا كاراس
+                     خدمة الأنبا كاراس لإخوة الرب - متابعة مشاريع
                    </h1>
-                   <p className="text-xs sm:text-sm text-blue-200 font-medium mt-1">
-                     متابعة وتنفيذ مشروعات تمكين الأسر الأولى بالرعاية
-                   </p>
                  </div>
 
                  {/* 3-Second Visual Progress Indicator */}
@@ -9736,7 +9720,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790145886936";
+      const CLIENT_BUILD_ID = "1790146114185";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
