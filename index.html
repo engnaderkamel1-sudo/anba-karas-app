@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790142466187" />
+  <meta name="app-build-id" content="1790143346462" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -3734,7 +3734,6 @@
         setEditingPaymentId(null);
       };
 
-
       const handleDeletePayment = (paymentId) => {
         window.showConfirm({
           title: 'حذف دفعة سداد',
@@ -3749,7 +3748,6 @@
           }
         });
       };
-
 
       // Generate expected monthly schedule with early deduction from the LAST installments
       const startDate = caseObj.executionDate ? new Date(caseObj.executionDate) : new Date();
@@ -3810,72 +3808,115 @@
 
         if (m.deductedFromBack >= m.amount) {
           m.status = 'back_paid';
-        } else {
+        } else if (m.deductedFromBack > 0) {
           m.status = 'back_deducted';
         }
       }
 
       const schedule = baseSchedule;
-      const firstDueDate = schedule[0]?.dueDateStr || '—';
-      const lastDueDate = schedule[schedule.length - 1]?.dueDateStr || '—';
+      const firstDueDate = baseSchedule.length > 0 ? baseSchedule[0].dueDateStr : '—';
+      const lastDueDate = baseSchedule.length > 0 ? baseSchedule[baseSchedule.length - 1].dueDateStr : '—';
+
+      // Overdue calculations
+      const todayStr = new Date().toISOString().split('T')[0];
+      let dueInstallmentsCount = 0;
+      let expectedDueAmount = 0;
+      baseSchedule.forEach(inst => {
+        if (inst.dueDateStr <= todayStr) {
+          dueInstallmentsCount++;
+          expectedDueAmount += inst.amount;
+        }
+      });
+      expectedDueAmount = Math.min(expectedDueAmount, totalAmount);
+
+      let overdueAmount = 0;
+      let overdueCount = 0;
+      let isOverdue = false;
+      if (totalPaid < expectedDueAmount && !isCompleted && remainingAmount > 0) {
+        overdueAmount = Math.min(remainingAmount, expectedDueAmount - totalPaid);
+        overdueCount = monthlyAmount > 0 ? Math.ceil(overdueAmount / monthlyAmount) : 1;
+        isOverdue = true;
+      }
 
       return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden border border-gray-100 flex flex-col max-h-[92vh]" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden border border-gray-100">
             {/* Modal Header */}
-            <div className="bg-[#002f6c] p-4 sm:p-5 text-white flex justify-between items-center shrink-0">
-              <div className="flex items-center gap-2.5">
-                <span className="text-2xl">💵</span>
-                <div>
-                  <h3 className="font-bold text-base sm:text-lg">سجل وسداد الأقساط الشهرية</h3>
-                  <p className="text-xs text-blue-200 mt-0.5">
-                    {caseObj.caseName} • {churchName} ({regionName})
-                  </p>
+            <div className="bg-gradient-to-r from-[#002f6c] to-[#004b9b] text-white p-4 sm:p-5 flex justify-between items-center shrink-0">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">💳</span>
+                  <h3 className="font-bold text-lg sm:text-xl">
+                    سداد أقساط: {caseObj.beneficiaryName || caseObj.name}
+                  </h3>
+                </div>
+                <div className="text-xs text-blue-100 mt-1 flex flex-wrap items-center gap-3">
+                  <span>⛪ {churchName || '—'}</span>
+                  <span>📍 {regionName || '—'}</span>
+                  <span>💼 {caseObj.projectType || caseObj.caseType || 'مشروع'}</span>
                 </div>
               </div>
-              <button onClick={onClose} className="text-white/80 hover:text-white p-1 rounded-lg transition-colors">
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors"
+              >
                 <X size={22} />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-4 sm:p-6 overflow-y-auto space-y-5">
-              {/* Financial Summary Cards */}
+            <div className="p-4 sm:p-6 space-y-5 overflow-y-auto">
+              {/* Financial Quick Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
-                  <div className="text-[11px] font-medium text-blue-700">أصل المبلغ المنفذ</div>
-                  <div className="text-base sm:text-lg font-bold text-[#002f6c] font-sans mt-0.5">
+                <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3 text-center">
+                  <span className="text-xs text-blue-800 font-semibold block">إجمالي المشروع</span>
+                  <span className="font-sans font-bold text-base sm:text-lg text-blue-900 block mt-0.5">
                     {formatNumber(totalAmount)} ج.م
-                  </div>
+                  </span>
                 </div>
-
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
-                  <div className="text-[11px] font-medium text-amber-700">القسط الشهري المطلوب</div>
-                  <div className="text-base sm:text-lg font-bold text-amber-900 font-sans mt-0.5">
-                    {formatNumber(monthlyAmount)} ج.م
-                  </div>
-                  <div className="text-[10px] text-amber-600 font-sans mt-0.5">({totalMonths} شهر)</div>
-                </div>
-
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
-                  <div className="text-[11px] font-medium text-emerald-700">إجمالي المحصل فعلياً</div>
-                  <div className="text-base sm:text-lg font-bold text-emerald-800 font-sans mt-0.5">
+                <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 text-center">
+                  <span className="text-xs text-emerald-800 font-semibold block">إجمالي المسدد</span>
+                  <span className="font-sans font-bold text-base sm:text-lg text-emerald-700 block mt-0.5">
                     {formatNumber(totalPaid)} ج.م
-                  </div>
-                  <div className="text-[10px] text-emerald-600 font-sans mt-0.5">{paidPercentage}% مسدد</div>
+                  </span>
                 </div>
-
-                <div className={`${remainingAmount === 0 ? 'bg-emerald-100 border-emerald-300' : 'bg-rose-50 border-rose-200'} rounded-xl p-3 text-center border`}>
-                  <div className={`text-[11px] font-medium ${remainingAmount === 0 ? 'text-emerald-800' : 'text-rose-700'}`}>
-                    {remainingAmount === 0 ? 'حالة السداد' : 'المبلغ المتبقي'}
-                  </div>
-                  <div className={`text-base sm:text-lg font-bold font-sans mt-0.5 ${remainingAmount === 0 ? 'text-emerald-900' : 'text-rose-800'}`}>
-                    {remainingAmount === 0 ? 'مكتمل بالكامل ✅' : `${formatNumber(remainingAmount)} ج.م`}
-                  </div>
+                <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 text-center">
+                  <span className="text-xs text-amber-800 font-semibold block">المتبقي</span>
+                  <span className="font-sans font-bold text-base sm:text-lg text-amber-700 block mt-0.5">
+                    {formatNumber(remainingAmount)} ج.م
+                  </span>
+                </div>
+                <div className="bg-purple-50/70 border border-purple-200 rounded-xl p-3 text-center">
+                  <span className="text-xs text-purple-800 font-semibold block">القسط الشهري</span>
+                  <span className="font-sans font-bold text-base sm:text-lg text-purple-700 block mt-0.5">
+                    {formatNumber(monthlyAmount)} ج.م
+                  </span>
                 </div>
               </div>
 
-              {/* Timeline & Key Dates Cards */}
+              {/* Overdue Alert Banner if overdue */}
+              {isOverdue && (
+                <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-3.5 flex items-center justify-between gap-3 text-rose-900 animate-pulse">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl shrink-0">⚠️</span>
+                    <div>
+                      <div className="font-bold text-sm">تنبيه: توجد أقساط متأخرة على هذه الحالة!</div>
+                      <div className="text-xs text-rose-700 mt-0.5">
+                        المستحق حتى تاريخ اليوم: <strong className="font-sans">{formatNumber(expectedDueAmount)} ج.م</strong> ({dueInstallmentsCount} أقساط مستحقة).
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-left shrink-0 bg-rose-100/80 px-3 py-1.5 rounded-lg border border-rose-200">
+                    <span className="text-xs text-rose-700 font-semibold block">قيمة المتأخرات</span>
+                    <span className="font-sans font-extrabold text-sm sm:text-base text-rose-700 block">
+                      {formatNumber(overdueAmount)} ج.م ({overdueCount} قسط)
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Dates Strip */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-50 p-3 rounded-xl border border-gray-200 text-xs">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-blue-100 text-[#002f6c] flex items-center justify-center font-bold text-sm shrink-0">
@@ -4224,11 +4265,17 @@
                               )}
                               {sc.status === 'partial' && (
                                 <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-bold font-sans">
-                                  سداد جزئي ({formatNumber(sc.paidFromFront)} ج.م) ⏳
+                                  سداد جزئي ({formatNumber(sc.paidFromFront)} ج.م) {sc.dueDateStr <= todayStr ? '⚠️' : '⏳'}
                                 </span>
                               )}
                               {sc.status === 'pending' && (
-                                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[10px]">بانتظار السداد</span>
+                                sc.dueDateStr <= todayStr ? (
+                                  <span className="bg-rose-100 text-rose-800 border border-rose-200 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                    ⚠️ متأخر ({sc.dueDateStr})
+                                  </span>
+                                ) : (
+                                  <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[10px]">بانتظار السداد</span>
+                                )
                               )}
                             </td>
                           </tr>
@@ -4254,10 +4301,6 @@
         </div>
       );
     }
-
-    // =========================================================================
-    // --- COMPONENT: ADD LEGACY PROJECT MODAL (MANUAL INPUT) ---
-    // =========================================================================
 // ================================================================
 // MODULE: components/BatchPaymentModal.js
 // ================================================================
@@ -5209,10 +5252,47 @@
       const extractCaseData = (c, v, ch, sg) => {
         const totalAmt = parseFloat(c.executedProjectValue || c.projectValue) || 0;
         const monthlyAmt = parseFloat(c.executedInstallmentAmount || c.installmentAmount) || 0;
+        const totalMonths = monthlyAmt > 0 ? Math.ceil(totalAmt / monthlyAmt) : 0;
         const payments = c.payments || [];
         const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
         const remainingAmt = Math.max(0, totalAmt - totalPaid);
         const isCompleted = remainingAmt <= 0 && totalAmt > 0;
+
+        // Compute Due & Arrears (المتأخرات)
+        let expectedDueAmount = 0;
+        let dueInstallmentsCount = 0;
+        let overdueAmount = 0;
+        let overdueCount = 0;
+        let isOverdue = false;
+
+        if (!isCompleted && totalAmt > 0 && monthlyAmt > 0) {
+          const rawStart = c.executionDate || v.date;
+          if (rawStart) {
+            const startDate = new Date(rawStart);
+            const today = new Date();
+            for (let i = 1; i <= totalMonths; i++) {
+              const dueDate = new Date(startDate);
+              dueDate.setMonth(dueDate.getMonth() + i);
+              if (dueDate <= today) {
+                dueInstallmentsCount++;
+                const instAmt = (i === totalMonths && totalAmt % monthlyAmt !== 0)
+                  ? (totalAmt - (totalMonths - 1) * monthlyAmt)
+                  : monthlyAmt;
+                expectedDueAmount += instAmt;
+              } else {
+                break;
+              }
+            }
+            expectedDueAmount = Math.min(expectedDueAmount, totalAmt);
+
+            if (totalPaid < expectedDueAmount) {
+              overdueAmount = Math.min(remainingAmt, expectedDueAmount - totalPaid);
+              overdueCount = Math.ceil(overdueAmount / monthlyAmt);
+              isOverdue = overdueAmount > 0;
+            }
+          }
+        }
+
         return {
           visitId: v.id,
           visitDate: v.date,
@@ -5226,12 +5306,17 @@
           caseObj: c,
           totalAmt,
           monthlyAmt,
-          totalMonths: monthlyAmt > 0 ? Math.ceil(totalAmt / monthlyAmt) : 0,
+          totalMonths,
           payments,
           totalPaid,
           remainingAmt,
           isCompleted,
-          repaymentState: isCompleted ? 'completed' : (totalPaid > 0 ? 'active' : 'unpaid')
+          dueInstallmentsCount,
+          expectedDueAmount,
+          overdueAmount,
+          overdueCount,
+          isOverdue,
+          repaymentState: isCompleted ? 'completed' : (isOverdue ? 'overdue' : (totalPaid > 0 ? 'active' : 'unpaid'))
         };
       };
 
@@ -5256,6 +5341,9 @@
       let completedCount = 0;
       let activeCount = 0;
       let unpaidCount = 0;
+      let overdueCasesCount = 0;
+      let sumOverdueAmount = 0;
+      let sumOverdueInstallments = 0;
 
       allExecutedCases.forEach(item => {
         sumTotalExecuted += item.totalAmt;
@@ -5263,6 +5351,11 @@
         if (item.isCompleted) {
           completedCount++;
         } else {
+          if (item.isOverdue) {
+            overdueCasesCount++;
+            sumOverdueAmount += item.overdueAmount;
+            sumOverdueInstallments += item.overdueCount;
+          }
           if (item.totalPaid > 0) activeCount++;
           else unpaidCount++;
           sumMonthlyActiveInstallments += item.monthlyAmt;
@@ -5271,6 +5364,7 @@
 
       const sumTotalRemaining = Math.max(0, sumTotalExecuted - sumTotalPaid);
       const overallPaidPercentage = sumTotalExecuted > 0 ? Math.round((sumTotalPaid / sumTotalExecuted) * 100) : 0;
+      const overdueCasesPercentage = allExecutedCases.length > 0 ? Math.round((overdueCasesCount / allExecutedCases.length) * 100) : 0;
 
       // Group executed visits with summaries
       const visitsWithExecuted = activeVisits.map(v => {
@@ -5294,6 +5388,11 @@
         const compCount = vCases.filter(c => c.isCompleted).length;
         const actCount = vCases.filter(c => !c.isCompleted && c.totalPaid > 0).length;
         const unpCount = vCases.filter(c => !c.isCompleted && c.totalPaid === 0).length;
+        const overdueCases = vCases.filter(c => c.isOverdue);
+        const overdueCasesCount = overdueCases.length;
+        const overdueAmount = overdueCases.reduce((s, c) => s + c.overdueAmount, 0);
+        const overdueInstallments = overdueCases.reduce((s, c) => s + c.overdueCount, 0);
+        const overduePct = vCases.length > 0 ? Math.round((overdueCasesCount / vCases.length) * 100) : 0;
         const progressPct = totalVal > 0 ? Math.round((paidVal / totalVal) * 100) : 0;
 
         return {
@@ -5307,6 +5406,10 @@
           compCount,
           actCount,
           unpCount,
+          overdueCasesCount,
+          overdueAmount,
+          overdueInstallments,
+          overduePct,
           progressPct
         };
       }).filter(Boolean);
@@ -5321,6 +5424,7 @@
         if (filterStatus === 'completed' && !item.isCompleted) return false;
         if (filterStatus === 'active' && (item.isCompleted || item.totalPaid === 0)) return false;
         if (filterStatus === 'unpaid' && (item.isCompleted || item.totalPaid > 0)) return false;
+        if (filterStatus === 'overdue' && !item.isOverdue) return false;
 
         if (filterRegion && item.regionName !== filterRegion) return false;
         if (filterChurch && item.churchName !== filterChurch) return false;
@@ -5379,6 +5483,9 @@
               monthlyInst: 0,
               casesCount: 0,
               compCount: 0,
+              overdueAmount: 0,
+              overdueInstallments: 0,
+              overdueCasesCount: 0,
               cases: [],
               churchesMap: {}
             };
@@ -5392,6 +5499,11 @@
             reg.monthlyInst += item.monthlyAmt;
           } else {
             reg.compCount++;
+          }
+          if (item.isOverdue) {
+            reg.overdueCasesCount++;
+            reg.overdueAmount += item.overdueAmount;
+            reg.overdueInstallments += item.overdueCount;
           }
           reg.casesCount++;
           reg.cases.push(item);
@@ -5408,6 +5520,9 @@
               monthlyInst: 0,
               casesCount: 0,
               compCount: 0,
+              overdueAmount: 0,
+              overdueInstallments: 0,
+              overdueCasesCount: 0,
               cases: [],
               visitsMap: {}
             };
@@ -5422,6 +5537,11 @@
           } else {
             ch.compCount++;
           }
+          if (item.isOverdue) {
+            ch.overdueCasesCount++;
+            ch.overdueAmount += item.overdueAmount;
+            ch.overdueInstallments += item.overdueCount;
+          }
           ch.casesCount++;
           ch.cases.push(item);
 
@@ -5430,17 +5550,27 @@
               visitId: vId,
               visitDate: item.visitDate,
               visitLocation: item.visitLocation,
-              cases: []
+              cases: [],
+              overdueAmount: 0,
+              overdueInstallments: 0,
+              overdueCasesCount: 0
             };
           }
 
           ch.visitsMap[vId].cases.push(item);
+          if (item.isOverdue) {
+            ch.visitsMap[vId].overdueCasesCount++;
+            ch.visitsMap[vId].overdueAmount += item.overdueAmount;
+            ch.visitsMap[vId].overdueInstallments += item.overdueCount;
+          }
         });
 
         return Object.values(regionsMap).map(reg => ({
           ...reg,
+          overduePct: reg.casesCount > 0 ? Math.round((reg.overdueCasesCount / reg.casesCount) * 100) : 0,
           churches: Object.values(reg.churchesMap).map(ch => ({
             ...ch,
+            overduePct: ch.casesCount > 0 ? Math.round((ch.overdueCasesCount / ch.casesCount) * 100) : 0,
             visits: Object.values(ch.visitsMap).sort((a, b) => (b.visitDate || '').localeCompare(a.visitDate || ''))
           })).sort((a, b) => a.churchName.localeCompare(b.churchName, 'ar'))
         })).sort((a, b) => a.regionName.localeCompare(b.regionName, 'ar'));
@@ -5779,17 +5909,52 @@
 
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-between col-span-2 lg:col-span-1">
               <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
-                <span>حالة السداد الإجمالية</span>
+                <span>حالة السداد والمتأخرات</span>
                 <span className="text-purple-600 text-base">📊</span>
               </div>
               <div className="text-lg sm:text-xl font-bold font-sans text-[#002f6c] mt-2">
                 {formatNumber(completedCount)} <span className="text-xs font-normal text-emerald-600 font-bold">مكتمل ✅</span>
               </div>
-              <div className="text-[11px] text-gray-500 font-sans mt-1">
-                {formatNumber(activeCount)} جاري • {formatNumber(unpaidCount)} لم يبدأ
+              <div className="text-[11px] font-sans mt-1">
+                {overdueCasesCount > 0 ? (
+                  <span className="text-rose-600 font-bold">
+                    ⚠️ {formatNumber(overdueCasesCount)} متأخر ({overdueCasesPercentage}%) • {formatNumber(sumOverdueAmount)} ج.م
+                  </span>
+                ) : (
+                  <span className="text-gray-500">
+                    {formatNumber(activeCount)} جاري • {formatNumber(unpaidCount)} لم يبدأ
+                  </span>
+                )}
               </div>
             </div>
           </div>
+
+          {/* Global Overdue Banner if any arrears exist */}
+          {overdueCasesCount > 0 && (
+            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-rose-900 shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl shrink-0">⚠️</span>
+                <div>
+                  <div className="font-bold text-xs sm:text-sm">
+                    إجمالي المتأخرات عبر كل الحالات: <strong className="font-sans font-extrabold text-rose-700">{formatNumber(sumOverdueAmount)} ج.م</strong>
+                  </div>
+                  <div className="text-[11px] text-rose-600 mt-0.5 font-sans">
+                    يوجد {formatNumber(overdueCasesCount)} حالة متأخرة ({overdueCasesPercentage}% من إجمالي المشاريع) بإجمالي {formatNumber(sumOverdueInstallments)} قسط مستحق لم يُسدد في موعده.
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { setViewMode('allCases'); setFilterStatus('overdue'); }}
+                  className="bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                >
+                  <span>عرض كل المتأخرين</span>
+                  <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px] font-sans">{formatNumber(overdueCasesCount)}</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ========================================================= */}
           {/* VIEW MODE 1: DETAILED VISIT VIEW (PARTITIONED LIKE ARCHIVE) */}
@@ -5803,15 +5968,12 @@
                 const executedCases = (sg.cases || []).filter(c => {
                   if (c.status !== 'executed') return false;
 
-                  const totalAmt = parseFloat(c.executedProjectValue || c.projectValue) || 0;
-                  const payments = c.payments || [];
-                  const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                  const remainingAmt = Math.max(0, totalAmt - totalPaid);
-                  const isCompleted = remainingAmt <= 0 && totalAmt > 0;
+                  const data = extractCaseData(c, v, ch, sg);
 
-                  if (filterStatus === 'completed' && !isCompleted) return false;
-                  if (filterStatus === 'active' && (isCompleted || totalPaid === 0)) return false;
-                  if (filterStatus === 'unpaid' && (isCompleted || totalPaid > 0)) return false;
+                  if (filterStatus === 'completed' && !data.isCompleted) return false;
+                  if (filterStatus === 'active' && (data.isCompleted || data.totalPaid === 0)) return false;
+                  if (filterStatus === 'unpaid' && (data.isCompleted || data.totalPaid > 0)) return false;
+                  if (filterStatus === 'overdue' && !data.isOverdue) return false;
 
                   if (filterSearch.trim()) {
                     const normSearch = normalizeArabicText(filterSearch);
@@ -5898,6 +6060,15 @@
                       <span className="bg-amber-50 text-amber-900 border border-amber-200 px-3 py-1 rounded-xl text-xs font-bold font-sans">
                         القسط الشهري: {formatNumber(selectedVisitData.activeInst)} ج.م/شهر
                       </span>
+                      {selectedVisitData.overdueCasesCount > 0 ? (
+                        <span className="bg-rose-100 text-rose-800 border border-rose-300 px-3 py-1 rounded-xl text-xs font-bold font-sans">
+                          ⚠️ المتأخرات: {formatNumber(selectedVisitData.overdueAmount)} ج.م ({selectedVisitData.overdueCasesCount} حالة • {selectedVisitData.overdueInstallments} قسط • {selectedVisitData.overduePct}%)
+                        </span>
+                      ) : (
+                        <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-xl text-xs font-bold font-sans">
+                          ✅ السداد منتظم
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -5949,6 +6120,17 @@
                       >
                         ⏳ لم يبدأ ({formatNumber(selectedVisitData.unpCount)})
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('overdue')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                          filterStatus === 'overdue' 
+                            ? 'bg-rose-700 text-white shadow-sm' 
+                            : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                        }`}
+                      >
+                        ⚠️ متأخر ({formatNumber(selectedVisitData.overdueCasesCount)})
+                      </button>
                     </div>
 
                     {/* Search inside visit */}
@@ -5977,18 +6159,27 @@
                       let regCasesCount = 0;
                       let regTotalVal = 0;
                       let regPaidVal = 0;
+                      let regOverdueAmount = 0;
+                      let regOverdueInstallments = 0;
+                      let regOverdueCasesCount = 0;
+
                       churchesInReg.forEach(ch => {
                         (ch.servantsGroups || []).forEach(sg => {
                           (sg.cases || []).forEach(c => {
+                            const data = extractCaseData(c, v, ch, sg);
                             regCasesCount++;
-                            const totalAmt = parseFloat(c.executedProjectValue || c.projectValue) || 0;
-                            const payments = c.payments || [];
-                            const paidAmt = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                            regTotalVal += totalAmt;
-                            regPaidVal += paidAmt;
+                            regTotalVal += data.totalAmt;
+                            regPaidVal += data.totalPaid;
+                            if (data.isOverdue) {
+                              regOverdueCasesCount++;
+                              regOverdueAmount += data.overdueAmount;
+                              regOverdueInstallments += data.overdueCount;
+                            }
                           });
                         });
                       });
+
+                      const regOverduePct = regCasesCount > 0 ? Math.round((regOverdueCasesCount / regCasesCount) * 100) : 0;
 
                       const isRegionExpanded = expandedRegions[regionName] !== false;
 
@@ -6015,6 +6206,15 @@
                                 <span className="bg-white text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
                                   ✅ {formatNumber(regPaidVal)} ج.م مسدد
                                 </span>
+                                {regOverdueCasesCount > 0 ? (
+                                  <span className="bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                    ⚠️ المتأخرات: {formatNumber(regOverdueAmount)} ج.م ({regOverdueCasesCount} حالة • {regOverdueInstallments} قسط • {regOverduePct}%)
+                                  </span>
+                                ) : (
+                                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                    ✅ السداد منتظم
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-2 mr-auto sm:mr-0">
@@ -6053,16 +6253,25 @@
                                 let chCasesCount = 0;
                                 let chTotalVal = 0;
                                 let chPaidVal = 0;
+                                let chOverdueAmount = 0;
+                                let chOverdueInstallments = 0;
+                                let chOverdueCasesCount = 0;
+
                                 (ch.servantsGroups || []).forEach(sg => {
                                   (sg.cases || []).forEach(c => {
+                                    const data = extractCaseData(c, v, ch, sg);
                                     chCasesCount++;
-                                    const totalAmt = parseFloat(c.executedProjectValue || c.projectValue) || 0;
-                                    const payments = c.payments || [];
-                                    const paidAmt = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                                    chTotalVal += totalAmt;
-                                    chPaidVal += paidAmt;
+                                    chTotalVal += data.totalAmt;
+                                    chPaidVal += data.totalPaid;
+                                    if (data.isOverdue) {
+                                      chOverdueCasesCount++;
+                                      chOverdueAmount += data.overdueAmount;
+                                      chOverdueInstallments += data.overdueCount;
+                                    }
                                   });
                                 });
+
+                                const chOverduePct = chCasesCount > 0 ? Math.round((chOverdueCasesCount / chCasesCount) * 100) : 0;
 
                                 const isChurchExpanded = expandedChurches[ch.id] !== false;
 
@@ -6096,6 +6305,15 @@
                                         <span className="bg-white text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
                                           💰 {formatNumber(chTotalVal)} ج.م
                                         </span>
+                                        {chOverdueCasesCount > 0 ? (
+                                          <span className="bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                            ⚠️ المتأخرات: {formatNumber(chOverdueAmount)} ج.م ({chOverdueCasesCount} حالة • {chOverdueInstallments} قسط • {chOverduePct}%)
+                                          </span>
+                                        ) : (
+                                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                            ✅ السداد منتظم
+                                          </span>
+                                        )}
                                         <button
                                           type="button"
                                           onClick={(e) => {
@@ -6125,34 +6343,11 @@
                                       const casesList = [];
                                       (ch.servantsGroups || []).forEach(sg => {
                                         (sg.cases || []).forEach(c => {
-                                          const totalAmt = parseFloat(c.executedProjectValue || c.projectValue) || 0;
-                                          const monthlyAmt = parseFloat(c.executedInstallmentAmount || c.installmentAmount) || 0;
-                                          const totalMonths = monthlyAmt > 0 ? Math.ceil(totalAmt / monthlyAmt) : 0;
-                                          const payments = c.payments || [];
-                                          const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                                          const remainingAmt = Math.max(0, totalAmt - totalPaid);
-                                          const isCompleted = remainingAmt <= 0 && totalAmt > 0;
-                                          const pPct = totalAmt > 0 ? Math.min(100, Math.round((totalPaid / totalAmt) * 100)) : 0;
-
+                                          const data = extractCaseData(c, v, ch, sg);
+                                          const pPct = data.totalAmt > 0 ? Math.min(100, Math.round((data.totalPaid / data.totalAmt) * 100)) : 0;
                                           casesList.push({
                                             serial: serial++,
-                                            visitId: v.id,
-                                            visitDate: v.date,
-                                            visitLocation: v.location,
-                                            churchId: ch.id,
-                                            churchName: ch.churchName,
-                                            regionName: ch.regionName,
-                                            villageName: ch.villageName,
-                                            groupId: sg.id,
-                                            servantsNames: sg.servantsNames,
-                                            caseObj: c,
-                                            totalAmt,
-                                            monthlyAmt,
-                                            totalMonths,
-                                            payments,
-                                            totalPaid,
-                                            remainingAmt,
-                                            isCompleted,
+                                            ...data,
                                             pPct
                                           });
                                         });
@@ -6225,6 +6420,10 @@
                                                         <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
                                                           <span>✅</span> مكتمل
                                                         </span>
+                                                      ) : item.isOverdue ? (
+                                                        <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 font-sans" title={`المستحق حتى اليوم: ${formatNumber(item.expectedDueAmount)} ج.م`}>
+                                                          <span>⚠️</span> متأخر ({item.overdueCount} قسط • {formatNumber(item.overdueAmount)} ج.م)
+                                                        </span>
                                                       ) : item.totalPaid > 0 ? (
                                                         <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
                                                           <span>🔄</span> جاري
@@ -6266,6 +6465,10 @@
                                                   {item.isCompleted ? (
                                                     <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
                                                       ✅ مكتمل
+                                                    </span>
+                                                  ) : item.isOverdue ? (
+                                                    <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0 font-sans">
+                                                      ⚠️ متأخر ({item.overdueCount} قسط • {formatNumber(item.overdueAmount)} ج.م)
                                                     </span>
                                                   ) : item.totalPaid > 0 ? (
                                                     <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
@@ -6524,6 +6727,26 @@
                                   </div>
                                 </div>
                               </div>
+
+                              {/* Overdue Summary Pill */}
+                              {item.overdueAmount > 0 ? (
+                                <div className="bg-rose-50 border border-rose-200 rounded-xl p-2.5 text-xs flex justify-between items-center text-rose-800 font-sans">
+                                  <div className="flex items-center gap-1 font-bold">
+                                    <span>⚠️ المتأخرات:</span>
+                                    <span>{formatNumber(item.overdueAmount)} ج.م</span>
+                                  </div>
+                                  <div className="text-[11px] text-rose-600 font-medium">
+                                    {item.overdueCasesCount} حالة • {item.overdueInstallments} قسط ({item.overduePct}%)
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-xl p-2 text-xs flex justify-between items-center text-emerald-800 font-sans">
+                                  <span className="font-bold flex items-center gap-1">
+                                    <span>✅</span> السداد منتظم
+                                  </span>
+                                  <span className="text-[11px] text-emerald-600 font-medium">لا توجد أقساط متأخرة</span>
+                                </div>
+                              )}
                             </div>
 
                             {/* Card Footer Button */}
@@ -6609,6 +6832,15 @@
                                   <span className="bg-white text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
                                     ⏳ {formatNumber(reg.remVal)} ج.م متبقي
                                   </span>
+                                  {reg.overdueCasesCount > 0 ? (
+                                    <span className="bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                      ⚠️ المتأخرات: {formatNumber(reg.overdueAmount)} ج.م ({reg.overdueCasesCount} حالة • {reg.overdueInstallments} قسط • {reg.overduePct}%)
+                                    </span>
+                                  ) : (
+                                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                      ✅ السداد منتظم
+                                    </span>
+                                  )}
                                 </div>
                               </div>
 
@@ -6676,6 +6908,15 @@
                                           <span className="bg-white text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
                                             📅 {formatNumber(ch.monthlyInst)} ج.م/شهر
                                           </span>
+                                          {ch.overdueCasesCount > 0 ? (
+                                            <span className="bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                              ⚠️ المتأخرات: {formatNumber(ch.overdueAmount)} ج.م ({ch.overdueCasesCount} حالة • {ch.overdueInstallments} قسط • {ch.overduePct}%)
+                                            </span>
+                                          ) : (
+                                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                              ✅ السداد منتظم
+                                            </span>
+                                          )}
 
                                           <button
                                             type="button"
@@ -6710,6 +6951,15 @@
                                                     <span className="bg-white text-[#002f6c] border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-sans">
                                                       {formatNumber(vData.cases.length)} حالات بهذه النزلة
                                                     </span>
+                                                    {vData.overdueCasesCount > 0 ? (
+                                                      <span className="bg-rose-100 text-rose-800 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-sans">
+                                                        ⚠️ متأخرات: {formatNumber(vData.overdueAmount)} ج.م ({vData.overdueCasesCount} حالة • {vData.overdueInstallments} قسط)
+                                                      </span>
+                                                    ) : (
+                                                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-sans">
+                                                        ✅ سداد منتظم
+                                                      </span>
+                                                    )}
                                                   </div>
 
                                                   <button
@@ -6786,6 +7036,10 @@
                                                                 <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
                                                                   <span>✅</span> مكتمل
                                                                 </span>
+                                                              ) : item.isOverdue ? (
+                                                                <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 font-sans" title={`المستحق حتى اليوم: ${formatNumber(item.expectedDueAmount)} ج.م`}>
+                                                                  <span>⚠️</span> متأخر ({item.overdueCount} قسط • {formatNumber(item.overdueAmount)} ج.م)
+                                                                </span>
                                                               ) : item.totalPaid > 0 ? (
                                                                 <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
                                                                   <span>🔄</span> جاري
@@ -6828,15 +7082,19 @@
                                                             <div className="text-[10px] text-gray-500 mt-0.5">الخدام: {item.servantsNames || '—'}</div>
                                                           </div>
                                                           {item.isCompleted ? (
-                                                            <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                                                            <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
                                                               ✅ مكتمل
                                                             </span>
+                                                          ) : item.isOverdue ? (
+                                                            <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0 font-sans">
+                                                              ⚠️ متأخر ({item.overdueCount} قسط • {formatNumber(item.overdueAmount)} ج.م)
+                                                            </span>
                                                           ) : item.totalPaid > 0 ? (
-                                                            <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                                                            <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
                                                               🔄 جاري
                                                             </span>
                                                           ) : (
-                                                            <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                                                            <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
                                                               ⏳ لم يبدأ
                                                             </span>
                                                           )}
@@ -6950,7 +7208,18 @@
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
-                        ⚠️ لم يبدأ السداد ({formatNumber(unpaidCount)})
+                        ⏳ لم يبدأ السداد ({formatNumber(unpaidCount)})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('overdue')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          filterStatus === 'overdue' 
+                            ? 'bg-rose-700 text-white shadow-sm' 
+                            : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                        }`}
+                      >
+                        ⚠️ المتأخرين ({formatNumber(overdueCasesCount)})
                       </button>
                     </div>
 
@@ -7054,6 +7323,10 @@
                                         <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
                                           <span>✅</span> مكتمل
                                         </span>
+                                      ) : item.isOverdue ? (
+                                        <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 font-sans" title={`المستحق حتى اليوم: ${formatNumber(item.expectedDueAmount)} ج.م`}>
+                                          <span>⚠️</span> متأخر ({item.overdueCount} قسط • {formatNumber(item.overdueAmount)} ج.م)
+                                        </span>
                                       ) : item.totalPaid > 0 ? (
                                         <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
                                           <span>🔄</span> جاري
@@ -7100,6 +7373,10 @@
                                   {item.isCompleted ? (
                                     <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
                                       ✅ مكتمل
+                                    </span>
+                                  ) : item.isOverdue ? (
+                                    <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0 font-sans">
+                                      ⚠️ متأخر ({item.overdueCount} قسط • {formatNumber(item.overdueAmount)} ج.م)
                                     </span>
                                   ) : item.totalPaid > 0 ? (
                                     <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
@@ -8070,7 +8347,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790142466187";
+      const CLIENT_BUILD_ID = "1790143346462";
       let initialEtag = null;
       let isUpdating = false;
 
