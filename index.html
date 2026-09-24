@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790239442484" />
+  <meta name="app-build-id" content="1790239522890" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -440,7 +440,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                   type="button"
                   onClick={handleClear}
                   className="hover:text-red-500 p-0.5 rounded transition-colors"
-                  title="\u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u062a\u062d\u062f\u064a\u062f"
+                  title={'\u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u062a\u062d\u062f\u064a\u062f'}
                 >
                   <X size={14} />
                 </button>
@@ -458,7 +458,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                     autoFocus
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    placeholder="\u0627\u0643\u062a\u0628 \u0644\u0644\u0628\u062d\u062b..."
+                    placeholder={'\u0627\u0643\u062a\u0628 \u0644\u0644\u0628\u062d\u062b...'}
                     className="w-full text-xs sm:text-sm border border-gray-200 rounded-lg pr-7 pl-6 py-1.5 outline-none focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] bg-white text-gray-800 placeholder-gray-400"
                   />
                   <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none text-gray-400">
@@ -469,7 +469,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                       type="button"
                       onClick={() => setSearchTerm('')}
                       className="absolute inset-y-0 left-0 pl-2 flex items-center text-gray-400 hover:text-red-500"
-                      title="\u0645\u0633\u062d"
+                      title={'\u0645\u0633\u062d'}
                     >
                       <X size={12} />
                     </button>
@@ -1495,7 +1495,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100" onClick={e => e.stopPropagation()}>
             <div className="p-4 border-b border-gray-100 bg-[#002f6c] text-white flex justify-between items-center">
               <h3 className="font-bold text-base flex items-center gap-2">
-                <span>\u26ea</span>
+                <span>{'\u26ea'}</span>
                 <span>{'\u062a\u0639\u062f\u064a\u0644 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0643\u0646\u064a\u0633\u0629'}</span>
               </h3>
               <button type="button" onClick={onClose} className="text-white/80 hover:text-white p-1">
@@ -13357,7 +13357,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790239442484";
+      const CLIENT_BUILD_ID = "1790239522890";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
