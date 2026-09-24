@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790239522890" />
+  <meta name="app-build-id" content="1790242980157" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -10464,9 +10464,40 @@ const BackupService = (() => {
                 const reg = church.regionName || '';
                 const vil = church.villageName || '';
                 const chName = church.churchName || '';
-                const servants = church.servantName || '';
 
-                (church.cases || []).forEach(c => {
+                // Extract all cases whether in servantsGroups or legacy church.cases
+                const churchCases = [];
+                if (Array.isArray(church.servantsGroups) && church.servantsGroups.length > 0) {
+                    church.servantsGroups.forEach(sg => {
+                        (sg.cases || []).forEach(c => {
+                            churchCases.push({ caseData: c, servants: sg.servantsNames || '' });
+                        });
+                    });
+                } else if (Array.isArray(church.cases) && church.cases.length > 0) {
+                    church.cases.forEach(c => {
+                        churchCases.push({ caseData: c, servants: church.servantName || '' });
+                    });
+                }
+
+                churchCases.forEach(({ caseData: c, servants }) => {
+                    const isExec = c.status === 'executed' || c.status === 'منفذ';
+                    const statusLabel = c.status === 'executed' || c.status === 'منفذ' 
+                        ? 'مشروع منفذ' 
+                        : (c.status === 'cancelled' || c.status === 'ملغى' ? 'ملغى' : 'موافقة مبدئية');
+
+                    const projVal = parseFloat(c.projectValue) || parseFloat(c.projectCost) || 0;
+                    const instVal = parseFloat(c.installmentAmount) || 0;
+                    const execVal = parseFloat(c.executedProjectValue) || (isExec ? projVal : 0);
+                    const execInstVal = parseFloat(c.executedInstallmentAmount) || (isExec ? instVal : 0);
+                    const execType = isExec ? (c.executedProjectType || c.projectType || '') : '';
+                    const execDate = isExec ? (c.executionDate || '') : '';
+
+                    let fullNotes = c.notes || '';
+                    if (c.executionNotes) {
+                        fullNotes = fullNotes ? `${fullNotes} | ملاحظات التنفيذ: ${c.executionNotes}` : `ملاحظات التنفيذ: ${c.executionNotes}`;
+                    }
+
+                    // 1. Record in Cases Sheet
                     casesRows.push([
                         caseIdx++,
                         loc,
@@ -10479,48 +10510,57 @@ const BackupService = (() => {
                         c.nationalId || '',
                         c.phone || '',
                         c.projectType || '',
-                        c.projectCost || 0,
-                        c.installmentAmount || 0,
-                        c.status || '',
-                        c.notes || ''
+                        projVal,
+                        instVal,
+                        statusLabel,
+                        fullNotes
                     ]);
 
-                    if (c.status === 'منفذ' || c.executedType || c.executedCost) {
+                    // 2. Record in Executed Projects Sheet
+                    if (isExec || c.executedProjectType || c.executedProjectValue || c.executedType || c.executedCost) {
                         projectsRows.push([
                             projIdx++,
-                            c.executionDate || '',
+                            execDate,
                             c.name || '',
                             chName,
                             vil,
                             reg,
                             loc,
                             c.projectType || '',
-                            c.executedType || c.projectType || '',
-                            c.projectCost || 0,
-                            c.executedCost || c.projectCost || 0,
-                            c.executedInstallment || c.installmentAmount || 0,
-                            c.status || 'منفذ',
-                            c.notes || ''
+                            execType || c.projectType || '',
+                            projVal,
+                            execVal,
+                            execInstVal,
+                            'منفذ',
+                            fullNotes
                         ]);
                     }
 
-                    if (c.installments && Array.isArray(c.installments)) {
-                        c.installments.forEach(inst => {
+                    // 3. Record in Installments Sheet (from c.payments or legacy c.installments)
+                    const paymentsList = Array.isArray(c.payments) && c.payments.length > 0 
+                        ? c.payments 
+                        : (Array.isArray(c.installments) ? c.installments : []);
+
+                    if (paymentsList.length > 0) {
+                        paymentsList.forEach((pay, pIdx) => {
+                            const pAmount = parseFloat(pay.amount || pay.amountPaid) || 0;
+                            const pDate = pay.paidDate || pay.date || '';
+                            const pNotes = pay.notes || '';
                             installmentsRows.push([
                                 instIdx++,
                                 c.name || '',
                                 chName,
                                 reg,
-                                c.executedType || c.projectType || '',
-                                inst.installmentNumber || '',
-                                inst.amountDue || 0,
-                                inst.amountPaid || 0,
-                                (inst.amountDue || 0) - (inst.amountPaid || 0),
-                                inst.status || '',
-                                inst.dueDate || '',
-                                inst.paidDate || '',
-                                inst.collectorName || '',
-                                inst.notes || ''
+                                execType || c.projectType || '',
+                                pay.installmentNumber || (pIdx + 1),
+                                execInstVal || instVal,
+                                pAmount,
+                                Math.max(0, (execVal || projVal) - pAmount),
+                                'مسدد',
+                                pay.dueDate || pDate,
+                                pDate,
+                                pay.collectorName || servants || '',
+                                pNotes
                             ]);
                         });
                     }
@@ -10605,9 +10645,16 @@ const BackupService = (() => {
             let totalProjects = 0;
             allVisits.filter(v => !v.isDeleted).forEach(v => {
                 (v.churches || []).forEach(ch => {
-                    (ch.cases || []).forEach(c => {
+                    const casesList = [];
+                    if (Array.isArray(ch.servantsGroups) && ch.servantsGroups.length > 0) {
+                        ch.servantsGroups.forEach(sg => (sg.cases || []).forEach(c => casesList.push(c)));
+                    } else if (Array.isArray(ch.cases)) {
+                        ch.cases.forEach(c => casesList.push(c));
+                    }
+
+                    casesList.forEach(c => {
                         totalCases++;
-                        if (c.status === 'منفذ' || c.executedType || c.executedCost) {
+                        if (c.status === 'executed' || c.status === 'منفذ' || c.executedProjectType || c.executedProjectValue || c.executedType || c.executedCost) {
                             totalProjects++;
                         }
                     });
@@ -10699,9 +10746,18 @@ const BackupService = (() => {
         let totalProjects = 0;
         (allVisits || []).filter(v => !v.isDeleted).forEach(v => {
             (v.churches || []).forEach(ch => {
-                (ch.cases || []).forEach(c => {
+                const casesList = [];
+                if (Array.isArray(ch.servantsGroups) && ch.servantsGroups.length > 0) {
+                    ch.servantsGroups.forEach(sg => (sg.cases || []).forEach(c => casesList.push(c)));
+                } else if (Array.isArray(ch.cases)) {
+                    ch.cases.forEach(c => casesList.push(c));
+                }
+
+                casesList.forEach(c => {
                     totalCases++;
-                    if (c.status === 'منفذ' || c.executedType) totalProjects++;
+                    if (c.status === 'executed' || c.status === 'منفذ' || c.executedProjectType || c.executedProjectValue || c.executedType || c.executedCost) {
+                        totalProjects++;
+                    }
                 });
             });
         });
@@ -13357,7 +13413,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790239522890";
+      const CLIENT_BUILD_ID = "1790242980157";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
