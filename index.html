@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790238695355" />
+  <meta name="app-build-id" content="1790239159758" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -384,6 +384,129 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
       return clean;
     };
 
+    // --- SEARCHABLE SELECT / COMBOBOX COMPONENT ---
+    const SearchableSelect = ({ label, value, onChange, options = [], placeholder = '\u0627\u0644\u0643\u0644' }) => {
+      const [isOpen, setIsOpen] = useState(false);
+      const [searchTerm, setSearchTerm] = useState('');
+      const containerRef = useRef(null);
+
+      const filteredOptions = useMemo(() => {
+        if (!searchTerm.trim()) return options;
+        const norm = typeof normalizeArabicText === 'function' ? normalizeArabicText(searchTerm.trim()) : searchTerm.trim().toLowerCase();
+        const words = norm.split(/\s+/).filter(Boolean);
+        return options.filter(opt => {
+          const normOpt = typeof normalizeArabicText === 'function' ? normalizeArabicText(String(opt)) : String(opt).toLowerCase();
+          return words.every(w => normOpt.includes(w));
+        });
+      }, [options, searchTerm]);
+
+      useEffect(() => {
+        const handleClickOutside = (e) => {
+          if (containerRef.current && !containerRef.current.contains(e.target)) {
+            setIsOpen(false);
+          }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+      }, []);
+
+      const handleSelect = (val) => {
+        onChange(val);
+        setIsOpen(false);
+        setSearchTerm('');
+      };
+
+      const handleClear = (e) => {
+        e.stopPropagation();
+        onChange('');
+        setSearchTerm('');
+      };
+
+      return (
+        <div className="relative" ref={containerRef}>
+          {label && <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>}
+          <div
+            onClick={() => setIsOpen(!isOpen)}
+            className={`w-full text-sm border rounded-md py-2 px-3 bg-gray-50 hover:bg-white flex items-center justify-between cursor-pointer transition-all shadow-sm ${
+              isOpen ? 'border-[#002f6c] ring-1 ring-[#002f6c] bg-white' : 'border-gray-200'
+            }`}
+          >
+            <span className={`truncate text-xs sm:text-sm ${value ? 'font-bold text-[#002f6c]' : 'text-gray-600'}`}>
+              {value || placeholder}
+            </span>
+            <div className="flex items-center gap-1.5 text-gray-400 mr-1 flex-shrink-0">
+              {value && (
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className="hover:text-red-500 p-0.5 rounded transition-colors"
+                  title="\u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u062a\u062d\u062f\u064a\u062f"
+                >
+                  <X size={14} />
+                </button>
+              )}
+              <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </div>
+
+          {isOpen && (
+            <div className="absolute z-50 mt-1 w-full min-w-[200px] bg-white rounded-xl shadow-2xl border border-gray-200 py-1 flex flex-col text-xs sm:text-sm">
+              <div className="p-2 border-b border-gray-100 bg-gray-50/90 sticky top-0 z-10">
+                <div className="relative">
+                  <input
+                    type="text"
+                    autoFocus
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    placeholder="\u0627\u0643\u062a\u0628 \u0644\u0644\u0628\u062d\u062b..."
+                    className="w-full text-xs sm:text-sm border border-gray-200 rounded-lg pr-7 pl-6 py-1.5 outline-none focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] bg-white text-gray-800 placeholder-gray-400"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none text-gray-400">
+                    <Search size={13} />
+                  </div>
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      className="absolute inset-y-0 left-0 pl-2 flex items-center text-gray-400 hover:text-red-500"
+                      title="\u0645\u0633\u062d"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="overflow-y-auto max-h-56 divide-y divide-gray-50">
+                <div
+                  onClick={() => handleSelect('')}
+                  className={`px-3 py-2 cursor-pointer hover:bg-blue-50 transition-colors font-medium flex items-center justify-between ${!value ? 'bg-blue-50 text-[#002f6c] font-bold' : 'text-gray-600'}`}
+                >
+                  <span>{placeholder}</span>
+                  {!value && <span className="text-blue-600 font-bold">&#10003;</span>}
+                </div>
+                {filteredOptions.length === 0 ? (
+                  <div className="px-3 py-4 text-center text-gray-400 text-xs">
+                    {'\u0644\u0627 \u062a\u0648\u062c\u062f \u0646\u062a\u0627\u0626\u062c \u0645\u0637\u0627\u0628\u0642\u0629'}
+                  </div>
+                ) : (
+                  filteredOptions.map((opt, idx) => (
+                    <div
+                      key={opt + '-' + idx}
+                      onClick={() => handleSelect(opt)}
+                      className={`px-3 py-2 cursor-pointer hover:bg-blue-50 transition-colors flex items-center justify-between ${value === opt ? 'bg-blue-50 text-[#002f6c] font-bold' : 'text-gray-700'}`}
+                    >
+                      <span className="truncate">{opt}</span>
+                      {value === opt && <span className="text-blue-600 font-bold">&#10003;</span>}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
 // ================================================================
 // MODULE: components/ToastsAndConfirms.js
 // ================================================================
@@ -1910,42 +2033,42 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
              </div>
 
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div>
-                   <label className="block text-xs font-medium text-gray-500 mb-1">قائمة المناطق</label>
-                   <select value={filterRegion} onChange={e => { setFilterRegion(e.target.value); setFilterChurch(''); }} className="w-full text-sm border border-gray-200 rounded-md focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] py-2 px-3 outline-none text-gray-700 bg-gray-50 hover:bg-white transition-colors cursor-pointer">
-                      <option value="">كل المناطق</option>
-                      {uniqueRegions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                   </select>
+                   <SearchableSelect
+                      label={'\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0645\u0646\u0627\u0637\u0642'}
+                      value={filterRegion}
+                      onChange={val => { setFilterRegion(val); setFilterChurch(''); }}
+                      options={uniqueRegions}
+                      placeholder={'\u0643\u0644 \u0627\u0644\u0645\u0646\u0627\u0637\u0642'}
+                   />
+                   <SearchableSelect
+                      label={'\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0643\u0646\u0627\u0626\u0633'}
+                      value={filterChurch}
+                      onChange={val => setFilterChurch(val)}
+                      options={uniqueChurches}
+                      placeholder={'\u0643\u0644 \u0627\u0644\u0643\u0646\u0627\u0626\u0633'}
+                   />
+                   <SearchableSelect
+                      label={'\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u062e\u062f\u0627\u0645'}
+                      value={filterServant}
+                      onChange={val => setFilterServant(val)}
+                      options={uniqueServants}
+                      placeholder={'\u0643\u0644 \u0627\u0644\u062e\u062f\u0627\u0645'}
+                   />
+                   <SearchableSelect
+                      label={'\u0642\u0627\u0626\u0645\u0629 \u0623\u0646\u0648\u0627\u0639 \u0627\u0644\u0645\u0634\u0627\u0631\u064a\u0639'}
+                      value={filterProject}
+                      onChange={val => setFilterProject(val)}
+                      options={uniqueProjects}
+                      placeholder={'\u0643\u0644 \u0627\u0644\u0645\u0634\u0627\u0631\u064a\u0639'}
+                   />
+                   <SearchableSelect
+                      label={'\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u062d\u0627\u0644\u0627\u062a'}
+                      value={filterCase}
+                      onChange={val => setFilterCase(val)}
+                      options={uniqueCases}
+                      placeholder={'\u0643\u0644 \u0627\u0644\u062d\u0627\u0644\u0627\u062a'}
+                   />
                 </div>
-                <div>
-                   <label className="block text-xs font-medium text-gray-500 mb-1">قائمة الكنائس</label>
-                   <select value={filterChurch} onChange={e => setFilterChurch(e.target.value)} className="w-full text-sm border border-gray-200 rounded-md focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] py-2 px-3 outline-none text-gray-700 bg-gray-50 hover:bg-white transition-colors cursor-pointer">
-                      <option value="">كل الكنائس</option>
-                      {uniqueChurches.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                   </select>
-                </div>
-                <div>
-                   <label className="block text-xs font-medium text-gray-500 mb-1">قائمة الخدام</label>
-                   <select value={filterServant} onChange={e => setFilterServant(e.target.value)} className="w-full text-sm border border-gray-200 rounded-md focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] py-2 px-3 outline-none text-gray-700 bg-gray-50 hover:bg-white transition-colors cursor-pointer">
-                      <option value="">كل الخدام</option>
-                      {uniqueServants.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                   </select>
-                </div>
-                <div>
-                   <label className="block text-xs font-medium text-gray-500 mb-1">قائمة أنواع المشاريع</label>
-                   <select value={filterProject} onChange={e => setFilterProject(e.target.value)} className="w-full text-sm border border-gray-200 rounded-md focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] py-2 px-3 outline-none text-gray-700 bg-gray-50 hover:bg-white transition-colors cursor-pointer">
-                      <option value="">كل المشاريع</option>
-                      {uniqueProjects.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                   </select>
-                </div>
-                <div>
-                   <label className="block text-xs font-medium text-gray-500 mb-1">قائمة الحالات</label>
-                   <select value={filterCase} onChange={e => setFilterCase(e.target.value)} className="w-full text-sm border border-gray-200 rounded-md focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] py-2 px-3 outline-none text-gray-700 bg-gray-50 hover:bg-white transition-colors cursor-pointer">
-                      <option value="">كل الحالات</option>
-                      {uniqueCases.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                   </select>
-                </div>
-                          </div>
           </div>
           
           <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
@@ -2123,6 +2246,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
     }
 
     // --- PAGE 2: ARCHIVE & ANALYTICS ---
+
 // ================================================================
 // MODULE: pages/ArchivePage.js
 // ================================================================
@@ -2525,45 +2649,45 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
 
              
                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                  <div>
-                     <label className="block text-xs font-medium text-gray-500 mb-1">قائمة المناطق</label>
-                     <select value={filterRegion} onChange={e => { setFilterRegion(e.target.value); setFilterChurch(''); }} className="w-full text-sm border border-gray-200 rounded-md focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] py-2 px-3 outline-none text-gray-700 bg-gray-50 hover:bg-white transition-colors cursor-pointer">
-                        <option value="">كل المناطق</option>
-                        {uniqueRegions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                     </select>
-                  </div>
-                  <div>
-                     <label className="block text-xs font-medium text-gray-500 mb-1">قائمة الكنائس</label>
-                     <select value={filterChurch} onChange={e => setFilterChurch(e.target.value)} className="w-full text-sm border border-gray-200 rounded-md focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] py-2 px-3 outline-none text-gray-700 bg-gray-50 hover:bg-white transition-colors cursor-pointer">
-                        <option value="">كل الكنائس</option>
-                        {uniqueChurches.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                     </select>
-                  </div>
-                  <div>
-                     <label className="block text-xs font-medium text-gray-500 mb-1">قائمة الخدام</label>
-                     <select value={filterServant} onChange={e => setFilterServant(e.target.value)} className="w-full text-sm border border-gray-200 rounded-md focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] py-2 px-3 outline-none text-gray-700 bg-gray-50 hover:bg-white transition-colors cursor-pointer">
-                        <option value="">كل الخدام</option>
-                        {uniqueServants.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                     </select>
-                  </div>
-                  <div>
-                     <label className="block text-xs font-medium text-gray-500 mb-1">قائمة أنواع المشاريع</label>
-                     <select value={filterProject} onChange={e => setFilterProject(e.target.value)} className="w-full text-sm border border-gray-200 rounded-md focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] py-2 px-3 outline-none text-gray-700 bg-gray-50 hover:bg-white transition-colors cursor-pointer">
-                        <option value="">كل المشاريع</option>
-                        {uniqueProjects.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                     </select>
-                  </div>
-                  <div>
-                     <label className="block text-xs font-medium text-gray-500 mb-1">قائمة الحالات</label>
-                     <select value={filterCase} onChange={e => setFilterCase(e.target.value)} className="w-full text-sm border border-gray-200 rounded-md focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] py-2 px-3 outline-none text-gray-700 bg-gray-50 hover:bg-white transition-colors cursor-pointer">
-                        <option value="">كل الحالات</option>
-                        {uniqueCases.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                     </select>
-                  </div>
-               </div>
-            </div>
-            
-            <h3 className="text-lg font-bold text-gray-800 mb-4">تفاصيل الحالات</h3>
+                   <SearchableSelect
+                      label={'\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0645\u0646\u0627\u0637\u0642'}
+                      value={filterRegion}
+                      onChange={val => { setFilterRegion(val); setFilterChurch(''); }}
+                      options={uniqueRegions}
+                      placeholder={'\u0643\u0644 \u0627\u0644\u0645\u0646\u0627\u0637\u0642'}
+                   />
+                   <SearchableSelect
+                      label={'\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0643\u0646\u0627\u0626\u0633'}
+                      value={filterChurch}
+                      onChange={val => setFilterChurch(val)}
+                      options={uniqueChurches}
+                      placeholder={'\u0643\u0644 \u0627\u0644\u0643\u0646\u0627\u0626\u0633'}
+                   />
+                   <SearchableSelect
+                      label={'\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u062e\u062f\u0627\u0645'}
+                      value={filterServant}
+                      onChange={val => setFilterServant(val)}
+                      options={uniqueServants}
+                      placeholder={'\u0643\u0644 \u0627\u0644\u062e\u062f\u0627\u0645'}
+                   />
+                   <SearchableSelect
+                      label={'\u0642\u0627\u0626\u0645\u0629 \u0623\u0646\u0648\u0627\u0639 \u0627\u0644\u0645\u0634\u0627\u0631\u064a\u0639'}
+                      value={filterProject}
+                      onChange={val => setFilterProject(val)}
+                      options={uniqueProjects}
+                      placeholder={'\u0643\u0644 \u0627\u0644\u0645\u0634\u0627\u0631\u064a\u0639'}
+                   />
+                   <SearchableSelect
+                      label={'\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u062d\u0627\u0644\u0627\u062a'}
+                      value={filterCase}
+                      onChange={val => setFilterCase(val)}
+                      options={uniqueCases}
+                      placeholder={'\u0643\u0644 \u0627\u0644\u062d\u0627\u0644\u0627\u062a'}
+                   />
+                </div>
+             </div>
+             
+             <h3 className="text-lg font-bold text-gray-800 mb-4">تفاصيل الحالات</h3>
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                {(visit.churches||[]).length === 0 ? <div className="p-8 text-center text-gray-500">لا توجد تفاصيل.</div> : null}
                {(() => {
@@ -12990,7 +13114,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790238695355";
+      const CLIENT_BUILD_ID = "1790239159758";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
