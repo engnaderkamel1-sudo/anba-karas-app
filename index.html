@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790238336497" />
+  <meta name="app-build-id" content="1790238695355" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -1508,7 +1508,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
       const [expandedRegions, setExpandedRegions] = useState({});
       const [expandedChurches, setExpandedChurches] = useState({});
       const toggleRegion = (regionName) => {
-          setExpandedRegions(prev => ({ ...prev, [regionName]: !prev[regionName] }));
+          setExpandedRegions(prev => ({ ...prev, [regionName]: !(prev[regionName] !== undefined ? prev[regionName] : Boolean(searchQuery)) }));
       };
 
       const uniqueRegions = Array.from(new Set((data.churches||[]).map(ch => ch.regionName).filter(Boolean))).sort();
@@ -1538,7 +1538,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                           ch.churchName, ch.regionName, ch.villageName,
                           sg.servantsNames
                       ].filter(Boolean).map(val => typeof normalizeArabicText === 'function' ? normalizeArabicText(String(val)) : String(val).toLowerCase()).join(' ');
-                      if (!searchableParts.includes(normalizedSearchQuery)) return false;
+                      const qWords = normalizedSearchQuery.split(/\s+/).filter(Boolean); if (!qWords.every(w => searchableParts.includes(w))) return false;
                   }
                   return true;
               });
@@ -1964,7 +1964,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
           ) : (
             <div className="space-y-8">
               {(() => {
-                if (filteredChurches.length === 0 && (filterChurch || filterServant || filterProject || filterCase)) {
+                if (filteredChurches.length === 0 && (filterStatus !== 'all' || filterRegion || filterChurch || filterServant || filterProject || filterCase || searchQuery)) {
                     return (
                         <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
                            <Search size={48} className="mx-auto text-gray-200 mb-3" />
@@ -2012,11 +2012,11 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                                     </div>
                                 </div>
                                 <div className="text-gray-500">
-                                   {expandedRegions[regionName] ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+                                   {(expandedRegions[regionName] !== undefined ? expandedRegions[regionName] : Boolean(searchQuery)) ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
                                 </div>
                             </div>
                             
-                            {expandedRegions[regionName] && (
+                            {(expandedRegions[regionName] !== undefined ? expandedRegions[regionName] : Boolean(searchQuery)) && (
                                 <div className="p-4 sm:p-5 space-y-6 bg-gray-50/50">
                                     {churchesInRegion.map((churchLoc) => (
                                         <div key={churchLoc.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -2060,7 +2060,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                   </div>
                   
                   {/* Accordion Body */}
-                  {expandedChurches[churchLoc.id] && (
+                  {(expandedChurches[churchLoc.id] !== undefined ? expandedChurches[churchLoc.id] : Boolean(searchQuery)) && (
                     <div className="animate-fade-in border-t-2 border-[#002f6c]">
                       {/* Edit Fields */}
                       <div className="p-4 sm:p-5 bg-gray-50 border-b border-gray-200 flex-1 w-full grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -2245,8 +2245,8 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
       const [searchQuery, setSearchQuery] = useState('');
       const [expandedRegions, setExpandedRegions] = useState({});
       const [expandedChurches, setExpandedChurches] = useState({});
-      const toggleRegion = (regionName) => setExpandedRegions(prev => ({ ...prev, [regionName]: !prev[regionName] }));
-      const toggleChurch = (churchId) => setExpandedChurches(prev => ({ ...prev, [churchId]: !prev[churchId] }));
+      const toggleRegion = (regionName) => setExpandedRegions(prev => ({ ...prev, [regionName]: !(prev[regionName] !== undefined ? prev[regionName] : Boolean(searchQuery)) }));
+      const toggleChurch = (churchId) => setExpandedChurches(prev => ({ ...prev, [churchId]: !(prev[churchId] !== undefined ? prev[churchId] : Boolean(searchQuery)) }));
 
       const uniqueRegions = Array.from(new Set((visit.churches||[]).map(ch => ch.regionName).filter(Boolean))).sort();
       const uniqueChurches = Array.from(new Set((visit.churches||[]).filter(ch => !filterRegion || ch.regionName === filterRegion).map(ch => ch.churchName).filter(Boolean))).sort();
@@ -2288,7 +2288,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                           ch.churchName, ch.regionName, ch.villageName,
                           sg.servantsNames
                       ].filter(Boolean).map(val => typeof normalizeArabicText === 'function' ? normalizeArabicText(String(val)) : String(val).toLowerCase()).join(' ');
-                      if (!searchableParts.includes(normalizedSearchQuery)) return false;
+                      const qWords = normalizedSearchQuery.split(/\s+/).filter(Boolean); if (!qWords.every(w => searchableParts.includes(w))) return false;
                   }
                   return true;
               });
@@ -2492,12 +2492,38 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
                <div className="flex justify-between items-center mb-4 border-b border-gray-50 pb-2">
                   <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2"><Search size={16} className="text-[#002f6c]"/> تصفية متقدمة</h4>
-                  {(filterRegion || filterChurch || filterServant || filterProject || filterCase) && (
-                     <button onClick={() => { setFilterRegion(''); setFilterChurch(''); setFilterServant(''); setFilterProject(''); setFilterCase(''); }} className="text-xs flex items-center gap-1 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors font-medium">
+                  {(searchQuery || filterRegion || filterChurch || filterServant || filterProject || filterCase) && (
+                     <button onClick={() => { setSearchQuery(''); setFilterRegion(''); setFilterChurch(''); setFilterServant(''); setFilterProject(''); setFilterCase(''); }} className="text-xs flex items-center gap-1 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors font-medium">
                          <RotateCcw size={14}/> إعادة ضبط الفلاتر
                      </button>
                   )}
                </div>
+               {/* Search input bar */}
+             <div className="mb-4">
+                <div className="relative">
+                   <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-gray-400">
+                      <Search size={16} />
+                   </div>
+                   <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="بحث سريع بأي كلمة (اسم الحالة، الرقم القومي، رقم الهاتف، نوع المشروع، الكنيسة، القرية، الخادم...)"
+                      className="w-full text-sm border border-gray-200 rounded-lg pr-10 pl-10 py-2.5 outline-none focus:border-[#002f6c] focus:ring-2 focus:ring-[#002f6c]/20 bg-gray-50/50 hover:bg-white focus:bg-white transition-all text-gray-800 placeholder-gray-400"
+                   />
+                   {searchQuery && (
+                      <button
+                         onClick={() => setSearchQuery('')}
+                         className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 hover:text-red-500 transition-colors"
+                         title="مسح البحث"
+                      >
+                         <X size={16} />
+                      </button>
+                   )}
+                </div>
+             </div>
+
+             
                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                   <div>
                      <label className="block text-xs font-medium text-gray-500 mb-1">قائمة المناطق</label>
@@ -2541,7 +2567,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                {(visit.churches||[]).length === 0 ? <div className="p-8 text-center text-gray-500">لا توجد تفاصيل.</div> : null}
                {(() => {
-                  if (filteredChurches.length === 0 && (filterStatus !== 'all' || filterChurch || filterServant || filterProject || filterCase)) {
+                  if (filteredChurches.length === 0 && (filterStatus !== 'all' || filterRegion || filterChurch || filterServant || filterProject || filterCase || searchQuery)) {
                       return (
                           <div className="p-8 text-center bg-white rounded-xl">
                              <Search size={32} className="mx-auto text-gray-200 mb-2" />
@@ -2589,11 +2615,11 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                                     </div>
                                 </div>
                                 <div className="text-gray-500">
-                                   {expandedRegions[regionName] ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+                                   {(expandedRegions[regionName] !== undefined ? expandedRegions[regionName] : Boolean(searchQuery)) ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
                                 </div>
                             </div>
                             
-                            {expandedRegions[regionName] && (
+                            {(expandedRegions[regionName] !== undefined ? expandedRegions[regionName] : Boolean(searchQuery)) && (
                                 <div className="bg-gray-50/50">
                                     {churchesInRegion.map(ch => (
                                         <div key={ch.id} className="border-b border-gray-200 last:border-0">
@@ -2601,7 +2627,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                                               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                                                  <div className="flex items-center gap-2">
                                                     <div className="text-gray-500">
-                                                       {expandedChurches[ch.id] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                       {(expandedChurches[ch.id] !== undefined ? expandedChurches[ch.id] : Boolean(searchQuery)) ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                                                     </div>
                                                     <h4 className="font-bold text-[#002f6c]">{ch.churchName} <span className="text-sm font-normal text-gray-500">({ch.regionName} - {ch.villageName})</span></h4>
                                                  </div>
@@ -2626,7 +2652,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                             })()}
                          </div>
                       </div>
-                      {expandedChurches[ch.id] && (
+                      {(expandedChurches[ch.id] !== undefined ? expandedChurches[ch.id] : Boolean(searchQuery)) && (
                         <div>
                                             {/* Desktop Table View */}
                       <div className="hidden md:block p-0 overflow-x-auto">
@@ -12964,7 +12990,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790238336497";
+      const CLIENT_BUILD_ID = "1790238695355";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
