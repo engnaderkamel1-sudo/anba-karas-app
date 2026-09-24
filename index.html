@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790243650980" />
+  <meta name="app-build-id" content="1790244066393" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -10613,20 +10613,40 @@ const BackupService = (() => {
         URL.revokeObjectURL(url);
     };
 
-    // Prune Firestore backups keeping only the latest 30 versions
+    // Prune Firestore backups keeping only the latest 30 versions (and notify drive webhook if configured)
     const pruneOldBackups = async (dbInstance) => {
         if (!dbInstance) return;
         try {
-            const snap = await dbInstance.collection('backups').orderBy('date', 'desc').get();
+            const snap = await dbInstance.collection('backups').orderBy('updatedAt', 'desc').get();
             const docs = snap.docs;
             if (docs.length > 30) {
                 const toDelete = docs.slice(30);
                 const batch = dbInstance.batch();
+                const deletedDates = [];
                 toDelete.forEach(doc => {
+                    const data = doc.data() || {};
+                    if (data.date) deletedDates.push(data.date);
                     batch.delete(doc.ref);
                 });
                 await batch.commit();
-                console.log(`[BackupService] Pruned ${toDelete.length} old backup(s) to save Firestore storage.`);
+                console.log(`[BackupService] Pruned ${toDelete.length} old backup(s) exceeding 30 limit.`);
+
+                // Optional: notify Google Drive webhook to remove files older than 30 if webhook is configured
+                const driveWebhookUrl = localStorage.getItem('anba_karas_drive_webhook_url');
+                if (driveWebhookUrl && deletedDates.length > 0) {
+                    try {
+                        fetch(driveWebhookUrl, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                action: 'prune_old_backups',
+                                keepLimit: 30,
+                                deletedDates: deletedDates
+                            })
+                        }).catch(() => {});
+                    } catch(e) {}
+                }
             }
         } catch (e) {
             console.warn('[BackupService] Backup pruning error:', e);
@@ -13456,7 +13476,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790243650980";
+      const CLIENT_BUILD_ID = "1790244066393";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
