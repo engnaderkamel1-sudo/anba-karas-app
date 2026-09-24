@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790243493205" />
+  <meta name="app-build-id" content="1790243577363" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -11384,6 +11384,38 @@ function BackupVersionsModal({ isOpen, onClose, allVisits, onRestoreSuccess }) {
         e.target.value = ''; // Reset input
     };
 
+    const handleDeleteBackup = (backup) => {
+        if (isReadOnly) {
+            window.notifyWarning('أنت في وضع المشاهدة فقط.');
+            return;
+        }
+
+        window.showConfirm({
+            title: 'حذف نسخة احتياطية',
+            message: `هل أنت متأكد من حذف هذه النسخة الاحتياطية (${backup.date || backup.id})؟ لن تتمكن من استرجاعها بعد الحذف.`,
+            confirmText: 'نعم، احذف النسخة نهائياً',
+            cancelText: 'إلغاء',
+            isDangerous: true,
+            onConfirm: async () => {
+                try {
+                    if (db) {
+                        await db.collection('backups').doc(backup.id).delete();
+                    }
+                    // Also clear local storage if matching
+                    try {
+                        localStorage.removeItem(`anba_karas_backup_${backup.date}`);
+                    } catch(e) {}
+
+                    setBackups(prev => prev.filter(b => b.id !== backup.id));
+                    window.notifySuccess('تم حذف النسخة الاحتياطية بنجاح!');
+                } catch (err) {
+                    console.error('Delete backup error:', err);
+                    window.notifyError('حدث خطأ أثناء حذف النسخة.');
+                }
+            }
+        });
+    };
+
     const saveDriveWebhook = () => {
         try {
             localStorage.setItem('anba_karas_drive_webhook_url', driveWebhookUrl.trim());
@@ -11594,6 +11626,16 @@ function BackupVersionsModal({ isOpen, onClose, allVisits, onRestoreSuccess }) {
                                     >
                                         <RotateCcw size={14} />
                                         <span>استرجاع الإصدار</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleDeleteBackup(b)}
+                                        disabled={isReadOnly}
+                                        className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                                        title="حذف هذه النسخة الاحتياطية"
+                                    >
+                                        <Trash2 size={14} />
+                                        <span>حذف</span>
                                     </button>
                                 </div>
                             </div>
@@ -13413,7 +13455,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790243493205";
+      const CLIENT_BUILD_ID = "1790243577363";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
