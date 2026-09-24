@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790239159758" />
+  <meta name="app-build-id" content="1790239442484" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -1479,6 +1479,83 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
       );
     }
 
+        // --- EDIT CHURCH MODAL ---
+    function EditChurchModal({ churchInfo, onSave, onClose }) {
+      const [name, setName] = useState(churchInfo.churchName || '');
+      const [region, setRegion] = useState(churchInfo.regionName || '');
+      const [village, setVillage] = useState(churchInfo.villageName || '');
+
+      const handleSave = () => {
+        if (!name.trim()) { alert('\u0628\u0631\u062c\u0627\u0621 \u0625\u062f\u062e\u0627\u0644 \u0627\u0633\u0645 \u0627\u0644\u0643\u0646\u064a\u0633\u0629'); return; }
+        onSave(churchInfo.churchId, name.trim(), region.trim(), village.trim());
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in" onClick={onClose}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-gray-100 bg-[#002f6c] text-white flex justify-between items-center">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <span>\u26ea</span>
+                <span>{'\u062a\u0639\u062f\u064a\u0644 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0643\u0646\u064a\u0633\u0629'}</span>
+              </h3>
+              <button type="button" onClick={onClose} className="text-white/80 hover:text-white p-1">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4 text-right">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{'\u0627\u0633\u0645 \u0627\u0644\u0643\u0646\u064a\u0633\u0629 *'}</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder={'\u0645\u062b\u0644\u0627\u064b: \u0643\u0646\u064a\u0633\u0629 \u0627\u0644\u0645\u0644\u0627\u0643 \u0645\u064a\u062e\u0627\u0626\u064a\u0644'}
+                  className="w-full text-sm border border-gray-200 rounded-lg p-2.5 outline-none focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c]"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{'\u0627\u0644\u0645\u0646\u0637\u0642\u0629'}</label>
+                <input
+                  type="text"
+                  value={region}
+                  onChange={e => setRegion(e.target.value)}
+                  placeholder={'\u0645\u062b\u0644\u0627\u064b: \u0627\u0628\u0648 \u0642\u0631\u0642\u0627\u0635'}
+                  className="w-full text-sm border border-gray-200 rounded-lg p-2.5 outline-none focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{'\u0627\u0644\u0642\u0631\u064a\u0629 / \u0627\u0644\u0639\u0646\u0648\u0627\u0646'}</label>
+                <input
+                  type="text"
+                  value={village}
+                  onChange={e => setVillage(e.target.value)}
+                  placeholder={'\u0645\u062b\u0644\u0627\u064b: \u0627\u0628\u0648 \u0642\u0631\u0642\u0627\u0635 \u0627\u0644\u0628\u0644\u062f'}
+                  className="w-full text-sm border border-gray-200 rounded-lg p-2.5 outline-none focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c]"
+                />
+              </div>
+            </div>
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-xs sm:text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                {'\u0625\u0644\u063a\u0627\u0621'}
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="px-5 py-2 text-xs sm:text-sm font-bold bg-[#002f6c] text-white hover:bg-[#001f4c] rounded-lg shadow-sm transition-colors"
+              >
+                {'\u062d\u0641\u0638 \u0627\u0644\u062a\u0639\u062f\u064a\u0644\u0627\u062a'}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // --- SERVANTS GROUP VIEW ---
     function ServantsGroupView({ group, churchId, onUpdateGroup, onDeleteGroup, serialMap, onEditCase, onDeleteCase, onExecuteCase }) {
       const [isAddingCase, setIsAddingCase] = useState(false);
@@ -1618,6 +1695,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
 // ================================================================
     function ActiveVisitForm({ data, updateData, onEndVisit, onExport }) {
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
+      const [editingChurchInfo, setEditingChurchInfo] = useState(null);
       const [executingCaseInfo, setExecutingCaseInfo] = useState(null);
       const [showImportModal, setShowImportModal] = useState(false);
       const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'initial' | 'executed' | 'cancelled'
@@ -1699,6 +1777,29 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
         updateData(prev => ({
           ...prev, churches: prev.churches.map(ch => ch.id === updatedChurch.id ? updatedChurch : ch)
         }));
+      };
+
+            const handleEditChurch = (ch, e) => {
+        if (e) e.stopPropagation();
+        setEditingChurchInfo({
+          churchId: ch.id,
+          churchName: ch.churchName || '',
+          regionName: ch.regionName || '',
+          villageName: ch.villageName || ''
+        });
+      };
+
+      const handleSaveEditChurch = (churchId, newChurchName, newRegionName, newVillageName) => {
+        updateData(prev => ({
+          ...prev,
+          churches: (prev.churches || []).map(ch => ch.id === churchId ? {
+            ...ch,
+            churchName: newChurchName.trim() || ch.churchName,
+            regionName: newRegionName.trim() || ch.regionName,
+            villageName: newVillageName.trim() || ch.villageName
+          } : ch)
+        }));
+        setEditingChurchInfo(null);
       };
 
       const handleDeleteChurch = (id) => {
@@ -2234,6 +2335,13 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
               onClose={() => setExecutingCaseInfo(null)} 
             />
           )}
+          {editingChurchInfo && (
+            <EditChurchModal 
+              churchInfo={editingChurchInfo} 
+              onSave={handleSaveEditChurch} 
+              onClose={() => setEditingChurchInfo(null)} 
+            />
+          )}
           {showImportModal && (
             <ExcelImportModal 
               visitData={data} 
@@ -2359,6 +2467,8 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
     function ArchiveDetails({ visit, onBack, onExport, onUpdateVisit }) {
       const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'initial' | 'executed' | 'cancelled'
       const [executingCaseInfo, setExecutingCaseInfo] = useState(null);
+      const [editingCaseInfo, setEditingCaseInfo] = useState(null);
+      const [editingChurchInfo, setEditingChurchInfo] = useState(null);
       const [showImportModal, setShowImportModal] = useState(false);
 
       const [filterRegion, setFilterRegion] = useState('');
@@ -2458,6 +2568,67 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
              });
          });
       });
+
+            const handleEditCase = (caseObj, churchId, groupId) => {
+        setEditingCaseInfo({ caseObj, churchId, groupId });
+      };
+
+      const handleSaveEditCase = (updatedCase) => {
+        if (!onUpdateVisit || !editingCaseInfo) return;
+        const { churchId, groupId } = editingCaseInfo;
+        const updatedChurches = (visit.churches || []).map(ch => ch.id === churchId ? {
+          ...ch,
+          servantsGroups: (ch.servantsGroups || []).map(sg => sg.id === groupId ? {
+            ...sg,
+            cases: (sg.cases || []).map(c => c.id === updatedCase.id ? updatedCase : c)
+          } : sg)
+        } : ch);
+        onUpdateVisit({ ...visit, churches: updatedChurches });
+        setEditingCaseInfo(null);
+      };
+
+      const handleDeleteCase = (caseId, caseName, churchId, groupId) => {
+        if (!confirm('\u0647\u0644 \u0623\u0646\u062a \u0645\u062a\u0623\u0643\u062f \u0645\u0646 \u062d\u063f\u0641 \u062d\u0627\u0644\u0629 "' + (caseName || '') + '"\u061f')) return;
+        if (!onUpdateVisit) return;
+        const updatedChurches = (visit.churches || []).map(ch => ch.id === churchId ? {
+          ...ch,
+          servantsGroups: (ch.servantsGroups || []).map(sg => sg.id === groupId ? {
+            ...sg,
+            cases: (sg.cases || []).filter(c => c.id !== caseId)
+          } : sg)
+        } : ch);
+        onUpdateVisit({ ...visit, churches: updatedChurches });
+      };
+
+      const handleEditChurch = (ch, e) => {
+        if (e) e.stopPropagation();
+        setEditingChurchInfo({
+          churchId: ch.id,
+          churchName: ch.churchName || '',
+          regionName: ch.regionName || '',
+          villageName: ch.villageName || ''
+        });
+      };
+
+      const handleSaveEditChurch = (churchId, newChurchName, newRegionName, newVillageName) => {
+        if (!onUpdateVisit) return;
+        const updatedChurches = (visit.churches || []).map(ch => ch.id === churchId ? {
+          ...ch,
+          churchName: newChurchName.trim() || ch.churchName,
+          regionName: newRegionName.trim() || ch.regionName,
+          villageName: newVillageName.trim() || ch.villageName
+        } : ch);
+        onUpdateVisit({ ...visit, churches: updatedChurches });
+        setEditingChurchInfo(null);
+      };
+
+      const handleDeleteChurch = (churchId, churchName, e) => {
+        if (e) e.stopPropagation();
+        if (!confirm('\u0647\u0644 \u0623\u0646\u062a \u0645\u062a\u0623\u0643\u062f \u0645\u0646 \u062d\u063f\u0641 \u0643\u0646\u064a\u0633\u0629 "' + (churchName || '') + '" \u0648\u062c\u0645\u064a\u0639 \u062d\u0627\u0644\u0627\u062a\u0647\u0627 \u0646\u0647\u0627\u0626\u064a\u0627\u064b\u061f')) return;
+        if (!onUpdateVisit) return;
+        const updatedChurches = (visit.churches || []).filter(ch => ch.id !== churchId);
+        onUpdateVisit({ ...visit, churches: updatedChurches });
+      };
 
       const handleSaveExecutionCase = (updatedCase) => {
         if (!onUpdateVisit || !executingCaseInfo) return;
@@ -2754,6 +2925,26 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                                                        {(expandedChurches[ch.id] !== undefined ? expandedChurches[ch.id] : Boolean(searchQuery)) ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                                                     </div>
                                                     <h4 className="font-bold text-[#002f6c]">{ch.churchName} <span className="text-sm font-normal text-gray-500">({ch.regionName} - {ch.villageName})</span></h4>
+                                                     {!isReadOnly && (
+                                                       <div className="flex items-center gap-1 mr-2" onClick={e => e.stopPropagation()}>
+                                                         <button
+                                                           type="button"
+                                                           onClick={(e) => handleEditChurch(ch, e)}
+                                                           className="p-1 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
+                                                           title={'\u062a\u0639\u062f\u064a\u0644 \u0627\u0633\u0645 \u0627\u0644\u0643\u0646\u064a\u0633\u0629 \u0648\u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a'}
+                                                         >
+                                                           <Edit2 size={15} />
+                                                         </button>
+                                                         <button
+                                                           type="button"
+                                                           onClick={(e) => handleDeleteChurch(ch.id, ch.churchName, e)}
+                                                           className="p-1 text-red-500 hover:bg-red-100 rounded-md transition-colors"
+                                                           title={'\u062d\u063f\u0641 \u0627\u0644\u0643\u0646\u064a\u0633\u0629 \u0628\u0627\u0644\u0643\u0627\u0645\u0644'}
+                                                         >
+                                                           <Trash2 size={15} />
+                                                         </button>
+                                                       </div>
+                                                     )}
                                                  </div>
                                                  {(() => {
                               const stats = getChurchStats(ch);
@@ -2854,21 +3045,39 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                                           )}
                                         </td>
                                         <td className="px-3 py-3 text-center">
-                                          {!isReadOnly && (
-                                            <button 
-                                              onClick={() => setExecutingCaseInfo({ caseObj: c, churchId: ch.id, groupId: sg.id, churchName: ch.churchName })}
-                                              className={`p-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1 mx-auto ${
-                                                isExec 
-                                                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' 
-                                                  : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                                              }`}
-                                              title="تعديل التنفيذ والحالة"
-                                            >
-                                              <Zap size={14} />
-                                              <span>{isExec ? 'المنفذ' : 'تنفيذ'}</span>
-                                            </button>
-                                          )}
-                                        </td>
+                                           {!isReadOnly && (
+                                             <div className="flex items-center justify-center gap-1">
+                                               <button 
+                                                 onClick={() => setExecutingCaseInfo({ caseObj: c, churchId: ch.id, groupId: sg.id, churchName: ch.churchName })}
+                                                 className={`px-2 py-1 rounded text-xs font-bold transition-colors flex items-center gap-1 ${
+                                                   isExec 
+                                                     ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' 
+                                                     : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                                 }`}
+                                                 title={'\u062a\u0639\u062f\u064a\u0644 \u0627\u0644\u062a\u0646\u0641\u064a\u0630 \u0648\u0627\u0644\u062d\u0627\u0644\u0629'}
+                                               >
+                                                 <Zap size={13} />
+                                                 <span>{isExec ? '\u0627\u0644\u0645\u0646\u0641\u0630' : '\u062a\u0646\u0641\u064a\u0630'}</span>
+                                               </button>
+                                               <button
+                                                 type="button"
+                                                 onClick={() => handleEditCase(c, ch.id, sg.id)}
+                                                 className="p-1 rounded text-blue-600 hover:bg-blue-50 transition-colors"
+                                                 title={'\u062a\u0639\u062f\u064a\u0644 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062d\u0627\u0644\u0629'}
+                                               >
+                                                 <Edit2 size={14} />
+                                               </button>
+                                               <button
+                                                 type="button"
+                                                 onClick={() => handleDeleteCase(c.id, c.name, ch.id, sg.id)}
+                                                 className="p-1 rounded text-red-500 hover:bg-red-50 transition-colors"
+                                                 title={'\u062d\u063f\u0641 \u0627\u0644\u062d\u0627\u0644\u0629'}
+                                               >
+                                                 <Trash2 size={14} />
+                                               </button>
+                                             </div>
+                                           )}
+                                         </td>
                                      </tr>
                                      );
                                   })
@@ -2931,18 +3140,38 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                                   </div>
                                 )}
 
-                                {!isReadOnly && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setExecutingCaseInfo({ caseObj: c, churchId: ch.id, groupId: sg.id, churchName: ch.churchName })}
-                                    className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 ${
-                                      isExec ? 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200' : 'bg-[#002f6c] text-white hover:bg-[#001f4c]'
-                                    }`}
-                                  >
-                                    <Zap size={14} />
-                                    <span>{isExec ? 'تعديل بيانات التنفيذ' : 'تسجيل واعتماد التنفيذ'}</span>
-                                  </button>
-                                )}
+                                                                 {!isReadOnly && (
+                                   <div className="flex items-center gap-2 pt-1">
+                                     <button
+                                       type="button"
+                                       onClick={() => setExecutingCaseInfo({ caseObj: c, churchId: ch.id, groupId: sg.id, churchName: ch.churchName })}
+                                       className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 ${
+                                         isExec 
+                                           ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                                           : 'bg-gradient-to-r from-[#002f6c] to-[#001f4c] text-white hover:opacity-95'
+                                       }`}
+                                     >
+                                       <Zap size={14} />
+                                       <span>{isExec ? '\u062a\u0639\u062f\u064a\u0644 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062a\u0646\u0641\u064a\u0630' : '\u062a\u0633\u062c\u064a\u0644 \u062a\u0646\u0641\u064a\u0630 \u0627\u0644\u0645\u0634\u0631\u0648\u0639'}</span>
+                                     </button>
+                                     <button
+                                       type="button"
+                                       onClick={() => handleEditCase(c, ch.id, sg.id)}
+                                       className="p-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
+                                       title={'\u062a\u0639\u062f\u064a\u0644 \u0627\u0644\u062d\u0627\u0644\u0629'}
+                                     >
+                                       <Edit2 size={16} />
+                                     </button>
+                                     <button
+                                       type="button"
+                                       onClick={() => handleDeleteCase(c.id, c.name, ch.id, sg.id)}
+                                       className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-colors"
+                                       title={'\u062d\u063f\u0641 \u0627\u0644\u062d\u0627\u0644\u0629'}
+                                     >
+                                       <Trash2 size={16} />
+                                     </button>
+                                   </div>
+                                 )}
                               </div>
                             );
                           })
@@ -2967,6 +3196,20 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                 churchName={executingCaseInfo.churchName} 
                 onSave={handleSaveExecutionCase} 
                 onClose={() => setExecutingCaseInfo(null)} 
+              />
+            )}
+            {editingCaseInfo && (
+              <CaseModal 
+                caseData={editingCaseInfo.caseObj} 
+                onSave={handleSaveEditCase} 
+                onClose={() => setEditingCaseInfo(null)} 
+              />
+            )}
+            {editingChurchInfo && (
+              <EditChurchModal 
+                churchInfo={editingChurchInfo} 
+                onSave={handleSaveEditChurch} 
+                onClose={() => setEditingChurchInfo(null)} 
               />
             )}
             {showImportModal && (
@@ -13114,7 +13357,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790239159758";
+      const CLIENT_BUILD_ID = "1790239442484";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
