@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790768955380" />
+  <meta name="app-build-id" content="1790769275236" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -7089,6 +7089,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 // ================================================================
 function InstallmentsGeoView({
   geoRegionsData,
+  filteredGeoRegions,
   expandedGeoRegions,
   toggleGeoRegion,
   expandedGeoChurches,
@@ -7100,9 +7101,9 @@ function InstallmentsGeoView({
 }) {
   return (
     <div className="space-y-3">
-              {viewMode === 'regions' && (
+              
                 <div>
-                  {filteredGeoRegions.length === 0 ? (
+                  {(filteredGeoRegions || geoRegionsData || []).length === 0 ? (
                     <div className="bg-white rounded-2xl p-12 text-center text-gray-400 text-sm border border-gray-100 shadow-sm space-y-3">
                       <div className="text-3xl">🏛️</div>
                       <div className="font-bold text-gray-700">لا توجد مناطق أو كنائس مطابقة لمعايير البحث.</div>
@@ -7112,7 +7113,7 @@ function InstallmentsGeoView({
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {filteredGeoRegions.map(reg => {
+                      {(filteredGeoRegions || geoRegionsData || []).map(reg => {
                         const isRegExpanded = expandedGeoRegions[reg.regionName] !== false;
                         const regProgress = reg.totalVal > 0 ? Math.min(100, Math.round((reg.paidVal / reg.totalVal) * 100)) : 0;
 
@@ -7502,7 +7503,7 @@ function InstallmentsGeoView({
                     </div>
                   )}
                 </div>
-              )}
+              
     </div>
   );
 }
@@ -8177,7 +8178,7 @@ function InstallmentsTableView({
                     );
                   })()}
                 </div>
-              )}
+              
     </div>
   );
 }
@@ -10048,6 +10049,7 @@ function InstallmentsTableView({
               {viewMode === 'regions' && (
                 <InstallmentsGeoView
                   geoRegionsData={geoRegionsData}
+                  filteredGeoRegions={filteredGeoRegions}
                   expandedGeoRegions={expandedGeoRegions}
                   toggleGeoRegion={toggleGeoRegion}
                   expandedGeoChurches={expandedGeoChurches}
@@ -14405,7 +14407,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790768955380";
+      const CLIENT_BUILD_ID = "1790769275236";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
