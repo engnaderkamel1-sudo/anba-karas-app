@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790244066393" />
+  <meta name="app-build-id" content="1790758966346" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -4403,12 +4403,17 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
       };
 
       // Generate expected monthly schedule with early deduction from the LAST installments
-      const startDate = caseObj.executionDate ? new Date(caseObj.executionDate) : new Date();
-      
       const baseSchedule = [];
+      const hasFirstDate = !!caseObj.firstInstallmentDate;
+      const initialDate = hasFirstDate ? new Date(caseObj.firstInstallmentDate) : (caseObj.executionDate ? new Date(caseObj.executionDate) : new Date());
+      
       for (let i = 1; i <= Math.max(totalMonths, 1); i++) {
-        const dueDate = new Date(startDate);
-        dueDate.setMonth(dueDate.getMonth() + i);
+        const dueDate = new Date(initialDate);
+        if (hasFirstDate) {
+          dueDate.setMonth(dueDate.getMonth() + (i - 1));
+        } else {
+          dueDate.setMonth(dueDate.getMonth() + i);
+        }
         const expectedAmt = (i === totalMonths && totalAmount % monthlyAmount !== 0)
           ? (totalAmount - (totalMonths - 1) * monthlyAmount)
           : monthlyAmount;
@@ -4500,7 +4505,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xl">💳</span>
                   <h3 className="font-bold text-lg sm:text-xl">
-                    سداد أقساط: {caseObj.beneficiaryName || caseObj.name}
+                    سداد أقساط: {caseObj.caseName || caseObj.beneficiaryName || caseObj.name}
                   </h3>
                   {isExempted && (
                     <span className="bg-purple-500/90 text-white text-xs px-2.5 py-0.5 rounded-full font-bold border border-purple-300/40 shadow-xs">
@@ -5838,89 +5843,270 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
       const [customVisitDate, setCustomVisitDate] = useState(() => new Date().toISOString().split('T')[0]);
       const [isParsing, setIsParsing] = useState(false);
 
+      // 1. Installment Start Date & Auto-Settlement Settings
+      const [firstInstallmentDate, setFirstInstallmentDate] = useState('');
+      const [settlementOption, setSettlementOption] = useState('excel_only'); // 'excel_only' | 'settle_up_to_today' | 'settle_full_100'
+
+      // 2. Fuzzy Suggestions Map (e.g., suggestions for churches / regions)
+      const [fuzzySuggestions, setFuzzySuggestions] = useState([]); // Array of { type: 'church'|'region', original: string, suggested: string, count: number }
+      const [appliedMappings, setAppliedMappings] = useState({}); // { [original]: approvedReplacement }
+
+      // Existing unique regions & churches in the system for fuzzy comparison
+      const existingRegions = useMemo(() => {
+        return Array.from(new Set(activeVisits.flatMap(v => (v.churches || []).map(ch => ch.regionName)).filter(Boolean)));
+      }, [activeVisits]);
+
+      const existingChurches = useMemo(() => {
+        return Array.from(new Set(activeVisits.flatMap(v => (v.churches || []).map(ch => ch.churchName)).filter(Boolean)));
+      }, [activeVisits]);
+
+      const existingProjects = useMemo(() => {
+        const rawTypes = activeVisits.flatMap(v => (v.churches || []).flatMap(ch => (ch.servantsGroups || []).flatMap(sg => (sg.cases || []).map(c => c.executedProjectType || c.projectType))));
+        const dictTypes = typeof buildEffectiveProjectDictionary === 'function' ? buildEffectiveProjectDictionary(allVisits).map(c => c.name) : [];
+        return Array.from(new Set([...rawTypes, ...dictTypes].filter(Boolean)));
+      }, [activeVisits, allVisits]);
+
+      // Helper to compute string similarity (Levenshtein based)
+      const getSimilarity = (str1, str2) => {
+        const s1 = (typeof normalizeArabicText === 'function' ? normalizeArabicText(str1) : String(str1).trim()).replace(/[-_]/g, ' ');
+        const s2 = (typeof normalizeArabicText === 'function' ? normalizeArabicText(str2) : String(str2).trim()).replace(/[-_]/g, ' ');
+        if (!s1 || !s2) return 0;
+        if (s1 === s2) return 1.0;
+        if (s1.includes(s2) || s2.includes(s1)) {
+          return Math.min(s1.length, s2.length) / Math.max(s1.length, s2.length);
+        }
+        const m = s1.length;
+        const n = s2.length;
+        const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+        for (let i = 0; i <= m; i++) dp[i][0] = i;
+        for (let j = 0; j <= n; j++) dp[0][j] = j;
+        for (let i = 1; i <= m; i++) {
+          for (let j = 1; j <= n; j++) {
+            if (s1[i - 1] === s2[j - 1]) dp[i][j] = dp[i - 1][j - 1];
+            else dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+          }
+        }
+        return Math.max(0, 1 - (dp[m][n] / Math.max(m, n)));
+      };
+
       const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
         setFileName(file.name);
         setIsParsing(true);
+        setAppliedMappings({});
+        setFuzzySuggestions([]);
 
         const reader = new FileReader();
         reader.onload = (evt) => {
           try {
             const data = evt.target.result;
             const workbook = XLSX.read(data, { type: 'binary' });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
-            if (!rows || rows.length === 0) {
+            // Prioritize sheet named 'مشاريع' or containing 'مشاريع', otherwise first sheet
+            let targetSheetName = workbook.SheetNames.find(s => s.includes('مشاريع')) || workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[targetSheetName];
+            const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '', header: 1 });
+
+            if (!rawRows || rawRows.length === 0) {
               alert('الملف فارغ أو لا يحتوي على صفوف بيانات.');
               setIsParsing(false);
               return;
             }
 
+            // Find header row (containing 'اسم الحالة' or 'اسم المستفيد' or 'المستفيد')
+            let headerRowIdx = -1;
+            for (let r = 0; r < Math.min(10, rawRows.length); r++) {
+              const rowStr = rawRows[r].map(c => normalizeArabicText(String(c))).join(' ');
+              if (rowStr.includes('اسم الحاله') || rowStr.includes('اسم المستفيد') || rowStr.includes('الحاله')) {
+                headerRowIdx = r;
+                break;
+              }
+            }
+
+            let headers = [];
+            let dataRows = [];
+            if (headerRowIdx !== -1) {
+              headers = rawRows[headerRowIdx].map(c => String(c).trim());
+              dataRows = rawRows.slice(headerRowIdx + 1);
+            } else {
+              // Fallback to standard object parsing
+              const jsonObjects = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+              headers = Object.keys(jsonObjects[0] || {});
+              dataRows = jsonObjects.map(obj => headers.map(k => obj[k]));
+            }
+
+            // Helper to get index of header matching keywords
+            const findColIdx = (keywords) => {
+              for (let kw of keywords) {
+                const normKw = normalizeArabicText(kw);
+                const idx = headers.findIndex(h => normalizeArabicText(h).includes(normKw));
+                if (idx !== -1) return idx;
+              }
+              return -1;
+            };
+
+            const nameIdx = findColIdx(['اسم الحاله', 'اسم المستفيد', 'المستفيد', 'الاسم', 'الحاله']);
+            const villageIdx = findColIdx(['القريه', 'الكنيسه', 'المنطقه', 'مركز', 'العزبه', 'عزبه']);
+            const projectIdx = findColIdx(['المشروع 1', 'المشروع', 'نوع المشروع']);
+            const costIdx = findColIdx(['المبلغ', 'قيمه المشروع', 'المبلغ المنفذ', 'التكلفه', 'اصل المبلغ']);
+            const instIdx = findColIdx(['القسط', 'القسط الشهري']);
+            const monthsIdx = findColIdx(['عدد الشهور', 'الشهور', 'مده']);
+            const paidIdx = findColIdx(['المسدد', 'المدفوع', 'اجمالي المسدد', 'تم سداده']);
+            const dateIdx = findColIdx(['تاريخ التنفيذ', 'التاريخ', 'تاريخ']);
+            const notesIdx = findColIdx(['ملاحظات', 'ملاحظه', 'تقرير']);
+
             const cleanRows = [];
-            rows.forEach(r => {
-              // Normalize keys
-              const rowObj = {};
-              Object.keys(r).forEach(k => {
-                const normK = normalizeArabicText(k);
-                rowObj[normK] = r[k];
-              });
+            dataRows.forEach((row, rIndex) => {
+              const rawName = nameIdx !== -1 ? String(row[nameIdx] || '').trim() : '';
+              if (!rawName) return; // skip empty
 
-              // Helper to find field
-              const getVal = (keywords) => {
-                for (let kw of keywords) {
-                  const normKw = normalizeArabicText(kw);
-                  for (let key of Object.keys(rowObj)) {
-                    if (key.includes(normKw)) return rowObj[key];
-                  }
-                }
-                return '';
-              };
+              // Ignore summary / total rows (e.g. '45 مشروع' or 'الاجمالي' or 'Grand Total')
+              const normName = normalizeArabicText(rawName);
+              if (normName.includes('مشروع') && normName.match(/\d+/)) return;
+              if (normName.includes('اجمالي') || normName.includes('مجموع') || normName.includes('total')) return;
 
-              const caseName = String(getVal(['اسم الحالة', 'اسم المستفيد', 'المستفيد', 'الاسم', 'الحالة'])).trim();
-              if (!caseName) return; // skip empty
+              // Parse village/church column: e.g. "ابو قرقاص - المحراص" or "قطوشه مطاي - رئيس الملائكه ميخائيل"
+              const rawVillageField = villageIdx !== -1 ? String(row[villageIdx] || '').trim() : '';
+              let regionName = 'عام';
+              let churchName = 'كنيسة عامة';
+              let villageName = '';
 
-              const regionName = String(getVal(['المنطقة', 'مركز'])).trim() || 'عام';
-              const churchName = String(getVal(['الكنيسة', 'كنيسة'])).trim() || 'كنيسة عامة';
-              const villageName = String(getVal(['القرية', 'عزبة', 'العزبة'])).trim();
-              const projectType = String(getVal(['نوع المشروع', 'المشروع'])).trim() || 'مشروع منفذ';
-              const nationalId = String(getVal(['الرقم القومي', 'القومي', 'البطاقة'])).trim();
-              const pVal = parseFloat(getVal(['قيمة المشروع', 'المبلغ المنفذ', 'المبلغ', 'أصل المبلغ', 'تكلفة'])) || 0;
-              const instAmt = parseFloat(getVal(['القسط الشهري', 'القسط', 'قسط'])) || 0;
-              const execDate = String(getVal(['تاريخ التنفيذ', 'التاريخ', 'تاريخ'])).trim() || new Date().toISOString().split('T')[0];
-              const paidAmt = parseFloat(getVal(['المسدد', 'إجمالي المسدد', 'المدفوع', 'تم سداده'])) || 0;
-              const notes = String(getVal(['ملاحظات', 'ملاحظة', 'تقرير'])).trim();
+              if (rawVillageField.includes('-')) {
+                const parts = rawVillageField.split('-');
+                regionName = parts[0].trim() || 'عام';
+                churchName = parts.slice(1).join('-').trim() || 'كنيسة عامة';
+                villageName = churchName;
+              } else if (rawVillageField) {
+                regionName = rawVillageField;
+                churchName = rawVillageField;
+                villageName = rawVillageField;
+              }
+
+              const projectType = projectIdx !== -1 ? String(row[projectIdx] || '').trim() || 'مشروع منفذ' : 'مشروع منفذ';
+              const pVal = costIdx !== -1 ? (parseFloat(parseArabicNumeric(row[costIdx])) || 0) : 0;
+              const instAmt = instIdx !== -1 ? (parseFloat(parseArabicNumeric(row[instIdx])) || 0) : 0;
+              const monthsCount = monthsIdx !== -1 ? (parseInt(parseArabicNumeric(row[monthsIdx])) || 0) : 0;
+              const paidAmt = paidIdx !== -1 ? (parseFloat(parseArabicNumeric(row[paidIdx])) || 0) : 0;
+              const execDate = dateIdx !== -1 && row[dateIdx] ? String(row[dateIdx]).trim() : '';
+              const notes = notesIdx !== -1 ? String(row[notesIdx] || '').trim() : '';
+
+              const finalProjectVal = pVal > 0 ? pVal : 10000;
+              const finalInstAmt = instAmt > 0 ? instAmt : (monthsCount > 0 ? Math.round(finalProjectVal / monthsCount) : 500);
 
               cleanRows.push({
-                caseName,
-                nationalId,
-                regionName,
-                churchName,
-                villageName,
+                id: uuidv4(),
+                caseName: rawName,
+                originalRegionName: regionName,
+                regionName: regionName,
+                originalChurchName: churchName,
+                churchName: churchName,
+                villageName: villageName,
                 projectType,
-                projectValue: pVal > 0 ? pVal : 10000,
-                installmentAmount: instAmt > 0 ? instAmt : (pVal > 0 ? Math.round(pVal / 24) : 500),
-                executionDate: execDate,
+                projectValue: finalProjectVal,
+                installmentAmount: finalInstAmt,
+                monthsCount: monthsCount > 0 ? monthsCount : Math.ceil(finalProjectVal / finalInstAmt),
+                executionDate: execDate || new Date().toISOString().split('T')[0],
                 alreadyPaid: paidAmt,
                 notes
               });
             });
 
             if (cleanRows.length === 0) {
-              alert('لم نتمكن من قراءة أسماء الحالات من الملف. يرجى التأكد من احتواء الملف على عمود "اسم الحالة".');
-            } else {
-              setParsedCases(cleanRows);
-              const autoRegions = Array.from(new Set(cleanRows.map(r => r.regionName).filter(r => r && r !== 'عام'))).join(' + ');
-              if (autoRegions) {
-                setCustomVisitLocation(autoRegions);
-              }
-              const validDates = cleanRows.map(r => r.executionDate).filter(Boolean).sort();
-              if (validDates.length > 0) {
-                setCustomVisitDate(validDates[validDates.length - 1]);
-              }
+              alert('لم نتمكن من قراءة أسماء الحالات من شيت المشاريع. يرجى التأكد من احتواء الملف على عمود "اسم الحالة".');
+              setIsParsing(false);
+              return;
             }
+
+            setParsedCases(cleanRows);
+
+            // Auto-detect common visit location from regions
+            const autoRegions = Array.from(new Set(cleanRows.map(r => r.regionName).filter(r => r && r !== 'عام'))).join(' + ');
+            if (autoRegions) {
+              setCustomVisitLocation(autoRegions);
+            }
+
+            // Auto-detect visit date (use execution date if available, or default to current date / 2026-05)
+            const validDates = cleanRows.map(r => r.executionDate).filter(Boolean).sort();
+            const chosenDate = validDates.length > 0 ? validDates[validDates.length - 1] : new Date().toISOString().split('T')[0];
+            setCustomVisitDate(chosenDate);
+
+            // Default first installment date: next month after visit date
+            try {
+              const d = new Date(chosenDate);
+              d.setMonth(d.getMonth() + 1);
+              setFirstInstallmentDate(d.toISOString().split('T')[0]);
+            } catch(e) {
+              setFirstInstallmentDate(new Date().toISOString().split('T')[0]);
+            }
+
+            // --- SMART FUZZY SUGGESTIONS DISCOVERY ---
+            const suggestions = [];
+            const processedChurches = new Set();
+            const processedRegions = new Set();
+            const processedProjects = new Set();
+
+            cleanRows.forEach(c => {
+              // Check Church similarity against existing churches
+              if (!processedChurches.has(c.churchName)) {
+                processedChurches.add(c.churchName);
+                for (let existCh of existingChurches) {
+                  const sim = getSimilarity(c.churchName, existCh);
+                  if (sim >= 0.70 && sim < 1.0) {
+                    const matchCount = cleanRows.filter(x => x.churchName === c.churchName).length;
+                    suggestions.push({
+                      type: 'church',
+                      original: c.churchName,
+                      suggested: existCh,
+                      similarity: Math.round(sim * 100),
+                      count: matchCount
+                    });
+                    break;
+                  }
+                }
+              }
+
+              // Check Region similarity
+              if (!processedRegions.has(c.regionName)) {
+                processedRegions.add(c.regionName);
+                for (let existReg of existingRegions) {
+                  const sim = getSimilarity(c.regionName, existReg);
+                  if (sim >= 0.70 && sim < 1.0) {
+                    const matchCount = cleanRows.filter(x => x.regionName === c.regionName).length;
+                    suggestions.push({
+                      type: 'region',
+                      original: c.regionName,
+                      suggested: existReg,
+                      similarity: Math.round(sim * 100),
+                      count: matchCount
+                    });
+                    break;
+                  }
+                }
+              }
+
+              // Check Project Type similarity against existing projects
+              if (c.projectType && !processedProjects.has(c.projectType)) {
+                processedProjects.add(c.projectType);
+                for (let existProj of existingProjects) {
+                  const sim = getSimilarity(c.projectType, existProj);
+                  if (sim >= 0.70 && sim < 1.0) {
+                    const matchCount = cleanRows.filter(x => x.projectType === c.projectType).length;
+                    suggestions.push({
+                      type: 'project',
+                      original: c.projectType,
+                      suggested: existProj,
+                      similarity: Math.round(sim * 100),
+                      count: matchCount
+                    });
+                    break;
+                  }
+                }
+              }
+            });
+
+            setFuzzySuggestions(suggestions);
+
           } catch (err) {
             console.error(err);
             alert('حدث خطأ أثناء قراءة ملف الإكسيل. تأكد من سلامة صيغة الملف.');
@@ -5931,32 +6117,69 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
         reader.readAsBinaryString(file);
       };
 
-      const handleDownloadTemplate = () => {
-        const templateAoa = [
-          ['اسم الحالة', 'الرقم القومي', 'المنطقة', 'الكنيسة', 'القرية', 'نوع المشروع', 'قيمة المشروع', 'القسط الشهري', 'تاريخ التنفيذ', 'المسدد سابقاً', 'ملاحظات'],
-          ['مينا عادل سمير', '29401012401234', 'المنيا', 'كنيسة الملاك', 'القرية', 'محل بقالة', 15000, 500, '2025-06-15', 3000, 'منتظم في السداد'],
-          ['مريم يوسف فهيم', '29605052405678', 'سمالوط', 'كنيسة العذراء', 'العزبة', 'ترزية ملابس', 10000, 400, '2025-08-20', 1200, 'مشروع قائم']
-        ];
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(templateAoa);
-        ws['!dir'] = 'rtl';
-        XLSX.utils.book_append_sheet(wb, ws, 'نموذج_المشاريع');
-        XLSX.writeFile(wb, 'نموذج_استيراد_المشاريع_السابقة.xlsx');
+      // Apply a fuzzy unification suggestion
+      const handleApplyFuzzySuggestion = (original, suggested, type) => {
+        setAppliedMappings(prev => ({ ...prev, [original]: suggested }));
+        setParsedCases(prev => prev.map(c => {
+          if (type === 'church' && c.churchName === original) {
+            return { ...c, churchName: suggested };
+          }
+          if (type === 'region' && c.regionName === original) {
+            return { ...c, regionName: suggested };
+          }
+          if (type === 'project' && c.projectType === original) {
+            return { ...c, projectType: suggested };
+          }
+          return c;
+        }));
+        // Remove suggestion after applied
+        setFuzzySuggestions(prev => prev.filter(s => s.original !== original));
       };
 
-      const handleConfirmImport = () => {
-        if (parsedCases.length === 0) return;
+      // Dismiss a suggestion (keep original text)
+      const handleDismissFuzzySuggestion = (original) => {
+        setFuzzySuggestions(prev => prev.filter(s => s.original !== original));
+      };
 
-        // Group into churches
+      // Inline case deletion from preview table
+      const handleDeletePreviewCase = (caseId) => {
+        setParsedCases(prev => prev.filter(c => c.id !== caseId));
+      };
+
+      // Inline case update from preview table
+      const handleUpdatePreviewCase = (caseId, field, value) => {
+        setParsedCases(prev => prev.map(c => {
+          if (c.id === caseId) {
+            return { ...c, [field]: value };
+          }
+          return c;
+        }));
+      };
+
+      // CONFIRM & IMPORT FUNCTION (Only executed when clicking Confirm)
+      const handleConfirmImport = () => {
+        if (parsedCases.length === 0) {
+          alert('لا توجد حالات للاستيراد.');
+          return;
+        }
+
+        // Calculate auto-settlement payments if selected
+        const today = new Date();
+        const startDue = firstInstallmentDate ? new Date(firstInstallmentDate) : new Date(customVisitDate);
+
+        // Group cases into churches and servant groups
         const churchMap = {};
         parsedCases.forEach(item => {
-          const key = `${item.regionName}___${item.churchName}`;
+          const effectiveChurch = item.churchName || 'كنيسة عامة';
+          const effectiveRegion = item.regionName || 'عام';
+          const key = `${effectiveRegion}___${effectiveChurch}`;
+
           if (!churchMap[key]) {
             churchMap[key] = {
               id: uuidv4(),
-              regionName: item.regionName,
-              churchName: item.churchName,
-              villageName: item.villageName,
+              regionName: effectiveRegion,
+              churchName: effectiveChurch,
+              villageName: item.villageName || effectiveChurch,
               servantsGroups: [
                 {
                   id: uuidv4(),
@@ -5967,32 +6190,80 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
             };
           }
 
+          // Generate payments based on settlementOption
+          let payments = [];
+          if (settlementOption === 'settle_full_100') {
+            // Full 100% project value paid
+            payments.push({
+              id: uuidv4(),
+              amount: item.projectValue,
+              paidDate: item.executionDate || customVisitDate,
+              notes: 'تم سداد كامل المشروع بالكامل سابقاً'
+            });
+          } else if (settlementOption === 'settle_up_to_today') {
+            // Calculate elapsed months from firstInstallmentDate up to today
+            let monthsPassed = 0;
+            if (startDue <= today && item.installmentAmount > 0) {
+              const diffYears = today.getFullYear() - startDue.getFullYear();
+              const diffMonths = today.getMonth() - startDue.getMonth();
+              monthsPassed = Math.max(0, diffYears * 12 + diffMonths + 1);
+            }
+
+            const totalEligibleMonths = Math.min(monthsPassed, item.monthsCount || Math.ceil(item.projectValue / item.installmentAmount));
+            let runningPaid = 0;
+
+            for (let m = 0; m < totalEligibleMonths; m++) {
+              const payDueDate = new Date(startDue);
+              payDueDate.setMonth(payDueDate.getMonth() + m);
+              if (payDueDate > today) break;
+
+              const remaining = item.projectValue - runningPaid;
+              if (remaining <= 0) break;
+
+              const thisAmt = Math.min(item.installmentAmount, remaining);
+              runningPaid += thisAmt;
+
+              payments.push({
+                id: uuidv4(),
+                amount: thisAmt,
+                paidDate: payDueDate.toISOString().split('T')[0],
+                notes: `قسط رقم (${m + 1}) مسدد بانتظام`
+              });
+            }
+          } else {
+            // excel_only: keep alreadyPaid from Excel if any
+            if (item.alreadyPaid > 0) {
+              payments.push({
+                id: uuidv4(),
+                amount: item.alreadyPaid,
+                paidDate: item.executionDate || customVisitDate,
+                notes: 'مسدد سابقاً قبل استخدام التطبيق'
+              });
+            }
+          }
+
           const caseObj = {
-            id: uuidv4(),
+            id: item.id || uuidv4(),
+            name: item.caseName,
             caseName: item.caseName,
-            nationalId: item.nationalId,
+            nationalId: item.nationalId || '',
             projectType: item.projectType,
             executedProjectType: item.projectType,
             projectValue: item.projectValue,
             executedProjectValue: item.projectValue,
             installmentAmount: item.installmentAmount,
             executedInstallmentAmount: item.installmentAmount,
-            executionDate: item.executionDate,
+            executionDate: item.executionDate || customVisitDate,
+            firstInstallmentDate: firstInstallmentDate || customVisitDate,
             status: 'executed',
-            notes: item.notes,
-            payments: item.alreadyPaid > 0 ? [
-              {
-                id: uuidv4(),
-                amount: item.alreadyPaid,
-                paidDate: item.executionDate,
-                notes: 'مسدد سابقاً قبل استخدام التطبيق'
-              }
-            ] : []
+            notes: item.notes || '',
+            payments: payments
           };
 
           churchMap[key].servantsGroups[0].cases.push(caseObj);
         });
 
+        // Save into target visit
         if (targetVisitChoice === 'new_custom') {
           const finalLoc = customVisitLocation.trim();
           if (!finalLoc) {
@@ -6037,181 +6308,305 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
             });
           }
         }
-        alert(`تم بنجاح استيراد ${formatNumber(parsedCases.length)} مشروعاً سابقاً وإضافتها لجدول الأقساط!`);
+
+        alert(`تم بنجاح اعتماد واستيراد (${formatNumber(parsedCases.length)}) مشروع وترحيلها لصفحة الأقساط!`);
         onClose();
       };
 
-      const totalImportedValue = parsedCases.reduce((sum, c) => sum + c.projectValue, 0);
-      const totalImportedPaid = parsedCases.reduce((sum, c) => sum + c.alreadyPaid, 0);
+      const totalImportedValue = parsedCases.reduce((sum, c) => sum + (c.projectValue || 0), 0);
+      const totalImportedInst = parsedCases.reduce((sum, c) => sum + (c.installmentAmount || 0), 0);
 
       return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden border border-gray-100 flex flex-col max-h-[92vh]" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden border border-gray-100 flex flex-col max-h-[92vh]" onClick={e => e.stopPropagation()}>
+            {/* Header */}
             <div className="bg-[#002f6c] p-4 sm:p-5 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">📥</span>
                 <div>
-                  <h3 className="font-bold text-base sm:text-lg">استيراد مشاريع سابقة من ملف إكسيل (Excel)</h3>
-                  <p className="text-xs text-blue-200 mt-0.5">رفع شيت إكسيل لتوليد ومتابعة الأقساط لكل المشاريع القديمة دفعة واحدة</p>
+                  <h3 className="font-bold text-base sm:text-lg">معاينة واستيراد نزلات ومشاريع سابقة (Excel)</h3>
+                  <p className="text-xs text-blue-200 mt-0.5">قراءة شيت المشاريع آلياً مع التحقق الذكي من الأسماء وجدولة الأقساط قبل الحفظ</p>
                 </div>
               </div>
               <button onClick={onClose} className="text-white/80 hover:text-white p-1 rounded-lg transition-colors"><X size={22}/></button>
             </div>
 
             <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
-              {/* Actions: Upload or Download template */}
+              {/* File Selector */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50 border border-gray-200 rounded-xl p-4">
                 <div>
-                  <div className="font-bold text-xs sm:text-sm text-gray-800">اختر ملف الإكسيل المجهز (.xlsx أو .xls)</div>
-                  <div className="text-[11px] text-gray-500 mt-0.5">يتعرف المحرك على الأعمدة باللغة العربية تلقائياً</div>
+                  <div className="font-bold text-xs sm:text-sm text-gray-800">اختر ملف الإكسيل (مثل: شيت المنيا مايو 2026)</div>
+                  <div className="text-[11px] text-gray-500 mt-0.5">يقرأ شيت "مشاريع" ويفصل القرى والكنائس تلقائياً دون أي تعديل يدوي</div>
                 </div>
 
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <button
-                    type="button"
-                    onClick={handleDownloadTemplate}
-                    className="px-3 py-2 rounded-xl text-xs font-bold text-[#002f6c] bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors flex items-center gap-1.5 shrink-0"
-                  >
-                    <Download size={15} />
-                    <span>تنزيل نموذج تجريبي</span>
-                  </button>
-
-                  <label className="cursor-pointer px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow transition-colors flex items-center gap-1.5 shrink-0">
+                  <label className="cursor-pointer px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow transition-colors flex items-center gap-1.5 shrink-0">
                     <Upload size={15} />
-                    <span>{fileName ? 'تغيير الملف' : 'رفع ملف الإكسيل'}</span>
+                    <span>{fileName ? 'اختيار ملف آخر' : 'رفع ملف الإكسيل'}</span>
                     <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} className="hidden" />
                   </label>
                 </div>
               </div>
 
               {fileName && (
-                <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 flex items-center gap-2">
-                  <span>📄</span>
-                  <span className="font-medium">الملف المختار: <strong>{fileName}</strong></span>
+                <div className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <span>📄</span>
+                    <span>تم تحليل الملف: <strong>{fileName}</strong></span>
+                  </span>
+                  <span className="font-bold font-sans">{formatNumber(parsedCases.length)} حالة جاهزة للمعاينة</span>
                 </div>
               )}
 
-              {/* Visit Naming & Destination Card */}
+              {/* FUZZY MATCHING NOTIFICATIONS ("هل تقصد كذا؟") */}
+              {fuzzySuggestions.length > 0 && (
+                <div className="bg-amber-50 border border-amber-300 rounded-xl p-3.5 space-y-2.5 animate-fade-in shadow-xs">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+                    <span className="text-base">🔔</span>
+                    <span>تنبيه توحيد المسميات الذكي (اكتشفنا أسماء متقاربة في الملف لتفادي التكرار):</span>
+                  </div>
+                  <div className="space-y-2">
+                    {fuzzySuggestions.map((sug, sIdx) => (
+                      <div key={sIdx} className="bg-white rounded-lg p-2.5 border border-amber-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                            sug.type === 'project'
+                              ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                              : sug.type === 'church'
+                              ? 'bg-amber-100 text-amber-900'
+                              : 'bg-blue-100 text-blue-900'
+                          }`}>
+                            {sug.type === 'project' ? '💼 مشروع / نشاط' : sug.type === 'church' ? '⛪ كنيسة' : '📍 منطقة'}
+                          </span>
+                          <span className="text-gray-600">في الملف: <strong className="text-rose-700 font-sans">{sug.original}</strong></span>
+                          <span>⬅️</span>
+                          <span className="text-gray-800">هل تقصد: <strong className="text-emerald-700 font-sans">{sug.suggested}</strong>؟</span>
+                          <span className="text-[10px] text-gray-400 font-sans">({sug.count} حالة • تطابق {sug.similarity}%)</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleApplyFuzzySuggestion(sug.original, sug.suggested, sug.type)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1 rounded text-xs transition-colors flex items-center gap-1"
+                          >
+                            <span>✓ نعم، وحّد الاسم للكل</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDismissFuzzySuggestion(sug.original)}
+                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-2.5 py-1 rounded text-xs transition-colors"
+                          >
+                            تجاهل
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Target Visit Destination Card */}
               {parsedCases.length > 0 && (
                 <div className="space-y-3">
                   <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-4 space-y-3">
-                  <div>
-                    <label className="block text-xs font-bold text-blue-900 mb-1.5">حفظ المشاريع المستوردة ضمن زيارة / نزلة:</label>
-                    <select
-                      value={targetVisitChoice}
-                      onChange={e => setTargetVisitChoice(e.target.value)}
-                      className="w-full bg-white rounded-lg border border-blue-300 p-2 text-xs font-bold text-[#002f6c] outline-none"
-                    >
-                      <option value="new_custom">➕ إنشاء نزلة جديدة مخصصة (تحديد المناطق والتاريخ)</option>
-                      {activeVisits.map(v => (
-                        <option key={v.id} value={v.id}>زيارة سابقة: {v.location || 'بدون اسم'} ({v.date || 'بدون تاريخ'})</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {targetVisitChoice === 'new_custom' && (
-                    <div className="bg-white p-3 rounded-lg border border-blue-200 space-y-2.5 animate-fade-in shadow-xs">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                            المناطق / مراكز النزلة *
-                          </label>
-                          <input
-                            type="text"
-                            required
-                            value={customVisitLocation}
-                            onChange={e => setCustomVisitLocation(e.target.value)}
-                            placeholder="مثال: مغاغة + ابو قرقاص أو ملوي"
-                            className="w-full rounded-lg border border-gray-300 p-2 text-xs focus:border-[#002f6c] outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                            تاريخ النزلة *
-                          </label>
-                          <input
-                            type="date"
-                            required
-                            value={customVisitDate}
-                            onChange={e => setCustomVisitDate(e.target.value)}
-                            className="w-full rounded-lg border border-gray-300 p-2 text-xs focus:border-[#002f6c] outline-none font-sans"
-                          />
-                        </div>
-                      </div>
-                      <div className="bg-blue-50 text-blue-900 text-[11px] p-2 rounded border border-blue-200 flex flex-wrap items-center justify-between gap-1">
-                        <span className="text-gray-500 font-medium">اسم وتسمية النزلة في التطبيق:</span>
-                        <strong className="font-bold text-[#002f6c]">
-                          زيارة: {customVisitLocation.trim() || 'المناطق المحددة'} ({customVisitDate || 'التاريخ'})
-                        </strong>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                  {/* Summary of imported data */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
-                      <div className="text-[11px] text-blue-700 font-medium">عدد الحالات المكتشفة</div>
-                      <div className="text-lg font-bold font-sans text-[#002f6c]">{formatNumber(parsedCases.length)} حالة</div>
-                    </div>
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
-                      <div className="text-[11px] text-emerald-700 font-medium">إجمالي المبالغ المنفذة</div>
-                      <div className="text-lg font-bold font-sans text-emerald-800">{formatNumber(totalImportedValue)} ج.م</div>
-                    </div>
-                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 text-center">
-                      <div className="text-[11px] text-purple-700 font-medium">إجمالي المسدد سابقاً</div>
-                      <div className="text-lg font-bold font-sans text-purple-800">{formatNumber(totalImportedPaid)} ج.م</div>
-                    </div>
-                  </div>
-
-                  {/* Table Preview */}
-                  <div className="border border-gray-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
-                    <table className="w-full text-right text-xs">
-                      <thead className="bg-[#002f6c] text-white sticky top-0">
-                        <tr>
-                          <th className="p-2">#</th>
-                          <th className="p-2">اسم الحالة</th>
-                          <th className="p-2">الكنيسة / المنطقة</th>
-                          <th className="p-2">نوع المشروع</th>
-                          <th className="p-2">القيمة</th>
-                          <th className="p-2">القسط</th>
-                          <th className="p-2">المسدد سابقاً</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 bg-white">
-                        {parsedCases.map((c, i) => (
-                          <tr key={i} className="hover:bg-gray-50">
-                            <td className="p-2 font-sans text-gray-400">{i + 1}</td>
-                            <td className="p-2 font-bold text-gray-800">{c.caseName}</td>
-                            <td className="p-2 text-gray-600">{c.churchName} ({c.regionName})</td>
-                            <td className="p-2 text-gray-700">{c.projectType}</td>
-                            <td className="p-2 font-sans font-bold text-[#002f6c]">{formatNumber(c.projectValue)}</td>
-                            <td className="p-2 font-sans font-bold text-amber-800">{formatNumber(c.installmentAmount)}</td>
-                            <td className="p-2 font-sans text-emerald-700 font-bold">{formatNumber(c.alreadyPaid)}</td>
-                          </tr>
+                    <div>
+                      <label className="block text-xs font-bold text-blue-900 mb-1.5">حفظ المشاريع المستوردة ضمن زيارة / نزلة:</label>
+                      <select
+                        value={targetVisitChoice}
+                        onChange={e => setTargetVisitChoice(e.target.value)}
+                        className="w-full bg-white rounded-lg border border-blue-300 p-2 text-xs font-bold text-[#002f6c] outline-none"
+                      >
+                        <option value="new_custom">➕ إنشاء نزلة جديدة مخصصة (تحديد المناطق والتاريخ)</option>
+                        {activeVisits.map(v => (
+                          <option key={v.id} value={v.id}>زيارة سابقة: {v.location || 'بدون اسم'} ({v.date || 'بدون تاريخ'})</option>
                         ))}
-                      </tbody>
-                    </table>
+                      </select>
+                    </div>
+
+                    {targetVisitChoice === 'new_custom' && (
+                      <div className="bg-white p-3 rounded-lg border border-blue-200 space-y-2.5 animate-fade-in shadow-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                              المناطق / مراكز النزلة *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={customVisitLocation}
+                              onChange={e => setCustomVisitLocation(e.target.value)}
+                              placeholder="مثال: ابو قرقاص + مطاي"
+                              className="w-full rounded-lg border border-gray-300 p-2 text-xs focus:border-[#002f6c] outline-none font-bold text-[#002f6c]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                              تاريخ النزلة الفعلي *
+                            </label>
+                            <input
+                              type="date"
+                              required
+                              value={customVisitDate}
+                              onChange={e => setCustomVisitDate(e.target.value)}
+                              className="w-full rounded-lg border border-gray-300 p-2 text-xs focus:border-[#002f6c] outline-none font-sans"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SMART INSTALLMENT & SETTLEMENT CONTROLS */}
+                  <div className="bg-emerald-50/70 border border-emerald-300 rounded-xl p-4 space-y-3">
+                    <div className="font-bold text-xs sm:text-sm text-emerald-950 flex items-center gap-2">
+                      <span>⚙️</span>
+                      <span>إعدادات تحصيل الأقساط والسداد التلقائي (خاص بالنزلات القديمة المنفذة):</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          🗓️ تاريخ أول سداد / استحقاق القسط الأول:
+                        </label>
+                        <input
+                          type="date"
+                          value={firstInstallmentDate}
+                          onChange={e => setFirstInstallmentDate(e.target.value)}
+                          className="w-full bg-white rounded-lg border border-emerald-300 p-2 text-xs font-sans font-bold text-emerald-900 outline-none"
+                        />
+                        <p className="text-[10px] text-gray-500 mt-1">تاريخ استحقاق أول قسط شهري لضبط حساب المتأخرات بدقة.</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          💳 هل تم الدفع والسداد بانتظام حتى اليوم؟
+                        </label>
+                        <select
+                          value={settlementOption}
+                          onChange={e => setSettlementOption(e.target.value)}
+                          className="w-full bg-white rounded-lg border border-emerald-300 p-2 text-xs font-bold text-emerald-900 outline-none"
+                        >
+                          <option value="settle_up_to_today">⚡ نعم، مسدد بانتظام حتى اليوم (توليد الدفعات آلياً لجميع الحالات)</option>
+                          <option value="excel_only">📄 لا، السداد حسب المسجل في الإكسيل فقط</option>
+                          <option value="settle_full_100">🎉 تم سداد كامل قيمة المشاريع 100% وانتهت بالكامل</option>
+                        </select>
+                        <p className="text-[10px] text-emerald-700 mt-1">
+                          {settlementOption === 'settle_up_to_today' 
+                            ? 'سيقوم النظام آلياً بإنشاء دفعات سداد للشهور المنقضية دون الحاجة لفتح حالة حالة.'
+                            : settlementOption === 'settle_full_100'
+                            ? 'سيتم اعتبار كامل المشاريع مسددة بالكامل بنسبة 100%.'
+                            : 'ستنزل الحالات بدون أي دفعات سداد تلقائية.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Summary Metric Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-2.5 text-center">
+                      <div className="text-[11px] text-blue-700 font-medium">عدد الحالات في المعاينة</div>
+                      <div className="text-base font-bold font-sans text-[#002f6c]">{formatNumber(parsedCases.length)} حالة</div>
+                    </div>
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-center">
+                      <div className="text-[11px] text-emerald-700 font-medium">إجمالي المبالغ المنفذة</div>
+                      <div className="text-base font-bold font-sans text-emerald-800">{formatNumber(totalImportedValue)} ج.م</div>
+                    </div>
+                    <div className="col-span-2 sm:col-span-1 bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-center">
+                      <div className="text-[11px] text-amber-700 font-medium">إجمالي الأقساط الشهرية</div>
+                      <div className="text-base font-bold font-sans text-amber-800">{formatNumber(totalImportedInst)} ج.م/شهر</div>
+                    </div>
+                  </div>
+
+                  {/* PREVIEW TABLE WITH INLINE EDIT & DELETE */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold text-gray-700">جدول مراجعة ومعاينة الحالات قبل التأكيد (يمكنك التعديل أو الحذف المباشر):</span>
+                      <span className="text-[11px] text-rose-600 font-medium">💡 لن يتم حفظ أي شيء في صفحة السداد إلا بعد الضغط على زر "تأكيد الاستيراد" بالأسفل</span>
+                    </div>
+
+                    <div className="border border-gray-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+                      <table className="w-full text-right text-xs">
+                        <thead className="bg-[#002f6c] text-white sticky top-0 z-10">
+                          <tr>
+                            <th className="p-2 text-center">#</th>
+                            <th className="p-2">اسم الحالة</th>
+                            <th className="p-2">الكنيسة</th>
+                            <th className="p-2">المنطقة</th>
+                            <th className="p-2">المشروع</th>
+                            <th className="p-2">القيمة</th>
+                            <th className="p-2">القسط</th>
+                            <th className="p-2">الشهور</th>
+                            <th className="p-2 text-center">إجراء</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 bg-white">
+                          {parsedCases.map((c, i) => (
+                            <tr key={c.id || i} className="hover:bg-blue-50/50 transition-colors">
+                              <td className="p-2 text-center font-sans text-gray-400">{i + 1}</td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  value={c.caseName}
+                                  onChange={e => handleUpdatePreviewCase(c.id, 'caseName', e.target.value)}
+                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] font-bold text-gray-800 outline-none"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  value={c.churchName}
+                                  onChange={e => handleUpdatePreviewCase(c.id, 'churchName', e.target.value)}
+                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none"
+                                />
+                              </td>
+                              <td className="p-2 text-gray-600">{c.regionName}</td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  value={c.projectType}
+                                  onChange={e => handleUpdatePreviewCase(c.id, 'projectType', e.target.value)}
+                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-purple-900 font-medium outline-none"
+                                />
+                              </td>
+                              <td className="p-2 font-sans font-bold text-[#002f6c]">{formatNumber(c.projectValue)}</td>
+                              <td className="p-2 font-sans font-bold text-amber-800">{formatNumber(c.installmentAmount)}</td>
+                              <td className="p-2 font-sans text-gray-500">{c.monthsCount} شهر</td>
+                              <td className="p-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeletePreviewCase(c.id)}
+                                  className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-lg transition-colors"
+                                  title="حذف هذه الحالة من كشف الاستيراد"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
 
+              {/* Action Buttons: Cancel vs Confirm */}
               <div className="pt-3 border-t border-gray-200 flex justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                  className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
                 >
-                  إلغاء
+                  إلغاء وتراجع
                 </button>
                 {parsedCases.length > 0 && (
                   <button
                     type="button"
                     onClick={handleConfirmImport}
-                    className="px-6 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow transition-colors flex items-center gap-1.5"
+                    className="px-7 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md transition-all flex items-center gap-1.5"
                   >
-                    <CheckCircle size={16} />
-                    <span>تأكيد استيراد ({formatNumber(parsedCases.length)}) مشروع</span>
+                    <CheckCircle size={17} />
+                    <span>تأكيد استيراد ({formatNumber(parsedCases.length)}) مشروع وترحيلها للسداد</span>
                   </button>
                 )}
               </div>
@@ -6220,8 +6615,6 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
         </div>
       );
     }
-
-    // --- PAGE: INSTALLMENTS & REPAYMENT TRACKING (PHASE 2 & 3) ---
 // ================================================================
 // MODULE: components/ProjectDictionaryModal.js
 // ================================================================
@@ -6543,13 +6936,18 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
         let isOverdue = false;
 
         if (!isExempted && !isCompleted && totalAmt > 0 && monthlyAmt > 0) {
-          const rawStart = c.executionDate || v.date;
+          const hasFirstDate = !!c.firstInstallmentDate;
+          const rawStart = c.firstInstallmentDate || c.executionDate || v.date;
           if (rawStart) {
             const startDate = new Date(rawStart);
             const today = new Date();
             for (let i = 1; i <= totalMonths; i++) {
               const dueDate = new Date(startDate);
-              dueDate.setMonth(dueDate.getMonth() + i);
+              if (hasFirstDate) {
+                dueDate.setMonth(dueDate.getMonth() + (i - 1));
+              } else {
+                dueDate.setMonth(dueDate.getMonth() + i);
+              }
               if (dueDate <= today) {
                 dueInstallmentsCount++;
                 const instAmt = (i === totalMonths && totalAmt % monthlyAmt !== 0)
@@ -7012,6 +7410,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
       // Selected project category in Analytics view to drill-down cases
       const [selectedAnalyticsCategory, setSelectedAnalyticsCategory] = useState(null);
 
+      // State for editing a case
+      const [editingCaseInfo, setEditingCaseInfo] = useState(null);
+
       // Handle updating payments from InstallmentModal
       const handleSavePayments = (updatedPayments, caseMeta = {}) => {
         if (!activeModalCaseInfo) return;
@@ -7043,6 +7444,85 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
             ...caseMeta
           }
         }));
+      };
+
+      // Handle permanently deleting a case from installments / visit
+      const handleDeleteCase = (caseItem) => {
+        if (!caseItem) return;
+        const { visitId, churchId, groupId, caseObj } = caseItem;
+        const targetVisit = activeVisits.find(v => v.id === visitId);
+        if (!targetVisit) return;
+
+        const displayName = caseObj.caseName || caseObj.beneficiaryName || caseObj.name || 'هذه الحالة';
+
+        window.showConfirm({
+          title: 'حذف الحالة نهائياً',
+          message: `هل أنت متأكد من حذف حالة "${displayName}" نهائياً من سجل الأقساط والمشاريع؟ لا يمكن التراجع عن هذا الإجراء.`,
+          confirmText: 'نعم، احذف الحالة',
+          cancelText: 'إلغاء وتراجع',
+          isDangerous: true,
+          onConfirm: () => {
+            const updatedChurches = (targetVisit.churches || []).map(ch => ch.id === churchId ? {
+              ...ch,
+              servantsGroups: (ch.servantsGroups || []).map(sg => sg.id === groupId ? {
+                ...sg,
+                cases: (sg.cases || []).filter(c => c.id !== caseObj.id)
+              } : sg)
+            } : ch);
+
+            const updatedVisit = { ...targetVisit, churches: updatedChurches };
+            onUpdateVisit(updatedVisit);
+            if (activeModalCaseInfo && activeModalCaseInfo.caseObj.id === caseObj.id) {
+              setActiveModalCaseInfo(null);
+            }
+            window.notifySuccess(`تم حذف حالة "${displayName}" بنجاح.`);
+          }
+        });
+      };
+
+      // Handle saving edited case details
+      const handleSaveEditedCase = (e) => {
+        e.preventDefault();
+        if (!editingCaseInfo) return;
+        const { visitId, churchId, groupId, caseObj, formValues } = editingCaseInfo;
+        const targetVisit = activeVisits.find(v => v.id === visitId);
+        if (!targetVisit) return;
+
+        const val = parseFloat(formValues.projectValue) || 0;
+        const inst = parseFloat(formValues.installmentAmount) || 0;
+
+        if (!formValues.caseName.trim()) {
+          window.notifyWarning('يرجى إدخال اسم المستفيد / الحالة.');
+          return;
+        }
+
+        const updatedChurches = (targetVisit.churches || []).map(ch => ch.id === churchId ? {
+          ...ch,
+          servantsGroups: (ch.servantsGroups || []).map(sg => sg.id === groupId ? {
+            ...sg,
+            cases: (sg.cases || []).map(c => c.id === caseObj.id ? {
+              ...c,
+              name: formValues.caseName.trim(),
+              caseName: formValues.caseName.trim(),
+              beneficiaryName: formValues.caseName.trim(),
+              nationalId: (formValues.nationalId || '').trim(),
+              projectType: formValues.projectType.trim(),
+              executedProjectType: formValues.projectType.trim(),
+              projectValue: val,
+              executedProjectValue: val,
+              installmentAmount: inst,
+              executedInstallmentAmount: inst,
+              executionDate: formValues.executionDate || c.executionDate,
+              firstInstallmentDate: formValues.firstInstallmentDate || c.firstInstallmentDate,
+              notes: (formValues.notes || '').trim()
+            } : c)
+          } : sg)
+        } : ch);
+
+        const updatedVisit = { ...targetVisit, churches: updatedChurches };
+        onUpdateVisit(updatedVisit);
+        setEditingCaseInfo(null);
+        window.notifySuccess('تم تحديث بيانات الحالة بنجاح.');
       };
 
       // Trigger batch payment modal with prepared scope
@@ -13476,7 +13956,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790244066393";
+      const CLIENT_BUILD_ID = "1790758966346";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
