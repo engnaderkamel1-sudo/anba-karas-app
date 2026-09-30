@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790771329785" />
+  <meta name="app-build-id" content="1790771755557" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -11815,6 +11815,19 @@ const AuthService = (() => {
         if (!res.ok) {
             throw new Error('تعذر إرسال رابط التعيين. يرجى التأكد من كتابة البريد بشكل صحيح.');
         }
+    // Update User Profile (e.g. Display Name)
+    const updateUserProfile = async (uid, updates) => {
+        if (!uid) throw new Error('Missing user ID');
+        if (db) {
+            await db.collection('users').doc(uid).set(updates, { merge: true });
+        }
+        const current = getSavedSession();
+        if (current && current.uid === uid) {
+            const updated = { ...current, ...updates };
+            saveSession(updated);
+            return updated;
+        }
+        return updates;
     };
 
     // Sign Out
@@ -11882,6 +11895,7 @@ const AuthService = (() => {
         registerUser,
         loginUser,
         sendPasswordReset,
+        updateUserProfile,
         logoutUser,
         approveUser,
         blockUser,
@@ -13255,6 +13269,139 @@ function UserManagementModal({ isOpen, onClose, currentUser }) {
 }
 
 // ================================================================
+// MODULE: components/UserProfileModal.js
+// ================================================================
+// ================================================================
+// COMPONENT: UserProfileModal (Edit Profile / Display Name)
+// ================================================================
+
+function UserProfileModal({ currentUser, onClose, onProfileUpdated }) {
+    const [name, setName] = useState(currentUser?.name || '');
+    const [phone, setPhone] = useState(currentUser?.phone || '');
+    const [isSaving, setIsSaving] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setErrorMsg('');
+        const trimmedName = name.trim();
+        if (!trimmedName) {
+            setErrorMsg('يرجى إدخال اسم الخادم بالكامل.');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const updates = {
+                name: trimmedName,
+                phone: phone.trim()
+            };
+            const updatedUser = await AuthService.updateUserProfile(currentUser.uid, updates);
+
+            // Also update live presence if collaboration is active
+            if (typeof CollaborationService !== 'undefined') {
+                CollaborationService.startPresence(updatedUser);
+            }
+
+            if (typeof window.notifySuccess === 'function') {
+                window.notifySuccess('تم تحديث الاسم والبيانات بنجاح!');
+            }
+            if (onProfileUpdated) onProfileUpdated(updatedUser);
+            onClose();
+        } catch (err) {
+            console.error('Error updating profile:', err);
+            setErrorMsg('حدث خطأ أثناء حفظ البيانات. يرجى المحاولة مرة أخرى.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-gray-100 animate-scale-up" onClick={e => e.stopPropagation()}>
+                {/* Header */}
+                <div className="bg-[#002f6c] p-4 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-amber-400 text-blue-950 font-bold flex items-center justify-center text-sm shadow-md">
+                            {(name || currentUser?.email || 'خ')[0].toUpperCase()}
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-sm">تعديل بيانات الحساب</h3>
+                            <p className="text-[10px] text-blue-200">الاسم الذي يظهر لزملائك الخدام</p>
+                        </div>
+                    </div>
+                    <button type="button" onClick={onClose} className="text-white/80 hover:text-white p-1 rounded-lg transition-colors">
+                        <X size={18} />
+                    </button>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                    {errorMsg && (
+                        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-xl text-xs font-medium">
+                            {errorMsg}
+                        </div>
+                    )}
+
+                    <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">البريد الإلكتروني (غير قابل للتعديل):</label>
+                        <input
+                            type="text"
+                            disabled
+                            value={currentUser?.email || ''}
+                            className="w-full px-3 py-2 text-xs bg-gray-100 text-gray-500 rounded-xl border border-gray-200 font-sans text-left cursor-not-allowed"
+                            dir="ltr"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">الاسم الكامل (الظاهر للجميع) *:</label>
+                        <input
+                            type="text"
+                            required
+                            placeholder="مثال: نادر رضا، جورج سمير..."
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            className="w-full px-3 py-2 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:border-[#002f6c] outline-none font-bold text-gray-800 transition-all"
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1">يظهر هذا الاسم في جلسات البث الحي وشريط المتواجدين الآن.</p>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">رقم الهاتف / واتساب (اختياري):</label>
+                        <input
+                            type="tel"
+                            placeholder="01xxxxxxxxx"
+                            value={phone}
+                            onChange={e => setPhone(e.target.value)}
+                            className="w-full px-3 py-2 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:border-[#002f6c] outline-none font-sans text-left transition-all"
+                            dir="ltr"
+                        />
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-xl transition-colors font-medium"
+                        >
+                            إلغاء
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isSaving}
+                            className="px-5 py-2 text-xs font-bold text-white bg-[#002f6c] hover:bg-blue-900 rounded-xl transition-all shadow-md flex items-center gap-1.5"
+                        >
+                            {isSaving ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// ================================================================
 // MODULE: components/GlobalSearchModal.js
 // ================================================================
     function GlobalSearchModal({ isOpen, onClose, allVisits, onNavigateToCase, onQuickPay }) {
@@ -13563,6 +13710,7 @@ function App() {
       const [showGlobalSearch, setShowGlobalSearch] = useState(false);
       const [showBackupModal, setShowBackupModal] = useState(false);
       const [showUsersModal, setShowUsersModal] = useState(false);
+      const [showProfileModal, setShowProfileModal] = useState(false);
       const [showVisitChoiceModal, setShowVisitChoiceModal] = useState(false);
       const [showLegacyChoiceModal, setShowLegacyChoiceModal] = useState(false);
       const [showAddLegacyModal, setShowAddLegacyModal] = useState(false);
@@ -14006,9 +14154,9 @@ function App() {
                <div className="flex items-center gap-2 sm:gap-3">
                    {currentUser && (
                      <div
-                       onClick={() => { if (currentUser.role === 'admin') setShowUsersModal(true); }}
-                       className={`flex items-center gap-2 bg-white/10 border border-amber-400/30 px-2.5 py-1 rounded-lg text-xs ${currentUser.role === 'admin' ? 'cursor-pointer hover:bg-white/20' : ''}`}
-                       title={currentUser.role === 'admin' ? "إدارة الخدام والصلاحيات" : undefined}
+                        onClick={() => setShowProfileModal(true)}
+                        className="flex items-center gap-2 bg-white/10 border border-amber-400/30 px-2.5 py-1 rounded-lg text-xs cursor-pointer hover:bg-white/20 transition-colors"
+                        title="Ø§Ø¶ØºØ· Ù„ØªØ¹Ø¯ÙŠÙ„ Ø§Ø³Ù…Ùƒ ÙˆØ¨ÙŠØ§Ù†Ø§Øª Ø­Ø³Ø§Ø¨Ùƒ"
                      >
                        <div className="w-6 h-6 rounded-full bg-amber-400 text-blue-950 font-bold flex items-center justify-center text-xs shadow-inner">
                          {(currentUser.name || currentUser.email || 'خ')[0].toUpperCase()}
@@ -14401,6 +14549,15 @@ function App() {
                    currentUser={currentUser}
                  />
              )}
+              {showProfileModal && (
+                  <UserProfileModal 
+                    currentUser={currentUser}
+                    onClose={() => setShowProfileModal(false)}
+                    onProfileUpdated={(updatedProfile) => {
+                      setCurrentUser(updatedProfile);
+                    }}
+                  />
+              )}
              {(!currentUser || currentUser.status !== 'approved') && !authLoading && (
                  <AuthModal 
                    userProfile={currentUser}
@@ -14485,7 +14642,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790771329785";
+      const CLIENT_BUILD_ID = "1790771755557";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
