@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790770643874" />
+  <meta name="app-build-id" content="1790771329785" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -5837,7 +5837,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 // ================================================================
 // MODULE: components/ImportLegacyExcelModal.js
 // ================================================================
-    function ImportLegacyExcelModal({ allVisits, onUpdateVisit, onClose, onOpenManualEntry }) {
+    function ImportLegacyExcelModal({ allVisits, onUpdateVisit, onClose, onOpenManualEntry, currentUser, onlineCollaborators }) {
       const activeVisits = (allVisits || []).filter(v => !v.isDeleted);
       const [fileName, setFileName] = useState('');
       const [parsedCases, setParsedCases] = useState([]);
@@ -5845,6 +5845,42 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       const [customVisitLocation, setCustomVisitLocation] = useState('');
       const [customVisitDate, setCustomVisitDate] = useState(() => new Date().toISOString().split('T')[0]);
       const [isParsing, setIsParsing] = useState(false);
+
+      // Live Co-pilot Collaboration State
+      const [liveSession, setLiveSession] = useState(null);
+      const isLiveActive = liveSession && liveSession.status === 'active';
+      const isController = !isLiveActive || (currentUser && liveSession.controllerEmail === currentUser.email);
+
+      // Listen to real-time live session if active
+      useEffect(() => {
+        if (typeof CollaborationService === 'undefined') return;
+        const unsub = CollaborationService.listenToLiveExcelSession((sessionData) => {
+          setLiveSession(sessionData);
+          if (sessionData && sessionData.status === 'active' && sessionData.parsedCases) {
+            // If current user is not controller, mirror session data
+            if (currentUser && sessionData.controllerEmail !== currentUser.email) {
+              setParsedCases(sessionData.parsedCases);
+              if (sessionData.fileName) setFileName(sessionData.fileName);
+              if (sessionData.customVisitLocation) setCustomVisitLocation(sessionData.customVisitLocation);
+              if (sessionData.customVisitDate) setCustomVisitDate(sessionData.customVisitDate);
+            }
+          }
+        });
+        return () => unsub();
+      }, [currentUser]);
+
+      // Broadcast changes if current user is the active live controller
+      const broadcastLiveUpdate = (updatedCases, extra = {}) => {
+        if (isLiveActive && isController && typeof CollaborationService !== 'undefined') {
+          CollaborationService.updateLiveSessionData({
+            parsedCases: updatedCases || parsedCases,
+            fileName,
+            customVisitLocation,
+            customVisitDate,
+            ...extra
+          });
+        }
+      };
 
       // 1. Installment Start Date & Auto-Settlement Settings
       const [firstInstallmentDate, setFirstInstallmentDate] = useState('');
@@ -6292,23 +6328,39 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 
       // Inline case deletion from preview table
       const handleDeletePreviewCase = (caseId) => {
-        setParsedCases(prev => prev.filter(c => c.id !== caseId));
+        if (!isController && isLiveActive) {
+          if (typeof window.notifyWarning === 'function') window.notifyWarning('عذراً، أنت في وضع المشاهدة حالياً. اطلب التحكم للتعديل.');
+          return;
+        }
+        setParsedCases(prev => {
+          const next = prev.filter(c => c.id !== caseId);
+          broadcastLiveUpdate(next);
+          return next;
+        });
       };
 
       // Inline case update from preview table (with auto recalculation of months when value or installment changes)
       const handleUpdatePreviewCase = (caseId, field, value) => {
-        setParsedCases(prev => prev.map(c => {
-          if (c.id === caseId) {
-            const updated = { ...c, [field]: value };
-            if (field === 'projectValue' || field === 'installmentAmount') {
-              const pVal = parseFloat(field === 'projectValue' ? value : c.projectValue) || 0;
-              const pInst = parseFloat(field === 'installmentAmount' ? value : c.installmentAmount) || 0;
-              updated.monthsCount = pInst > 0 ? Math.ceil(pVal / pInst) : c.monthsCount;
+        if (!isController && isLiveActive) {
+          if (typeof window.notifyWarning === 'function') window.notifyWarning('عذراً، أنت في وضع المشاهدة حالياً. اطلب التحكم للتعديل.');
+          return;
+        }
+        setParsedCases(prev => {
+          const next = prev.map(c => {
+            if (c.id === caseId) {
+              const updated = { ...c, [field]: value };
+              if (field === 'projectValue' || field === 'installmentAmount') {
+                const pVal = parseFloat(field === 'projectValue' ? value : c.projectValue) || 0;
+                const pInst = parseFloat(field === 'installmentAmount' ? value : c.installmentAmount) || 0;
+                updated.monthsCount = pInst > 0 ? Math.ceil(pVal / pInst) : c.monthsCount;
+              }
+              return updated;
             }
-            return updated;
-          }
-          return c;
-        }));
+            return c;
+          });
+          broadcastLiveUpdate(next);
+          return next;
+        });
       };
 
       // CONFIRM & IMPORT FUNCTION (Only executed when clicking Confirm)
@@ -6495,6 +6547,61 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 </div>
 
                 <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {/* LIVE CO-PILOT BROADCAST BUTTON */}
+                  {currentUser && (
+                    <>
+                      {!isLiveActive ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!fileName && parsedCases.length === 0) {
+                              if (typeof window.notifyWarning === 'function') window.notifyWarning('يرجى رفع ملف الإكسيل أولاً لبدء مشاركته لايف!');
+                              else alert('يرجى رفع ملف الإكسيل أولاً لبدء مشاركته لايف!');
+                              return;
+                            }
+                            CollaborationService.startLiveSession(currentUser, {
+                              fileName,
+                              parsedCases,
+                              customVisitLocation,
+                              customVisitDate
+                            });
+                            if (typeof window.notifySuccess === 'function') {
+                              window.notifySuccess('تم بدء البث المباشر للشاشة بنجاح! يمكن للخدام المتصلين الانضمام الآن.');
+                            }
+                          }}
+                          disabled={(onlineCollaborators || []).length === 0}
+                          className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm ${
+                            (onlineCollaborators || []).length > 0
+                              ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse cursor-pointer'
+                              : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                          }`}
+                          title={
+                            (onlineCollaborators || []).length > 0
+                              ? `مشاركة الشاشة لايف مع ${(onlineCollaborators || []).map(u => u.name || u.email).join(', ')}`
+                              : 'لا يوجد خدام متصلون حالياً لمشاركة الشاشة معهم'
+                          }
+                        >
+                          <span className="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                          <span>مشاركة لايف {(onlineCollaborators || []).length > 0 ? `(${(onlineCollaborators || []).length} متصل)` : ''}</span>
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              CollaborationService.endLiveSession();
+                              if (typeof window.notifyInfo === 'function') window.notifyInfo('تم إنهاء البث المباشر.');
+                            }}
+                            className="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
+                            title="إنهاء جلسة البث الحي"
+                          >
+                            <span>🛑 إنهاء البث</span>
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+
                   <label className={`cursor-pointer px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow transition-colors flex items-center gap-1.5 shrink-0 ${isParsing ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
                     {isParsing ? (
                       <>
@@ -6512,12 +6619,75 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                       accept=".xlsx, .xls, .csv" 
                       onClick={(e) => { e.target.value = null; }} 
                       onChange={handleFileUpload} 
-                      disabled={isParsing}
+                      disabled={isParsing || (!isController && isLiveActive)}
                       className="hidden" 
                     />
                   </label>
                 </div>
               </div>
+
+              {/* LIVE CO-PILOT BANNER (المتحكم ووضع المشاهدة وتبديل الكنترول) */}
+              {isLiveActive && (
+                <div className="bg-gradient-to-r from-rose-50 via-amber-50 to-indigo-50 border-2 border-rose-300 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-sm animate-fade-in">
+                  <div className="flex items-center gap-2.5">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+                    </span>
+                    <div>
+                      <div className="text-xs font-bold text-gray-900 flex items-center gap-2">
+                        <span>جلسة عمل تشاركية حية (Live Co-Pilot)</span>
+                        <span className="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-bold">بث مباشر</span>
+                      </div>
+                      <div className="text-[11px] text-gray-600 mt-0.5">
+                        المتحكم بالتعديل حالياً: <strong className="text-[#002f6c]">{liveSession.controllerName || liveSession.controllerEmail}</strong>
+                        {isController ? ' (أنت من يتحكم)' : ' (أنت في وضع المشاهدة اللحظية)'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* تبديل الكنترول / تسليم التحكم */}
+                  <div className="flex items-center gap-2">
+                    {isController && (onlineCollaborators || []).length > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-bold text-gray-700">تسليم التحكم إلى:</span>
+                        {(onlineCollaborators || []).map(collab => (
+                          <button
+                            key={collab.id}
+                            type="button"
+                            onClick={() => {
+                              CollaborationService.passControl(collab);
+                              if (typeof window.notifySuccess === 'function') {
+                                window.notifySuccess(`تم تسليم التحكم لـ ${collab.name || collab.email} بنجاح!`);
+                              }
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all shadow-xs flex items-center gap-1"
+                          >
+                            <span>🔄 {collab.name || collab.email.split('@')[0]}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {!isController && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (currentUser) {
+                            CollaborationService.passControl(currentUser);
+                            if (typeof window.notifySuccess === 'function') {
+                              window.notifySuccess('أصبحت أنت المتحكم بالتعديل الآن!');
+                            }
+                          }
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1"
+                      >
+                        <span>✋ طلب / استلام التحكم</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {onOpenManualEntry && !fileName && (
                 <div className="text-center py-0.5">
@@ -6762,8 +6932,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                 <input
                                   type="text"
                                   value={c.caseName}
+                                  disabled={!isController && isLiveActive}
                                   onChange={e => handleUpdatePreviewCase(c.id, 'caseName', e.target.value)}
-                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] font-bold text-gray-800 outline-none px-1 py-0.5 rounded"
+                                  className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] font-bold text-gray-800 outline-none px-1 py-0.5 rounded ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
                                 />
                               </td>
                               <td className="p-2">
@@ -6771,9 +6942,10 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                   type="text"
                                   list="legacy-regions-list"
                                   value={c.regionName || ''}
+                                  disabled={!isController && isLiveActive}
                                   placeholder="اختر أو اكتب المنطقة"
                                   onChange={e => handleUpdatePreviewCase(c.id, 'regionName', e.target.value)}
-                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium"
+                                  className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
                                 />
                               </td>
                               <td className="p-2">
@@ -6781,9 +6953,10 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                   type="text"
                                   list="legacy-villages-list"
                                   value={c.villageName || ''}
+                                  disabled={!isController && isLiveActive}
                                   placeholder="القرية / البلد"
                                   onChange={e => handleUpdatePreviewCase(c.id, 'villageName', e.target.value)}
-                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium"
+                                  className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
                                 />
                               </td>
                               <td className="p-2">
@@ -6791,9 +6964,10 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                   type="text"
                                   list="legacy-churches-list"
                                   value={c.churchName || ''}
+                                  disabled={!isController && isLiveActive}
                                   placeholder="اختر أو اكتب الكنيسة"
                                   onChange={e => handleUpdatePreviewCase(c.id, 'churchName', e.target.value)}
-                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium"
+                                  className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
                                 />
                               </td>
                               <td className="p-2">
@@ -6801,25 +6975,28 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                   type="text"
                                   list="legacy-projects-list"
                                   value={c.projectType || ''}
+                                  disabled={!isController && isLiveActive}
                                   placeholder="نوع المشروع"
                                   onChange={e => handleUpdatePreviewCase(c.id, 'projectType', e.target.value)}
-                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-purple-900 font-bold outline-none px-1 py-0.5 rounded"
+                                  className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-purple-900 font-bold outline-none px-1 py-0.5 rounded ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
                                 />
                               </td>
                               <td className="p-2">
                                 <input
                                   type="number"
                                   value={c.projectValue}
+                                  disabled={!isController && isLiveActive}
                                   onChange={e => handleUpdatePreviewCase(c.id, 'projectValue', e.target.value)}
-                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] font-sans font-bold text-[#002f6c] outline-none px-1 py-0.5 rounded text-left"
+                                  className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] font-sans font-bold text-[#002f6c] outline-none px-1 py-0.5 rounded text-left ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
                                 />
                               </td>
                               <td className="p-2">
                                 <input
                                   type="number"
                                   value={c.installmentAmount}
+                                  disabled={!isController && isLiveActive}
                                   onChange={e => handleUpdatePreviewCase(c.id, 'installmentAmount', e.target.value)}
-                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] font-sans font-bold text-amber-800 outline-none px-1 py-0.5 rounded text-left"
+                                  className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] font-sans font-bold text-amber-800 outline-none px-1 py-0.5 rounded text-left ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
                                 />
                               </td>
                               <td className="p-2 text-center font-sans text-gray-600 font-medium">
@@ -6828,8 +7005,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                               <td className="p-2 text-center">
                                 <button
                                   type="button"
+                                  disabled={!isController && isLiveActive}
                                   onClick={() => handleDeletePreviewCase(c.id)}
-                                  className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-lg transition-colors"
+                                  className={`p-1.5 rounded-lg transition-colors ${!isController && isLiveActive ? 'text-gray-300 cursor-not-allowed' : 'text-rose-500 hover:text-rose-700 hover:bg-rose-50'}`}
                                   title="حذف هذه الحالة من كشف الاستيراد"
                                 >
                                   <Trash2 size={14} />
@@ -11712,6 +11890,131 @@ const AuthService = (() => {
 })();
 
 // ================================================================
+// MODULE: services/collaborationService.js
+// ================================================================
+    // --- COLLABORATION & PRESENCE SERVICE ---
+    // Manages online user presence and real-time live excel co-pilot sessions
+    const CollaborationService = {
+      presenceInterval: null,
+      sessionDocRef: null,
+
+      // Register current user as active and heartbeat every 90 seconds
+      startPresence(user) {
+        if (!db || !user || !user.email) return;
+        const safeId = user.email.replace(/[.@]/g, '_');
+        const userRef = db.collection('app_collaborators').doc(safeId);
+
+        const ping = () => {
+          userRef.set({
+            email: user.email,
+            name: user.name || user.email.split('@')[0],
+            role: user.role || 'servant',
+            lastActive: Date.now()
+          }, { merge: true }).catch(err => console.warn('Presence ping err:', err));
+        };
+
+        ping();
+        if (this.presenceInterval) clearInterval(this.presenceInterval);
+        this.presenceInterval = setInterval(ping, 90000);
+
+        // Remove presence on window unload if possible
+        window.addEventListener('beforeunload', () => {
+          try {
+            userRef.delete();
+          } catch(e) {}
+        });
+      },
+
+      stopPresence(user) {
+        if (this.presenceInterval) {
+          clearInterval(this.presenceInterval);
+          this.presenceInterval = null;
+        }
+        if (db && user && user.email) {
+          const safeId = user.email.replace(/[.@]/g, '_');
+          db.collection('app_collaborators').doc(safeId).delete().catch(() => {});
+        }
+      },
+
+      // Listen for other online collaborators active within last 3 minutes
+      listenToOnlineCollaborators(currentUser, onUpdate) {
+        if (!db) return () => {};
+        const safeCurrentId = currentUser?.email ? currentUser.email.replace(/[.@]/g, '_') : '';
+
+        return db.collection('app_collaborators').onSnapshot(snap => {
+          const now = Date.now();
+          const activeList = [];
+          snap.forEach(doc => {
+            const data = doc.data();
+            // Active if pinged in last 180 seconds and not current user
+            if (doc.id !== safeCurrentId && data.lastActive && (now - data.lastActive < 180000)) {
+              activeList.push({ id: doc.id, ...data });
+            }
+          });
+          onUpdate(activeList);
+        }, err => console.warn('Collaborators listen err:', err));
+      },
+
+      // Listen for incoming live Excel session invitations
+      listenToLiveExcelSession(onSessionUpdate) {
+        if (!db) return () => {};
+        return db.collection('app_live_sessions').doc('excel_copilot').onSnapshot(snap => {
+          if (snap.exists) {
+            onSessionUpdate(snap.data());
+          } else {
+            onSessionUpdate(null);
+          }
+        }, err => console.warn('Live session listen err:', err));
+      },
+
+      // Start or broadcast a live Excel session
+      async startLiveSession(hostUser, sessionData) {
+        if (!db || !hostUser) return;
+        const ref = db.collection('app_live_sessions').doc('excel_copilot');
+        await ref.set({
+          ...sessionData,
+          hostEmail: hostUser.email,
+          hostName: hostUser.name || hostUser.email.split('@')[0],
+          controllerEmail: hostUser.email,
+          controllerName: hostUser.name || hostUser.email.split('@')[0],
+          status: 'active',
+          updatedAt: Date.now()
+        });
+      },
+
+      // Update session payload (parsedCases, custom location, date, etc.)
+      async updateLiveSessionData(data) {
+        if (!db) return;
+        const ref = db.collection('app_live_sessions').doc('excel_copilot');
+        await ref.set({
+          ...data,
+          updatedAt: Date.now()
+        }, { merge: true });
+      },
+
+      // Pass control to another collaborator
+      async passControl(targetUser) {
+        if (!db || !targetUser) return;
+        const ref = db.collection('app_live_sessions').doc('excel_copilot');
+        await ref.update({
+          controllerEmail: targetUser.email,
+          controllerName: targetUser.name || targetUser.email.split('@')[0],
+          updatedAt: Date.now()
+        });
+      },
+
+      // Terminate live session
+      async endLiveSession() {
+        if (!db) return;
+        try {
+          await db.collection('app_live_sessions').doc('excel_copilot').delete();
+        } catch(e) {
+          console.warn('End session err:', e);
+        }
+      }
+    };
+
+// ================================================================
 // MODULE: components/BackupVersionsModal.js
 // ================================================================
 // ================================================================
@@ -13272,6 +13575,9 @@ function App() {
         return typeof AuthService !== 'undefined' ? !AuthService.getSavedSession() : false;
       });
       const [pendingServantsCount, setPendingServantsCount] = useState(0);
+      const [onlineCollaborators, setOnlineCollaborators] = useState([]);
+      const [incomingLiveSession, setIncomingLiveSession] = useState(null);
+      const [dismissedSessionId, setDismissedSessionId] = useState(null);
 
       const [quickActionModalCase, setQuickActionModalCase] = useState(null);
       const [currentVisitId, setCurrentVisitId] = useState(null);
@@ -13344,6 +13650,31 @@ function App() {
             setPendingServantsCount(snap.size);
           }, err => console.warn('Pending users listener error:', err));
         return () => unsubPending();
+      }, [currentUser]);
+
+      // Real-Time Collaboration Presence & Live Sessions
+      useEffect(() => {
+        if (!currentUser || typeof CollaborationService === 'undefined') return;
+
+        CollaborationService.startPresence(currentUser);
+
+        const unsubCollab = CollaborationService.listenToOnlineCollaborators(currentUser, (collaborators) => {
+          setOnlineCollaborators(collaborators);
+        });
+
+        const unsubLive = CollaborationService.listenToLiveExcelSession((session) => {
+          if (session && session.status === 'active' && session.hostEmail !== currentUser.email) {
+            setIncomingLiveSession(session);
+          } else {
+            setIncomingLiveSession(null);
+          }
+        });
+
+        return () => {
+          CollaborationService.stopPresence(currentUser);
+          if (typeof unsubCollab === 'function') unsubCollab();
+          if (typeof unsubLive === 'function') unsubLive();
+        };
       }, [currentUser]);
 
       // Real-Time Firestore Synchronization
@@ -13721,6 +14052,41 @@ function App() {
             </div>
           </nav>
 
+          {/* INCOMING LIVE EXCEL CO-PILOT INVITATION BANNER */}
+          {incomingLiveSession && dismissedSessionId !== incomingLiveSession.updatedAt && !showImportLegacyModal && (
+            <div className="bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-700 text-white shadow-lg px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-16 z-20 animate-fade-in">
+              <div className="flex items-center gap-3">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-300 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-400"></span>
+                </span>
+                <div className="text-xs sm:text-sm">
+                  <span className="font-bold text-amber-200">{incomingLiveSession.hostName || incomingLiveSession.hostEmail}</span> يقوم حالياً برفع ومراجعة ملف إكسيل <strong>({incomingLiveSession.fileName || 'كشف مشاريع'})</strong>
+                  <span className="hidden md:inline text-blue-100 text-xs mr-2">• يمكنك الانضمام للمعاينة الحية والتنسيق معه بالهاتف!</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowImportLegacyModal(true);
+                  }}
+                  className="bg-amber-400 hover:bg-amber-300 text-blue-950 font-bold text-xs px-3.5 py-1.5 rounded-lg shadow transition-all active:scale-95 flex items-center gap-1.5"
+                >
+                  <span>👀 انضمام للمشاهدة الآن</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDismissedSessionId(incomingLiveSession.updatedAt)}
+                  className="text-white/80 hover:text-white text-xs px-2.5 py-1 rounded hover:bg-white/10 transition-colors"
+                >
+                  تخطي / مشغول حالياً
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* SIDEBAR DRAWER */}
           <div className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsSidebarOpen(false)} />
           <div className={`fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
@@ -14005,6 +14371,8 @@ function App() {
            {showImportLegacyModal && (
              <ImportLegacyExcelModal
                allVisits={allVisits}
+               currentUser={currentUser}
+               onlineCollaborators={onlineCollaborators}
                onUpdateVisit={(upd) => safeUpdateVisit(upd, 'importLegacyExcel')}
                onOpenManualEntry={() => {
                  setShowImportLegacyModal(false);
@@ -14117,7 +14485,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790770643874";
+      const CLIENT_BUILD_ID = "1790771329785";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
