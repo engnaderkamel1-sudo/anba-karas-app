@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790771755557" />
+  <meta name="app-build-id" content="1790771967005" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -6125,6 +6125,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   if (sim >= 0.70 && sim < 1.0) {
                     const matchCount = cleanRows.filter(x => x.churchName === c.churchName).length;
                     suggestions.push({
+                      id: `sug_${Date.now()}_${Math.random().toString(36).substr(2, 7)}`,
                       type: 'church',
                       original: c.churchName,
                       suggested: existCh,
@@ -6144,6 +6145,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   if (sim >= 0.70 && sim < 1.0) {
                     const matchCount = cleanRows.filter(x => x.regionName === c.regionName).length;
                     suggestions.push({
+                      id: `sug_${Date.now()}_${Math.random().toString(36).substr(2, 7)}`,
                       type: 'region',
                       original: c.regionName,
                       suggested: existReg,
@@ -6163,6 +6165,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   if (sim >= 0.70 && sim < 1.0) {
                     const matchCount = cleanRows.filter(x => x.projectType === c.projectType).length;
                     suggestions.push({
+                      id: `sug_${Date.now()}_${Math.random().toString(36).substr(2, 7)}`,
                       type: 'project',
                       original: c.projectType,
                       suggested: existProj,
@@ -6190,7 +6193,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       };
 
       // Apply a fuzzy unification suggestion (e.g. replace Excel's original with existing suggested)
-      const handleApplyFuzzySuggestion = (original, suggested, type) => {
+      const handleApplyFuzzySuggestion = (sugId, original, suggested, type) => {
         const normOrig = typeof normalizeArabicText === 'function' ? normalizeArabicText(original) : String(original).trim();
         setAppliedMappings(prev => ({ ...prev, [original]: suggested }));
         let updatedCount = 0;
@@ -6220,7 +6223,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         }));
 
         // Remove suggestion after applied
-        setFuzzySuggestions(prev => prev.filter(s => s.original !== original));
+        setFuzzySuggestions(prev => prev.filter(s => (sugId ? s.id !== sugId : s.original !== original)));
 
         if (typeof window.notifySuccess === 'function') {
           window.notifySuccess(`تم بنجاح تحويل "${original}" إلى "${suggested}" في جميع حالات الملف!`);
@@ -6228,7 +6231,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       };
 
       // Adopt Excel's name (e.g. "فراخ") and globally rename old/typo name ("فريخ") across all past visits
-      const handleGlobalAdoptAndRename = (excelName, oldName, type) => {
+      const handleGlobalAdoptAndRename = (sugId, excelName, oldName, type) => {
         const normOld = typeof normalizeArabicText === 'function' ? normalizeArabicText(oldName) : String(oldName).trim();
         const normExcel = typeof normalizeArabicText === 'function' ? normalizeArabicText(excelName) : String(excelName).trim();
 
@@ -6318,12 +6321,12 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         }
 
         // Dismiss the suggestion
-        setFuzzySuggestions(prev => prev.filter(s => s.original !== excelName));
+        setFuzzySuggestions(prev => prev.filter(s => (sugId ? s.id !== sugId : s.original !== excelName)));
       };
 
       // Dismiss a suggestion (keep original text)
-      const handleDismissFuzzySuggestion = (original) => {
-        setFuzzySuggestions(prev => prev.filter(s => s.original !== original));
+      const handleDismissFuzzySuggestion = (sugId, original) => {
+        setFuzzySuggestions(prev => prev.filter(s => (sugId ? s.id !== sugId : s.original !== original)));
       };
 
       // Inline case deletion from preview table
@@ -6728,7 +6731,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   </div>
                   <div className="space-y-2">
                     {fuzzySuggestions.map((sug, sIdx) => (
-                      <div key={sIdx} className="bg-white rounded-lg p-2.5 border border-amber-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <div key={sug.id || sIdx} className="bg-white rounded-lg p-2.5 border border-amber-200 flex flex-wrap items-center justify-between gap-2 text-xs">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
                             sug.type === 'project'
@@ -6747,7 +6750,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                         <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                           <button
                             type="button"
-                            onClick={() => handleApplyFuzzySuggestion(sug.original, sug.suggested, sug.type)}
+                            onClick={() => handleApplyFuzzySuggestion(sug.id, sug.original, sug.suggested, sug.type)}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1 rounded text-xs transition-colors flex items-center gap-1"
                             title={`تغيير كل حالات الملف من "${sug.original}" إلى "${sug.suggested}"`}
                           >
@@ -6755,7 +6758,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleGlobalAdoptAndRename(sug.original, sug.suggested, sug.type)}
+                            onClick={() => handleGlobalAdoptAndRename(sug.id, sug.original, sug.suggested, sug.type)}
                             className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded text-xs transition-colors flex items-center gap-1 shadow-xs"
                             title={`اعتماد اسم "${sug.original}" في هذا الملف وتعديل كل المشاريع السابقة المسجلة بـ "${sug.suggested}" إلى "${sug.original}"`}
                           >
@@ -6763,7 +6766,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDismissFuzzySuggestion(sug.original)}
+                            onClick={() => handleDismissFuzzySuggestion(sug.id, sug.original)}
                             className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-2.5 py-1 rounded text-xs transition-colors"
                           >
                             تجاهل
@@ -6938,48 +6941,124 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                 />
                               </td>
                               <td className="p-2">
-                                <input
-                                  type="text"
-                                  list="legacy-regions-list"
-                                  value={c.regionName || ''}
-                                  disabled={!isController && isLiveActive}
-                                  placeholder="اختر أو اكتب المنطقة"
-                                  onChange={e => handleUpdatePreviewCase(c.id, 'regionName', e.target.value)}
-                                  className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
-                                />
+                                <div className="relative flex items-center group">
+                                  <input
+                                    type="text"
+                                    list="legacy-regions-list"
+                                    value={c.regionName || ''}
+                                    disabled={!isController && isLiveActive}
+                                    placeholder="اختر أو اكتب المنطقة"
+                                    onFocus={e => e.target.select()}
+                                    onClick={e => e.target.select()}
+                                    onDoubleClick={() => handleUpdatePreviewCase(c.id, 'regionName', '')}
+                                    onChange={e => handleUpdatePreviewCase(c.id, 'regionName', e.target.value)}
+                                    className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
+                                  />
+                                  {c.regionName && (
+                                    <button
+                                      type="button"
+                                      tabIndex={-1}
+                                      onClick={(e) => {
+                                        handleUpdatePreviewCase(c.id, 'regionName', '');
+                                        e.currentTarget.previousSibling?.focus();
+                                      }}
+                                      className="text-gray-400 hover:text-rose-600 px-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="مسح لإظهار جميع المناطق"
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                               <td className="p-2">
-                                <input
-                                  type="text"
-                                  list="legacy-villages-list"
-                                  value={c.villageName || ''}
-                                  disabled={!isController && isLiveActive}
-                                  placeholder="القرية / البلد"
-                                  onChange={e => handleUpdatePreviewCase(c.id, 'villageName', e.target.value)}
-                                  className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
-                                />
+                                <div className="relative flex items-center group">
+                                  <input
+                                    type="text"
+                                    list="legacy-villages-list"
+                                    value={c.villageName || ''}
+                                    disabled={!isController && isLiveActive}
+                                    placeholder="القرية / البلد"
+                                    onFocus={e => e.target.select()}
+                                    onClick={e => e.target.select()}
+                                    onDoubleClick={() => handleUpdatePreviewCase(c.id, 'villageName', '')}
+                                    onChange={e => handleUpdatePreviewCase(c.id, 'villageName', e.target.value)}
+                                    className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
+                                  />
+                                  {c.villageName && (
+                                    <button
+                                      type="button"
+                                      tabIndex={-1}
+                                      onClick={(e) => {
+                                        handleUpdatePreviewCase(c.id, 'villageName', '');
+                                        e.currentTarget.previousSibling?.focus();
+                                      }}
+                                      className="text-gray-400 hover:text-rose-600 px-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="مسح لإظهار جميع القرى"
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                               <td className="p-2">
-                                <input
-                                  type="text"
-                                  list="legacy-churches-list"
-                                  value={c.churchName || ''}
-                                  disabled={!isController && isLiveActive}
-                                  placeholder="اختر أو اكتب الكنيسة"
-                                  onChange={e => handleUpdatePreviewCase(c.id, 'churchName', e.target.value)}
-                                  className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
-                                />
+                                <div className="relative flex items-center group">
+                                  <input
+                                    type="text"
+                                    list="legacy-churches-list"
+                                    value={c.churchName || ''}
+                                    disabled={!isController && isLiveActive}
+                                    placeholder="اختر أو اكتب الكنيسة"
+                                    onFocus={e => e.target.select()}
+                                    onClick={e => e.target.select()}
+                                    onDoubleClick={() => handleUpdatePreviewCase(c.id, 'churchName', '')}
+                                    onChange={e => handleUpdatePreviewCase(c.id, 'churchName', e.target.value)}
+                                    className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
+                                  />
+                                  {c.churchName && (
+                                    <button
+                                      type="button"
+                                      tabIndex={-1}
+                                      onClick={(e) => {
+                                        handleUpdatePreviewCase(c.id, 'churchName', '');
+                                        e.currentTarget.previousSibling?.focus();
+                                      }}
+                                      className="text-gray-400 hover:text-rose-600 px-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="مسح لإظهار جميع الكنائس"
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                               <td className="p-2">
-                                <input
-                                  type="text"
-                                  list="legacy-projects-list"
-                                  value={c.projectType || ''}
-                                  disabled={!isController && isLiveActive}
-                                  placeholder="نوع المشروع"
-                                  onChange={e => handleUpdatePreviewCase(c.id, 'projectType', e.target.value)}
-                                  className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-purple-900 font-bold outline-none px-1 py-0.5 rounded ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
-                                />
+                                <div className="relative flex items-center group">
+                                  <input
+                                    type="text"
+                                    list="legacy-projects-list"
+                                    value={c.projectType || ''}
+                                    disabled={!isController && isLiveActive}
+                                    placeholder="نوع المشروع"
+                                    onFocus={e => e.target.select()}
+                                    onClick={e => e.target.select()}
+                                    onDoubleClick={() => handleUpdatePreviewCase(c.id, 'projectType', '')}
+                                    onChange={e => handleUpdatePreviewCase(c.id, 'projectType', e.target.value)}
+                                    className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-purple-900 font-bold outline-none px-1 py-0.5 rounded ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
+                                  />
+                                  {c.projectType && (
+                                    <button
+                                      type="button"
+                                      tabIndex={-1}
+                                      onClick={(e) => {
+                                        handleUpdatePreviewCase(c.id, 'projectType', '');
+                                        e.currentTarget.previousSibling?.focus();
+                                      }}
+                                      className="text-gray-400 hover:text-rose-600 px-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="مسح لإظهار جميع المشاريع"
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                               <td className="p-2">
                                 <input
@@ -14642,7 +14721,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790771755557";
+      const CLIENT_BUILD_ID = "1790771967005";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
