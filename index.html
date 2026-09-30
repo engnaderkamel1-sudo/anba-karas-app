@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790770341768" />
+  <meta name="app-build-id" content="1790770643874" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -6155,35 +6155,66 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 
       // Apply a fuzzy unification suggestion (e.g. replace Excel's original with existing suggested)
       const handleApplyFuzzySuggestion = (original, suggested, type) => {
+        const normOrig = typeof normalizeArabicText === 'function' ? normalizeArabicText(original) : String(original).trim();
         setAppliedMappings(prev => ({ ...prev, [original]: suggested }));
+        let updatedCount = 0;
         setParsedCases(prev => prev.map(c => {
-          if (type === 'church' && c.churchName === original) {
-            return { ...c, churchName: suggested };
+          if (type === 'church') {
+            const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(c.churchName) : String(c.churchName).trim();
+            if (c.churchName === original || curNorm === normOrig) {
+              updatedCount++;
+              return { ...c, churchName: suggested };
+            }
           }
-          if (type === 'region' && c.regionName === original) {
-            return { ...c, regionName: suggested };
+          if (type === 'region') {
+            const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(c.regionName) : String(c.regionName).trim();
+            if (c.regionName === original || curNorm === normOrig) {
+              updatedCount++;
+              return { ...c, regionName: suggested };
+            }
           }
-          if (type === 'project' && c.projectType === original) {
-            return { ...c, projectType: suggested };
+          if (type === 'project') {
+            const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(c.projectType) : String(c.projectType).trim();
+            if (c.projectType === original || curNorm === normOrig) {
+              updatedCount++;
+              return { ...c, projectType: suggested };
+            }
           }
           return c;
         }));
+
         // Remove suggestion after applied
         setFuzzySuggestions(prev => prev.filter(s => s.original !== original));
+
+        if (typeof window.notifySuccess === 'function') {
+          window.notifySuccess(`تم بنجاح تحويل "${original}" إلى "${suggested}" في جميع حالات الملف!`);
+        }
       };
 
       // Adopt Excel's name (e.g. "فراخ") and globally rename old/typo name ("فريخ") across all past visits
       const handleGlobalAdoptAndRename = (excelName, oldName, type) => {
+        const normOld = typeof normalizeArabicText === 'function' ? normalizeArabicText(oldName) : String(oldName).trim();
+        const normExcel = typeof normalizeArabicText === 'function' ? normalizeArabicText(excelName) : String(excelName).trim();
+
         // 1. Keep excelName in parsedCases
         setParsedCases(prev => prev.map(c => {
-          if (type === 'project' && (c.projectType === oldName || c.projectType === excelName)) {
-            return { ...c, projectType: excelName };
+          if (type === 'project') {
+            const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(c.projectType) : String(c.projectType).trim();
+            if (c.projectType === oldName || c.projectType === excelName || curNorm === normOld || curNorm === normExcel) {
+              return { ...c, projectType: excelName };
+            }
           }
-          if (type === 'church' && (c.churchName === oldName || c.churchName === excelName)) {
-            return { ...c, churchName: excelName };
+          if (type === 'church') {
+            const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(c.churchName) : String(c.churchName).trim();
+            if (c.churchName === oldName || c.churchName === excelName || curNorm === normOld || curNorm === normExcel) {
+              return { ...c, churchName: excelName };
+            }
           }
-          if (type === 'region' && (c.regionName === oldName || c.regionName === excelName)) {
-            return { ...c, regionName: excelName };
+          if (type === 'region') {
+            const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(c.regionName) : String(c.regionName).trim();
+            if (c.regionName === oldName || c.regionName === excelName || curNorm === normOld || curNorm === normExcel) {
+              return { ...c, regionName: excelName };
+            }
           }
           return c;
         }));
@@ -6195,20 +6226,27 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             let visitChanged = false;
             const updatedChurches = (v.churches || []).map(ch => {
               let churchObj = { ...ch };
-              if (type === 'region' && churchObj.regionName === oldName) {
-                churchObj.regionName = excelName;
-                visitChanged = true;
+              if (type === 'region') {
+                const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(churchObj.regionName) : String(churchObj.regionName).trim();
+                if (churchObj.regionName === oldName || curNorm === normOld) {
+                  churchObj.regionName = excelName;
+                  visitChanged = true;
+                }
               }
-              if (type === 'church' && churchObj.churchName === oldName) {
-                churchObj.churchName = excelName;
-                visitChanged = true;
+              if (type === 'church') {
+                const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(churchObj.churchName) : String(churchObj.churchName).trim();
+                if (churchObj.churchName === oldName || curNorm === normOld) {
+                  churchObj.churchName = excelName;
+                  visitChanged = true;
+                }
               }
               if (type === 'project') {
                 const updatedGroups = (churchObj.servantsGroups || []).map(sg => {
                   let groupChanged = false;
                   const updatedCases = (sg.cases || []).map(c => {
                     const curPType = c.executedProjectType || c.projectType;
-                    if (curPType === oldName) {
+                    const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(curPType) : String(curPType).trim();
+                    if (curPType === oldName || curNorm === normOld) {
                       groupChanged = true;
                       visitChanged = true;
                       return {
@@ -6236,6 +6274,10 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 
           if (typeof window.notifySuccess === 'function') {
             window.notifySuccess(`تم اعتماد "${excelName}" رسمياً وتصحيح مسمى "${oldName}" في جميع الزيارات السابقة بنجاح!`);
+          }
+        } else {
+          if (typeof window.notifySuccess === 'function') {
+            window.notifySuccess(`تم اعتماد "${excelName}" في ملف الاستيراد بنجاح!`);
           }
         }
 
@@ -14075,7 +14117,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790770341768";
+      const CLIENT_BUILD_ID = "1790770643874";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
