@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790761318206" />
+  <meta name="app-build-id" content="1790761825331" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -5835,7 +5835,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
 // ================================================================
 // MODULE: components/ImportLegacyExcelModal.js
 // ================================================================
-    function ImportLegacyExcelModal({ allVisits, onUpdateVisit, onClose }) {
+    function ImportLegacyExcelModal({ allVisits, onUpdateVisit, onClose, onOpenManualEntry }) {
       const activeVisits = (allVisits || []).filter(v => !v.isDeleted);
       const [fileName, setFileName] = useState('');
       const [parsedCases, setParsedCases] = useState([]);
@@ -6393,6 +6393,19 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                   </label>
                 </div>
               </div>
+
+              {onOpenManualEntry && !fileName && (
+                <div className="text-center py-0.5">
+                  <button
+                    type="button"
+                    onClick={onOpenManualEntry}
+                    className="text-xs text-[#002f6c] hover:text-blue-800 hover:underline inline-flex items-center gap-1.5 font-bold transition-colors"
+                  >
+                    <Edit2 size={13} />
+                    <span>ليس لديك ملف إكسيل للنزلة؟ اضغط هنا لتسجيل بياناتها يدوياً بدون إكسيل</span>
+                  </button>
+                </div>
+              )}
 
               {isParsing && (
                 <div className="text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2 animate-pulse">
@@ -13310,6 +13323,9 @@ function App() {
       const [showBackupModal, setShowBackupModal] = useState(false);
       const [showUsersModal, setShowUsersModal] = useState(false);
       const [showVisitChoiceModal, setShowVisitChoiceModal] = useState(false);
+      const [showLegacyChoiceModal, setShowLegacyChoiceModal] = useState(false);
+      const [showAddLegacyModal, setShowAddLegacyModal] = useState(false);
+      const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
       const [showImportLegacyModal, setShowImportLegacyModal] = useState(false);
       const [currentUser, setCurrentUser] = useState(() => {
         return typeof AuthService !== 'undefined' ? AuthService.getSavedSession() : null;
@@ -13797,23 +13813,49 @@ function App() {
                 <button onClick={() => { setActiveTab('archive'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'archive' || activeTab === 'archiveDetails' ? 'bg-blue-50 text-[#002f6c] border-r-4 border-[#002f6c] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
                    <ListIcon size={20} /> أرشيف الزيارات والتقارير
                 </button>
-                <div className="bg-blue-50/60 p-2 mx-3 my-1 rounded-xl border border-blue-100 flex flex-col gap-1">
-                   <div className="text-[11px] font-bold text-[#002f6c] px-3 pt-1">إضافة زيارة / مشاريع:</div>
-                   <button onClick={() => { setActiveTab('entry'); setIsSidebarOpen(false); }} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-right transition-colors text-xs ${activeTab === 'entry' ? 'bg-[#002f6c] text-white font-bold' : 'text-gray-700 hover:bg-white'}`}>
-                      <PlusCircle size={17} className={activeTab === 'entry' ? 'text-amber-300' : 'text-emerald-600'} />
-                      <div className="flex flex-col text-right">
-                         <span className="font-bold">زيارة ميدانية حالية (جديدة)</span>
-                         <span className={`text-[10px] ${activeTab === 'entry' ? 'text-blue-100' : 'text-gray-500'}`}>تسجيل الحالات ميدانياً خطوة بخطوة</span>
-                      </div>
-                   </button>
-                   <button onClick={() => { setShowImportLegacyModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-right transition-colors text-xs text-teal-900 bg-teal-50 hover:bg-teal-100 border border-teal-200/70 font-bold">
-                      <Upload size={17} className="text-teal-700 shrink-0" />
-                      <div className="flex flex-col text-right">
-                         <span>استيراد زيارة قديمة (من Excel)</span>
-                         <span className="text-[10px] text-teal-700/80 font-normal">رفع شيت نزلات سابقة وأقساط</span>
-                      </div>
-                   </button>
-                </div>
+                <div className="mx-3 my-1.5 bg-gradient-to-b from-blue-50/80 to-indigo-50/40 rounded-xl border border-blue-200/80 overflow-hidden shadow-sm">
+                    <button 
+                       type="button"
+                       onClick={() => setIsAddMenuOpen(prev => !prev)} 
+                       className="w-full flex items-center justify-between px-3.5 py-3 text-right text-[#002f6c] hover:bg-blue-100/50 transition-colors"
+                    >
+                       <div className="flex items-center gap-2.5">
+                          <PlusCircle size={19} className="text-[#002f6c]" />
+                          <span className="font-bold text-xs sm:text-sm">إضافة زيارة أو مشروع</span>
+                       </div>
+                       {isAddMenuOpen ? <ChevronUp size={16} className="text-[#002f6c]/70" /> : <ChevronDown size={16} className="text-[#002f6c]/70" />}
+                    </button>
+
+                    {isAddMenuOpen && (
+                       <div className="p-2 pt-0 flex flex-col gap-1.5 border-t border-blue-100/80">
+                          {/* 1. زيارة جديدة */}
+                          <button 
+                             type="button"
+                             onClick={() => { setActiveTab('entry'); setIsSidebarOpen(false); }} 
+                             className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-right transition-all text-xs ${activeTab === 'entry' ? 'bg-[#002f6c] text-white font-bold shadow-sm' : 'bg-white/80 hover:bg-white text-gray-800 border border-gray-100'}`}
+                          >
+                             <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></div>
+                             <div className="flex flex-col text-right">
+                                <span className="font-bold">زيارة جديدة</span>
+                                <span className={`text-[10px] ${activeTab === 'entry' ? 'text-blue-100' : 'text-gray-500'}`}>تسجيل الحالات ميدانياً خطوة بخطوة</span>
+                             </div>
+                          </button>
+
+                          {/* 2. زيارة قديمة */}
+                          <button 
+                             type="button"
+                             onClick={() => { setShowLegacyChoiceModal(true); setIsSidebarOpen(false); }} 
+                             className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-right transition-all text-xs bg-white/80 hover:bg-white text-gray-800 border border-gray-100 hover:border-blue-200"
+                          >
+                             <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></div>
+                             <div className="flex flex-col text-right">
+                                <span className="font-bold">زيارة قديمة</span>
+                                <span className="text-[10px] text-gray-500">رفع من Excel أو إدخال يدوي</span>
+                             </div>
+                          </button>
+                       </div>
+                    )}
+                 </div>
                 <button onClick={() => { setShowBackupModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-amber-900 bg-amber-50/70 hover:bg-amber-100 border-t border-b border-amber-200/60 font-bold">
                    <ShieldCheck size={20} className="text-amber-600" /> النسخ الاحتياطي وتاريخ الإصدارات
                 </button>
@@ -13928,10 +13970,106 @@ function App() {
            )}
            <ToastContainer />
            <ConfirmDialogModal />
+           {/* نافذة الاختيار للزيارة القديمة (Excel أو يدوي) */}
+           {showLegacyChoiceModal && (
+             <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm" onClick={() => setShowLegacyChoiceModal(false)}>
+               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-fade-in" onClick={e => e.stopPropagation()}>
+                 <div className="bg-[#002f6c] p-4 text-white flex justify-between items-center">
+                   <div className="flex items-center gap-2.5">
+                     <History size={22} className="text-amber-400" />
+                     <div>
+                       <h3 className="font-bold text-base">إضافة زيارة أو مشروع قديم</h3>
+                       <p className="text-xs text-blue-200">اختر طريقة تسجيل النزلة والمشاريع السابقة</p>
+                     </div>
+                   </div>
+                   <button onClick={() => setShowLegacyChoiceModal(false)} className="text-white/80 hover:text-white p-1 rounded-lg">
+                     <X size={20} />
+                   </button>
+                 </div>
+
+                 <div className="p-5 flex flex-col gap-3.5">
+                   {/* خيار 1: رفع من Excel */}
+                   <button 
+                     type="button"
+                     onClick={() => {
+                       setShowLegacyChoiceModal(false);
+                       setShowImportLegacyModal(true);
+                     }}
+                     className="flex items-center gap-3.5 p-4 rounded-xl border-2 border-emerald-200 hover:border-emerald-500 bg-emerald-50/50 hover:bg-emerald-50 text-right transition-all group shadow-sm hover:shadow"
+                   >
+                     <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                       <FileSpreadsheet size={24} />
+                     </div>
+                     <div className="flex-1">
+                       <div className="flex items-center justify-between">
+                         <span className="font-bold text-emerald-950 text-sm sm:text-base">رفع من ملف Excel</span>
+                         <span className="text-[10px] bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full font-bold">آلي وذكي</span>
+                       </div>
+                       <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                         استيراد شيت مشاريع كامل مع استخراج الكنائس والقرى وتوزيع الأقساط تلقائياً
+                       </p>
+                     </div>
+                   </button>
+
+                   {/* خيار 2: إدخال يدوي */}
+                   <button 
+                     type="button"
+                     onClick={() => {
+                       setShowLegacyChoiceModal(false);
+                       setShowAddLegacyModal(true);
+                     }}
+                     className="flex items-center gap-3.5 p-4 rounded-xl border-2 border-blue-200 hover:border-blue-500 bg-blue-50/50 hover:bg-blue-50 text-right transition-all group shadow-sm hover:shadow"
+                   >
+                     <div className="w-12 h-12 rounded-xl bg-[#002f6c] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                       <Edit2 size={22} />
+                     </div>
+                     <div className="flex-1">
+                       <div className="flex items-center justify-between">
+                         <span className="font-bold text-[#002f6c] text-sm sm:text-base">إدخال يدوي (بدون Excel)</span>
+                         <span className="text-[10px] bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full font-bold">تسجيل مباشر</span>
+                       </div>
+                       <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                         تسجيل حالة أو مشروع قديم يدوياً للبيانات التي ليس لها ملف إكسيل
+                       </p>
+                     </div>
+                   </button>
+                 </div>
+
+                 <div className="bg-gray-50 px-5 py-3 border-t border-gray-100 flex justify-end">
+                   <button 
+                     type="button"
+                     onClick={() => setShowLegacyChoiceModal(false)}
+                     className="px-4 py-1.5 text-xs text-gray-600 hover:bg-gray-200 rounded-lg transition-colors font-medium"
+                   >
+                     إلغاء
+                   </button>
+                 </div>
+               </div>
+             </div>
+           )}
+
+           {/* نافذة الإدخال اليدوي للمشاريع القديمة */}
+           {showAddLegacyModal && (
+             <AddLegacyProjectModal
+               allVisits={allVisits}
+               onUpdateVisit={(upd) => safeUpdateVisit(upd, 'addLegacyProject')}
+               onOpenImportExcel={() => {
+                 setShowAddLegacyModal(false);
+                 setShowImportLegacyModal(true);
+               }}
+               onClose={() => setShowAddLegacyModal(false)}
+             />
+           )}
+
+           {/* نافذة استيراد الإكسيل الذكي */}
            {showImportLegacyModal && (
              <ImportLegacyExcelModal
                allVisits={allVisits}
                onUpdateVisit={(upd) => safeUpdateVisit(upd, 'importLegacyExcel')}
+               onOpenManualEntry={() => {
+                 setShowImportLegacyModal(false);
+                 setShowAddLegacyModal(true);
+               }}
                onClose={() => setShowImportLegacyModal(false)}
              />
            )}
@@ -14039,7 +14177,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790761318206";
+      const CLIENT_BUILD_ID = "1790761825331";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
