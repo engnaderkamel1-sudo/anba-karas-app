@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790759472811" />
+  <meta name="app-build-id" content="1790760292742" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -1693,7 +1693,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
 // ================================================================
 // MODULE: pages/ActiveVisitForm.js
 // ================================================================
-    function ActiveVisitForm({ data, updateData, onEndVisit, onExport }) {
+    function ActiveVisitForm({ data, updateData, onEndVisit, onExport, onOpenImportLegacy }) {
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
       const [editingChurchInfo, setEditingChurchInfo] = useState(null);
       const [executingCaseInfo, setExecutingCaseInfo] = useState(null);
@@ -5890,12 +5890,19 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
       };
 
       const handleFileUpload = (e) => {
-        const file = e.target.files[0];
+        const file = e.target.files && e.target.files[0];
         if (!file) return;
-        setFileName(file.name);
+        const currentFileName = file.name;
+        // Reset input value immediately so selecting the same file again triggers onChange
+        e.target.value = null;
+
+        setFileName(currentFileName);
         setIsParsing(true);
         setAppliedMappings({});
         setFuzzySuggestions([]);
+        if (typeof window.notifyInfo === 'function') {
+          window.notifyInfo(`جاري قراءة وتحليل ملف الإكسيل (${currentFileName})...`);
+        }
 
         const reader = new FileReader();
         reader.onload = (evt) => {
@@ -5903,22 +5910,32 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
             const data = evt.target.result;
             const workbook = XLSX.read(data, { type: 'binary' });
 
-            // Prioritize sheet named 'مشاريع' or containing 'مشاريع', otherwise first sheet
-            let targetSheetName = workbook.SheetNames.find(s => s.includes('مشاريع')) || workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[targetSheetName];
-            const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '', header: 1 });
-
-            if (!rawRows || rawRows.length === 0) {
-              alert('الملف فارغ أو لا يحتوي على صفوف بيانات.');
+            if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
+              window.notifyError('الملف لا يحتوي على أي شيتات صالحة للقراءة.');
               setIsParsing(false);
               return;
             }
 
-            // Find header row (containing 'اسم الحالة' or 'اسم المستفيد' or 'المستفيد')
+            // Prioritize sheet containing 'مشاريع' or 'مشروع' or 'بيانات' or first sheet
+            let targetSheetName = workbook.SheetNames.find(s => {
+              const norm = normalizeArabicText(s);
+              return norm.includes('مشاريع') || norm.includes('مشروع') || norm.includes('تنفيذ') || norm.includes('حالات');
+            }) || workbook.SheetNames[0];
+
+            const worksheet = workbook.Sheets[targetSheetName];
+            const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '', header: 1 });
+
+            if (!rawRows || rawRows.length === 0) {
+              window.notifyError(`الشيت "${targetSheetName}" فارغ أو لا يحتوي على صفوف بيانات.`);
+              setIsParsing(false);
+              return;
+            }
+
+            // Find header row (containing 'اسم الحالة' or 'اسم المستفيد' or 'المستفيد' or 'الحالة' or 'الاسم')
             let headerRowIdx = -1;
-            for (let r = 0; r < Math.min(10, rawRows.length); r++) {
-              const rowStr = rawRows[r].map(c => normalizeArabicText(String(c))).join(' ');
-              if (rowStr.includes('اسم الحاله') || rowStr.includes('اسم المستفيد') || rowStr.includes('الحاله')) {
+            for (let r = 0; r < Math.min(15, rawRows.length); r++) {
+              const rowStr = (rawRows[r] || []).map(c => normalizeArabicText(String(c))).join(' ');
+              if (rowStr.includes('اسم الحاله') || rowStr.includes('اسم المستفيد') || rowStr.includes('الحاله') || rowStr.includes('المستفيد')) {
                 headerRowIdx = r;
                 break;
               }
@@ -5927,13 +5944,18 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
             let headers = [];
             let dataRows = [];
             if (headerRowIdx !== -1) {
-              headers = rawRows[headerRowIdx].map(c => String(c).trim());
+              headers = (rawRows[headerRowIdx] || []).map(c => String(c).trim());
               dataRows = rawRows.slice(headerRowIdx + 1);
             } else {
-              // Fallback to standard object parsing
+              // Fallback to standard object parsing or first non-empty row
               const jsonObjects = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-              headers = Object.keys(jsonObjects[0] || {});
-              dataRows = jsonObjects.map(obj => headers.map(k => obj[k]));
+              if (jsonObjects.length > 0) {
+                headers = Object.keys(jsonObjects[0] || {});
+                dataRows = jsonObjects.map(obj => headers.map(k => obj[k]));
+              } else {
+                headers = (rawRows[0] || []).map(c => String(c).trim());
+                dataRows = rawRows.slice(1);
+              }
             }
 
             // Helper to get index of header matching keywords
@@ -6013,12 +6035,17 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
             });
 
             if (cleanRows.length === 0) {
-              alert('لم نتمكن من قراءة أسماء الحالات من شيت المشاريع. يرجى التأكد من احتواء الملف على عمود "اسم الحالة".');
+              const msg = 'لم نتمكن من قراءة أسماء الحالات من شيت المشاريع. يرجى التأكد من احتواء الملف على عمود "اسم الحالة" أو "المستفيد".';
+              if (typeof window.notifyError === 'function') window.notifyError(msg);
+              else alert(msg);
               setIsParsing(false);
               return;
             }
 
             setParsedCases(cleanRows);
+            if (typeof window.notifySuccess === 'function') {
+              window.notifySuccess(`تم قراءة وتحليل (${formatNumber(cleanRows.length)}) مشروع بنجاح! جاهزة للمعاينة الآن.`);
+            }
 
             // Auto-detect common visit location from regions
             const autoRegions = Array.from(new Set(cleanRows.map(r => r.regionName).filter(r => r && r !== 'عام'))).join(' + ');
@@ -6108,8 +6135,10 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
             setFuzzySuggestions(suggestions);
 
           } catch (err) {
-            console.error(err);
-            alert('حدث خطأ أثناء قراءة ملف الإكسيل. تأكد من سلامة صيغة الملف.');
+            console.error("Excel import error:", err);
+            const errMsg = `حدث خطأ أثناء قراءة ملف الإكسيل: ${err && err.message ? err.message : 'تأكد من سلامة صيغة الملف'}`;
+            if (typeof window.notifyError === 'function') window.notifyError(errMsg);
+            else alert(errMsg);
           } finally {
             setIsParsing(false);
           }
@@ -6340,13 +6369,36 @@ const ANBA_KARAS_SPLASH_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQAB
                 </div>
 
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <label className="cursor-pointer px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow transition-colors flex items-center gap-1.5 shrink-0">
-                    <Upload size={15} />
-                    <span>{fileName ? 'اختيار ملف آخر' : 'رفع ملف الإكسيل'}</span>
-                    <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} className="hidden" />
+                  <label className={`cursor-pointer px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow transition-colors flex items-center gap-1.5 shrink-0 ${isParsing ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
+                    {isParsing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>جاري التحليل...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={15} />
+                        <span>{fileName ? 'اختيار ملف آخر' : 'رفع ملف الإكسيل'}</span>
+                      </>
+                    )}
+                    <input 
+                      type="file" 
+                      accept=".xlsx, .xls, .csv" 
+                      onClick={(e) => { e.target.value = null; }} 
+                      onChange={handleFileUpload} 
+                      disabled={isParsing}
+                      className="hidden" 
+                    />
                   </label>
                 </div>
               </div>
+
+              {isParsing && (
+                <div className="text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2 animate-pulse">
+                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span>جاري قراءة أعمدة الشيت واكتشاف أسماء الحالات والمناطق تلقائياً، يرجى الانتظار ثوانٍ معدودة...</span>
+                </div>
+              )}
 
               {fileName && (
                 <div className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center justify-between">
@@ -13256,6 +13308,8 @@ function App() {
       const [showGlobalSearch, setShowGlobalSearch] = useState(false);
       const [showBackupModal, setShowBackupModal] = useState(false);
       const [showUsersModal, setShowUsersModal] = useState(false);
+      const [showVisitChoiceModal, setShowVisitChoiceModal] = useState(false);
+      const [showImportLegacyModal, setShowImportLegacyModal] = useState(false);
       const [currentUser, setCurrentUser] = useState(() => {
         return typeof AuthService !== 'undefined' ? AuthService.getSavedSession() : null;
       });
@@ -13742,9 +13796,23 @@ function App() {
                 <button onClick={() => { setActiveTab('archive'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'archive' || activeTab === 'archiveDetails' ? 'bg-blue-50 text-[#002f6c] border-r-4 border-[#002f6c] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
                    <ListIcon size={20} /> أرشيف الزيارات والتقارير
                 </button>
-                <button onClick={() => { setActiveTab('entry'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'entry' ? 'bg-blue-50 text-[#002f6c] border-r-4 border-[#002f6c] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
-                   <Edit2 size={20} /> تسجيل الزيارة الحالية
-                </button>
+                <div className="bg-blue-50/60 p-2 mx-3 my-1 rounded-xl border border-blue-100 flex flex-col gap-1">
+                   <div className="text-[11px] font-bold text-[#002f6c] px-3 pt-1">إضافة زيارة / مشاريع:</div>
+                   <button onClick={() => { setActiveTab('entry'); setIsSidebarOpen(false); }} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-right transition-colors text-xs ${activeTab === 'entry' ? 'bg-[#002f6c] text-white font-bold' : 'text-gray-700 hover:bg-white'}`}>
+                      <PlusCircle size={17} className={activeTab === 'entry' ? 'text-amber-300' : 'text-emerald-600'} />
+                      <div className="flex flex-col text-right">
+                         <span className="font-bold">زيارة ميدانية حالية (جديدة)</span>
+                         <span className={`text-[10px] ${activeTab === 'entry' ? 'text-blue-100' : 'text-gray-500'}`}>تسجيل الحالات ميدانياً خطوة بخطوة</span>
+                      </div>
+                   </button>
+                   <button onClick={() => { setShowImportLegacyModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-right transition-colors text-xs text-teal-900 bg-teal-50 hover:bg-teal-100 border border-teal-200/70 font-bold">
+                      <Upload size={17} className="text-teal-700 shrink-0" />
+                      <div className="flex flex-col text-right">
+                         <span>استيراد زيارة قديمة (من Excel)</span>
+                         <span className="text-[10px] text-teal-700/80 font-normal">رفع شيت نزلات سابقة وأقساط</span>
+                      </div>
+                   </button>
+                </div>
                 <button onClick={() => { setShowBackupModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-amber-900 bg-amber-50/70 hover:bg-amber-100 border-t border-b border-amber-200/60 font-bold">
                    <ShieldCheck size={20} className="text-amber-600" /> النسخ الاحتياطي وتاريخ الإصدارات
                 </button>
@@ -13800,7 +13868,7 @@ function App() {
                 />
              )}
              {activeTab === 'entry' && (
-                <ActiveVisitForm data={data} updateData={updateData} onEndVisit={handleEndVisit} onExport={openExportModal} />
+                <ActiveVisitForm data={data} updateData={updateData} onEndVisit={handleEndVisit} onExport={openExportModal} onOpenImportLegacy={() => setShowImportLegacyModal(true)} />
              )}
              {activeTab === 'archive' && (
                 <ArchivePage 
@@ -13859,6 +13927,13 @@ function App() {
            )}
            <ToastContainer />
            <ConfirmDialogModal />
+           {showImportLegacyModal && (
+             <ImportLegacyExcelModal
+               allVisits={allVisits}
+               onUpdateVisit={(upd) => safeUpdateVisit(upd, 'importLegacyExcel')}
+               onClose={() => setShowImportLegacyModal(false)}
+             />
+           )}
            {showExportModal && exportVisitData && (
                  <ExportModal visit={exportVisitData} onClose={() => setShowExportModal(false)} />
              )}
@@ -13963,7 +14038,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790759472811";
+      const CLIENT_BUILD_ID = "1790760292742";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
