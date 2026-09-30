@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790762473939" />
+  <meta name="app-build-id" content="1790768511938" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -5863,6 +5863,10 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         return Array.from(new Set(activeVisits.flatMap(v => (v.churches || []).map(ch => ch.churchName)).filter(Boolean)));
       }, [activeVisits]);
 
+      const existingVillages = useMemo(() => {
+        return Array.from(new Set(activeVisits.flatMap(v => (v.churches || []).map(ch => ch.villageName || ch.village)).filter(Boolean)));
+      }, [activeVisits]);
+
       const existingProjects = useMemo(() => {
         const rawTypes = activeVisits.flatMap(v => (v.churches || []).flatMap(ch => (ch.servantsGroups || []).flatMap(sg => (sg.cases || []).map(c => c.executedProjectType || c.projectType))));
         const dictTypes = typeof buildEffectiveProjectDictionary === 'function' ? buildEffectiveProjectDictionary(allVisits).map(c => c.name) : [];
@@ -6149,7 +6153,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         reader.readAsBinaryString(file);
       };
 
-      // Apply a fuzzy unification suggestion
+      // Apply a fuzzy unification suggestion (e.g. replace Excel's original with existing suggested)
       const handleApplyFuzzySuggestion = (original, suggested, type) => {
         setAppliedMappings(prev => ({ ...prev, [original]: suggested }));
         setParsedCases(prev => prev.map(c => {
@@ -6168,6 +6172,77 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         setFuzzySuggestions(prev => prev.filter(s => s.original !== original));
       };
 
+      // Adopt Excel's name (e.g. "فراخ") and globally rename old/typo name ("فريخ") across all past visits
+      const handleGlobalAdoptAndRename = (excelName, oldName, type) => {
+        // 1. Keep excelName in parsedCases
+        setParsedCases(prev => prev.map(c => {
+          if (type === 'project' && (c.projectType === oldName || c.projectType === excelName)) {
+            return { ...c, projectType: excelName };
+          }
+          if (type === 'church' && (c.churchName === oldName || c.churchName === excelName)) {
+            return { ...c, churchName: excelName };
+          }
+          if (type === 'region' && (c.regionName === oldName || c.regionName === excelName)) {
+            return { ...c, regionName: excelName };
+          }
+          return c;
+        }));
+
+        // 2. Globally update all existing visits in the system if onUpdateVisit provided
+        if (typeof onUpdateVisit === 'function' && Array.isArray(allVisits)) {
+          let updatedCount = 0;
+          allVisits.forEach(v => {
+            let visitChanged = false;
+            const updatedChurches = (v.churches || []).map(ch => {
+              let churchObj = { ...ch };
+              if (type === 'region' && churchObj.regionName === oldName) {
+                churchObj.regionName = excelName;
+                visitChanged = true;
+              }
+              if (type === 'church' && churchObj.churchName === oldName) {
+                churchObj.churchName = excelName;
+                visitChanged = true;
+              }
+              if (type === 'project') {
+                const updatedGroups = (churchObj.servantsGroups || []).map(sg => {
+                  let groupChanged = false;
+                  const updatedCases = (sg.cases || []).map(c => {
+                    const curPType = c.executedProjectType || c.projectType;
+                    if (curPType === oldName) {
+                      groupChanged = true;
+                      visitChanged = true;
+                      return {
+                        ...c,
+                        projectType: excelName,
+                        executedProjectType: excelName
+                      };
+                    }
+                    return c;
+                  });
+                  return groupChanged ? { ...sg, cases: updatedCases } : sg;
+                });
+                if (groupChanged || visitChanged) {
+                  churchObj.servantsGroups = updatedGroups;
+                }
+              }
+              return churchObj;
+            });
+
+            if (visitChanged) {
+              updatedCount++;
+              onUpdateVisit({ ...v, churches: updatedChurches });
+            }
+          });
+
+          if (typeof window.notifySuccess === 'function') {
+            window.notifySuccess(`تم اعتماد "${excelName}" رسمياً وتصحيح مسمى "${oldName}" في جميع الزيارات السابقة بنجاح!`);
+          }
+        }
+
+        // Dismiss the suggestion
+        setFuzzySuggestions(prev => prev.filter(s => s.original !== excelName));
+      };
+
       // Dismiss a suggestion (keep original text)
       const handleDismissFuzzySuggestion = (original) => {
         setFuzzySuggestions(prev => prev.filter(s => s.original !== original));
@@ -6178,11 +6253,17 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         setParsedCases(prev => prev.filter(c => c.id !== caseId));
       };
 
-      // Inline case update from preview table
+      // Inline case update from preview table (with auto recalculation of months when value or installment changes)
       const handleUpdatePreviewCase = (caseId, field, value) => {
         setParsedCases(prev => prev.map(c => {
           if (c.id === caseId) {
-            return { ...c, [field]: value };
+            const updated = { ...c, [field]: value };
+            if (field === 'projectValue' || field === 'installmentAmount') {
+              const pVal = parseFloat(field === 'projectValue' ? value : c.projectValue) || 0;
+              const pInst = parseFloat(field === 'installmentAmount' ? value : c.installmentAmount) || 0;
+              updated.monthsCount = pInst > 0 ? Math.ceil(pVal / pInst) : c.monthsCount;
+            }
+            return updated;
           }
           return c;
         }));
@@ -6451,13 +6532,22 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                           <span className="text-gray-800">هل تقصد: <strong className="text-emerald-700 font-sans">{sug.suggested}</strong>؟</span>
                           <span className="text-[10px] text-gray-400 font-sans">({sug.count} حالة • تطابق {sug.similarity}%)</span>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                           <button
                             type="button"
                             onClick={() => handleApplyFuzzySuggestion(sug.original, sug.suggested, sug.type)}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1 rounded text-xs transition-colors flex items-center gap-1"
+                            title={`تغيير كل حالات الملف من "${sug.original}" إلى "${sug.suggested}"`}
                           >
-                            <span>✓ نعم، وحّد الاسم للكل</span>
+                            <span>✓ نعم، حوّل إلى "{sug.suggested}"</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleGlobalAdoptAndRename(sug.original, sug.suggested, sug.type)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded text-xs transition-colors flex items-center gap-1 shadow-xs"
+                            title={`اعتماد اسم "${sug.original}" في هذا الملف وتعديل كل المشاريع السابقة المسجلة بـ "${sug.suggested}" إلى "${sug.original}"`}
+                          >
+                            <span>🔄 اعتمد "{sug.original}" وعدّل القديم كله</span>
                           </button>
                           <button
                             type="button"
@@ -6592,53 +6682,107 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                       <span className="text-[11px] text-rose-600 font-medium">💡 لن يتم حفظ أي شيء في صفحة السداد إلا بعد الضغط على زر "تأكيد الاستيراد" بالأسفل</span>
                     </div>
 
-                    <div className="border border-gray-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+                    {/* Datalists for Autocomplete */}
+                    <datalist id="legacy-regions-list">
+                      {existingRegions.map((r, rIdx) => <option key={rIdx} value={r} />)}
+                    </datalist>
+                    <datalist id="legacy-villages-list">
+                      {existingVillages.map((v, vIdx) => <option key={vIdx} value={v} />)}
+                    </datalist>
+                    <datalist id="legacy-churches-list">
+                      {existingChurches.map((ch, chIdx) => <option key={chIdx} value={ch} />)}
+                    </datalist>
+                    <datalist id="legacy-projects-list">
+                      {existingProjects.map((p, pIdx) => <option key={pIdx} value={p} />)}
+                    </datalist>
+
+                    <div className="border border-gray-200 rounded-xl overflow-hidden max-h-72 overflow-y-auto shadow-xs">
                       <table className="w-full text-right text-xs">
-                        <thead className="bg-[#002f6c] text-white sticky top-0 z-10">
+                        <thead className="bg-[#002f6c] text-white sticky top-0 z-10 shadow-xs">
                           <tr>
-                            <th className="p-2 text-center">#</th>
-                            <th className="p-2">اسم الحالة</th>
-                            <th className="p-2">الكنيسة</th>
-                            <th className="p-2">المنطقة</th>
-                            <th className="p-2">المشروع</th>
-                            <th className="p-2">القيمة</th>
-                            <th className="p-2">القسط</th>
-                            <th className="p-2">الشهور</th>
-                            <th className="p-2 text-center">إجراء</th>
+                            <th className="p-2 text-center w-8">#</th>
+                            <th className="p-2 min-w-[130px]">اسم الحالة</th>
+                            <th className="p-2 min-w-[100px]">المنطقة</th>
+                            <th className="p-2 min-w-[100px]">القرية / البلد</th>
+                            <th className="p-2 min-w-[120px]">الكنيسة</th>
+                            <th className="p-2 min-w-[100px]">المشروع</th>
+                            <th className="p-2 min-w-[80px]">القيمة</th>
+                            <th className="p-2 min-w-[70px]">القسط</th>
+                            <th className="p-2 text-center min-w-[60px]">الشهور</th>
+                            <th className="p-2 text-center w-10">إجراء</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 bg-white">
                           {parsedCases.map((c, i) => (
                             <tr key={c.id || i} className="hover:bg-blue-50/50 transition-colors">
-                              <td className="p-2 text-center font-sans text-gray-400">{i + 1}</td>
+                              <td className="p-2 text-center font-sans text-gray-400 font-bold">{i + 1}</td>
                               <td className="p-2">
                                 <input
                                   type="text"
                                   value={c.caseName}
                                   onChange={e => handleUpdatePreviewCase(c.id, 'caseName', e.target.value)}
-                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] font-bold text-gray-800 outline-none"
+                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] font-bold text-gray-800 outline-none px-1 py-0.5 rounded"
                                 />
                               </td>
                               <td className="p-2">
                                 <input
                                   type="text"
-                                  value={c.churchName}
+                                  list="legacy-regions-list"
+                                  value={c.regionName || ''}
+                                  placeholder="اختر أو اكتب المنطقة"
+                                  onChange={e => handleUpdatePreviewCase(c.id, 'regionName', e.target.value)}
+                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  list="legacy-villages-list"
+                                  value={c.villageName || ''}
+                                  placeholder="القرية / البلد"
+                                  onChange={e => handleUpdatePreviewCase(c.id, 'villageName', e.target.value)}
+                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  list="legacy-churches-list"
+                                  value={c.churchName || ''}
+                                  placeholder="اختر أو اكتب الكنيسة"
                                   onChange={e => handleUpdatePreviewCase(c.id, 'churchName', e.target.value)}
-                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none"
+                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium"
                                 />
                               </td>
-                              <td className="p-2 text-gray-600">{c.regionName}</td>
                               <td className="p-2">
                                 <input
                                   type="text"
-                                  value={c.projectType}
+                                  list="legacy-projects-list"
+                                  value={c.projectType || ''}
+                                  placeholder="نوع المشروع"
                                   onChange={e => handleUpdatePreviewCase(c.id, 'projectType', e.target.value)}
-                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-purple-900 font-medium outline-none"
+                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-purple-900 font-bold outline-none px-1 py-0.5 rounded"
                                 />
                               </td>
-                              <td className="p-2 font-sans font-bold text-[#002f6c]">{formatNumber(c.projectValue)}</td>
-                              <td className="p-2 font-sans font-bold text-amber-800">{formatNumber(c.installmentAmount)}</td>
-                              <td className="p-2 font-sans text-gray-500">{c.monthsCount} شهر</td>
+                              <td className="p-2">
+                                <input
+                                  type="number"
+                                  value={c.projectValue}
+                                  onChange={e => handleUpdatePreviewCase(c.id, 'projectValue', e.target.value)}
+                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] font-sans font-bold text-[#002f6c] outline-none px-1 py-0.5 rounded text-left"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="number"
+                                  value={c.installmentAmount}
+                                  onChange={e => handleUpdatePreviewCase(c.id, 'installmentAmount', e.target.value)}
+                                  className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] font-sans font-bold text-amber-800 outline-none px-1 py-0.5 rounded text-left"
+                                />
+                              </td>
+                              <td className="p-2 text-center font-sans text-gray-600 font-medium">
+                                {c.monthsCount} شهر
+                              </td>
                               <td className="p-2 text-center">
                                 <button
                                   type="button"
@@ -14261,7 +14405,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790762473939";
+      const CLIENT_BUILD_ID = "1790768511938";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
