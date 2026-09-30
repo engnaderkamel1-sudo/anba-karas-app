@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790770013916" />
+  <meta name="app-build-id" content="1790770341768" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -13681,7 +13681,7 @@ function App() {
 
           {/* SIDEBAR DRAWER */}
           <div className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsSidebarOpen(false)} />
-          <div className={`fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className={`fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
              <div className="h-16 bg-[#002f6c] px-4 flex items-center justify-between border-b border-[#001f4c]">
                 <div className="flex items-center gap-3">
                    <img src="anba_karas_splash.jpg" alt="أنبا كاراس" className="w-9 h-9 rounded-full object-cover border-2 border-amber-400 shadow-md ring-2 ring-amber-400/30" />
@@ -13696,7 +13696,51 @@ function App() {
                 </div>
                 <button onClick={() => setIsSidebarOpen(false)} className="text-white hover:text-gray-300 p-2"><X size={20}/></button>
              </div>
-                          <div className="py-4 flex flex-col h-[calc(100vh-64px)] overflow-y-auto">
+                          <div className="py-3 flex flex-col h-[calc(100vh-64px)] overflow-y-auto">
+                {/* 1. إضافة زيارة (في قمة القائمة) */}
+                <div className="mx-3 my-2 bg-gradient-to-br from-blue-50 via-indigo-50/50 to-white rounded-xl border border-blue-200 shadow-sm overflow-hidden">
+                    <button 
+                       type="button"
+                       onClick={() => setIsAddMenuOpen(prev => !prev)} 
+                       className="w-full flex items-center justify-between px-3.5 py-3 text-right text-[#002f6c] hover:bg-blue-100/60 transition-colors font-bold"
+                    >
+                       <div className="flex items-center gap-2.5">
+                          <PlusCircle size={20} className="text-[#002f6c]" />
+                          <span className="text-sm font-bold text-[#002f6c]">إضافة زيارة</span>
+                       </div>
+                       {isAddMenuOpen ? <ChevronUp size={18} className="text-[#002f6c]" /> : <ChevronDown size={18} className="text-[#002f6c]" />}
+                    </button>
+
+                    {isAddMenuOpen && (
+                       <div className="p-2 pt-0 flex flex-col gap-1.5 border-t border-blue-100">
+                          {/* زيارة جديدة */}
+                          <button 
+                             type="button"
+                             onClick={() => { setActiveTab('entry'); setIsSidebarOpen(false); }} 
+                             className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-right transition-all text-xs ${activeTab === 'entry' ? 'bg-[#002f6c] text-white font-bold shadow-sm' : 'bg-white hover:bg-blue-50 text-gray-800 border border-gray-100'}`}
+                          >
+                             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></div>
+                             <div className="flex flex-col text-right">
+                                <span className="font-bold">زيارة جديدة</span>
+                                <span className={`text-[10px] ${activeTab === 'entry' ? 'text-blue-100' : 'text-gray-500'}`}>تسجيل الحالات ميدانياً خطوة بخطوة</span>
+                             </div>
+                          </button>
+
+                          {/* زيارة قديمة */}
+                          <button 
+                             type="button"
+                             onClick={() => { setShowLegacyChoiceModal(true); setIsSidebarOpen(false); }} 
+                             className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-right transition-all text-xs bg-white hover:bg-blue-50 text-gray-800 border border-gray-100 hover:border-blue-200"
+                          >
+                             <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0"></div>
+                             <div className="flex flex-col text-right">
+                                <span className="font-bold">زيارة قديمة</span>
+                                <span className="text-[10px] text-gray-500">رفع من Excel أو إدخال يدوي</span>
+                             </div>
+                          </button>
+                       </div>
+                    )}
+                 </div>
                 <button onClick={() => { setActiveTab('execution'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'execution' ? 'bg-amber-50 text-amber-900 border-r-4 border-amber-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
                    <Zap size={20} className="text-amber-600" /> متابعة واعتماد تنفيذ المشاريع
                 </button>
@@ -13709,49 +13753,7 @@ function App() {
                 <button onClick={() => { setActiveTab('archive'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'archive' || activeTab === 'archiveDetails' ? 'bg-blue-50 text-[#002f6c] border-r-4 border-[#002f6c] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
                    <ListIcon size={20} /> أرشيف الزيارات والتقارير
                 </button>
-                <div className="mx-3 my-1.5 bg-gradient-to-b from-blue-50/80 to-indigo-50/40 rounded-xl border border-blue-200/80 overflow-hidden shadow-sm">
-                    <button 
-                       type="button"
-                       onClick={() => setIsAddMenuOpen(prev => !prev)} 
-                       className="w-full flex items-center justify-between px-3.5 py-3 text-right text-[#002f6c] hover:bg-blue-100/50 transition-colors"
-                    >
-                       <div className="flex items-center gap-2.5">
-                          <PlusCircle size={19} className="text-[#002f6c]" />
-                          <span className="font-bold text-sm text-[#002f6c]">إضافة زيارة</span>
-                       </div>
-                       {isAddMenuOpen ? <ChevronUp size={16} className="text-[#002f6c]/70" /> : <ChevronDown size={16} className="text-[#002f6c]/70" />}
-                    </button>
 
-                    {isAddMenuOpen && (
-                       <div className="p-2 pt-0 flex flex-col gap-1.5 border-t border-blue-100/80">
-                          {/* 1. زيارة جديدة */}
-                          <button 
-                             type="button"
-                             onClick={() => { setActiveTab('entry'); setIsSidebarOpen(false); }} 
-                             className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-right transition-all text-xs ${activeTab === 'entry' ? 'bg-[#002f6c] text-white font-bold shadow-sm' : 'bg-white/80 hover:bg-white text-gray-800 border border-gray-100'}`}
-                          >
-                             <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></div>
-                             <div className="flex flex-col text-right">
-                                <span className="font-bold">زيارة جديدة</span>
-                                <span className={`text-[10px] ${activeTab === 'entry' ? 'text-blue-100' : 'text-gray-500'}`}>تسجيل الحالات ميدانياً خطوة بخطوة</span>
-                             </div>
-                          </button>
-
-                          {/* 2. زيارة قديمة */}
-                          <button 
-                             type="button"
-                             onClick={() => { setShowLegacyChoiceModal(true); setIsSidebarOpen(false); }} 
-                             className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-right transition-all text-xs bg-white/80 hover:bg-white text-gray-800 border border-gray-100 hover:border-blue-200"
-                          >
-                             <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></div>
-                             <div className="flex flex-col text-right">
-                                <span className="font-bold">زيارة قديمة</span>
-                                <span className="text-[10px] text-gray-500">رفع من Excel أو إدخال يدوي</span>
-                             </div>
-                          </button>
-                       </div>
-                    )}
-                 </div>
                 <button onClick={() => { setShowBackupModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-amber-900 bg-amber-50/70 hover:bg-amber-100 border-t border-b border-amber-200/60 font-bold">
                    <ShieldCheck size={20} className="text-amber-600" /> النسخ الاحتياطي وتاريخ الإصدارات
                 </button>
@@ -14073,7 +14075,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790770013916";
+      const CLIENT_BUILD_ID = "1790770341768";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
