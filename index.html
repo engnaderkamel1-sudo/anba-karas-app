@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790762231672" />
+  <meta name="app-build-id" content="1790762473939" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -6941,6 +6941,1104 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
     }
 
 // ================================================================
+// MODULE: components/InstallmentsGeoView.js
+// ================================================================
+function InstallmentsGeoView({
+  geoRegionsData,
+  expandedGeoRegions,
+  toggleGeoRegion,
+  expandedGeoChurches,
+  toggleGeoChurch,
+  triggerBatchPayment,
+  setActiveModalCaseInfo,
+  setEditingCaseInfo,
+  handleDeleteCase
+}) {
+  return (
+    <div className="space-y-3">
+              {viewMode === 'regions' && (
+                <div>
+                  {filteredGeoRegions.length === 0 ? (
+                    <div className="bg-white rounded-2xl p-12 text-center text-gray-400 text-sm border border-gray-100 shadow-sm space-y-3">
+                      <div className="text-3xl">🏛️</div>
+                      <div className="font-bold text-gray-700">لا توجد مناطق أو كنائس مطابقة لمعايير البحث.</div>
+                      <p className="text-xs text-gray-500">
+                        تأكد من كتابة الاسم بصورة صحيحة أو إلغاء فلاتر البحث المختارة.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filteredGeoRegions.map(reg => {
+                        const isRegExpanded = expandedGeoRegions[reg.regionName] !== false;
+                        const regProgress = reg.totalVal > 0 ? Math.min(100, Math.round((reg.paidVal / reg.totalVal) * 100)) : 0;
+
+                        return (
+                          <div key={reg.regionName} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                            {/* Region Accordion Header */}
+                            <div
+                              onClick={() => toggleGeoRegion(reg.regionName)}
+                              className="p-4 sm:p-5 bg-gradient-to-r from-[#002f6c]/10 to-blue-50/40 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer hover:bg-[#002f6c]/15 transition-colors select-none"
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xl">🏛️</span>
+                                <h3 className="font-bold text-base sm:text-lg text-[#002f6c]">{reg.regionName}</h3>
+                                <div className="flex flex-wrap gap-2 items-center mr-2">
+                                  <span className="bg-white text-[#002f6c] border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                    ⛪ {formatNumber(reg.churches.length)} كنائس
+                                  </span>
+                                  <span className="bg-white text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                    📊 {formatNumber(reg.casesCount)} مشاريع
+                                  </span>
+                                  <span className="bg-white text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                    💰 {formatNumber(reg.totalVal)} ج.م
+                                  </span>
+                                  <span className="bg-white text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                    ✅ {formatNumber(reg.paidVal)} ج.م ({regProgress}%)
+                                  </span>
+                                  <span className="bg-white text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                    ⏳ {formatNumber(reg.remVal)} ج.م متبقي
+                                  </span>
+                                  {reg.exemptedCasesCount > 0 && (
+                                    <span className="bg-purple-50 text-purple-800 border border-purple-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                      💜 معفى: {formatNumber(reg.exemptedAmount)} ج.م ({reg.exemptedCasesCount} حالة)
+                                    </span>
+                                  )}
+                                  {reg.overdueCasesCount > 0 ? (
+                                    <span className="bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                      ⚠️ المتأخرات: {formatNumber(reg.overdueAmount)} ج.م ({reg.overdueCasesCount} حالة • {reg.overdueInstallments} قسط • {reg.overduePct}%)
+                                    </span>
+                                  ) : (
+                                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
+                                      ✅ السداد منتظم
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 mr-auto sm:mr-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    triggerBatchPayment(`سداد قسط لمنطقة: ${reg.regionName} (كل النزلات)`, reg.cases, null);
+                                  }}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
+                                  title={`تسجيل سداد قسط لجميع حالات منطقة ${reg.regionName}`}
+                                >
+                                  <CreditCard size={14} />
+                                  <span>سداد المنطقة كلها</span>
+                                </button>
+                                <div className="text-gray-500">
+                                  {isRegExpanded ? <ChevronUp size={22} /> : <ChevronDown size={22} />}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Churches within Region */}
+                            {isRegExpanded && (
+                              <div className="divide-y divide-gray-100 bg-gray-50/30 p-3 sm:p-4 space-y-4">
+                                {reg.churches.map(ch => {
+                                  const isChExpanded = expandedGeoChurches[ch.key] !== false;
+                                  const chProgress = ch.totalVal > 0 ? Math.min(100, Math.round((ch.paidVal / ch.totalVal) * 100)) : 0;
+
+                                  return (
+                                    <div key={ch.key} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                                      {/* Church Header */}
+                                      <div
+                                        onClick={() => toggleGeoChurch(ch.key)}
+                                        className="p-3.5 sm:p-4 bg-gray-50/80 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 cursor-pointer hover:bg-gray-100/90 transition-colors select-none"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <div className="text-gray-400">
+                                            {isChExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                          </div>
+                                          <span className="text-base">⛪</span>
+                                          <h4 className="font-bold text-sm sm:text-base text-gray-900">
+                                            {ch.churchName}
+                                            {ch.villageName && (
+                                              <span className="text-xs font-normal text-gray-500 mr-2">
+                                                • {ch.villageName}
+                                              </span>
+                                            )}
+                                          </h4>
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-2 mr-6 sm:mr-0">
+                                          <span className="bg-white text-blue-900 border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                            🗂️ {formatNumber(ch.visits.length)} زيارات
+                                          </span>
+                                          <span className="bg-white text-gray-700 border border-gray-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                            📊 {formatNumber(ch.casesCount)} مشاريع
+                                          </span>
+                                          <span className="bg-white text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                            ✅ {formatNumber(ch.paidVal)} ج.م ({chProgress}%)
+                                          </span>
+                                          <span className="bg-white text-rose-700 border border-rose-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                            ⏳ {formatNumber(ch.remVal)} ج.م متبقي
+                                          </span>
+                                          {ch.exemptedCasesCount > 0 && (
+                                            <span className="bg-purple-50 text-purple-800 border border-purple-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                              💜 معفى: {formatNumber(ch.exemptedAmount)} ج.م ({ch.exemptedCasesCount})
+                                            </span>
+                                          )}
+                                          <span className="bg-white text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                            📅 {formatNumber(ch.monthlyInst)} ج.م/شهر
+                                          </span>
+                                          {ch.overdueCasesCount > 0 ? (
+                                            <span className="bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                              ⚠️ المتأخرات: {formatNumber(ch.overdueAmount)} ج.م ({ch.overdueCasesCount} حالة • {ch.overdueInstallments} قسط • {ch.overduePct}%)
+                                            </span>
+                                          ) : (
+                                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
+                                              ✅ السداد منتظم
+                                            </span>
+                                          )}
+
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              triggerBatchPayment(`سداد قسط لكنيسة: ${ch.churchName} (كل النزلات)`, ch.cases, null);
+                                            }}
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-sm flex items-center gap-1 transition-all mr-1"
+                                            title={`تسجيل سداد قسط لجميع حالات كنيسة ${ch.churchName}`}
+                                          >
+                                            <CreditCard size={13} />
+                                            <span>سداد الكنيسة كلها</span>
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      {/* Church Visits and Cases Container */}
+                                      {isChExpanded && (
+                                        <div className="p-3 sm:p-4 space-y-4 bg-gray-50/30">
+                                          {ch.visits.map(vData => {
+                                            return (
+                                              <div key={vData.visitId} className="border border-blue-100 rounded-xl overflow-hidden bg-white shadow-xs">
+                                                {/* Visit Partition Banner */}
+                                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50/40 p-2.5 sm:p-3 border-b border-blue-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                                  <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="text-sm">🏛️</span>
+                                                    <span className="font-bold text-xs sm:text-sm text-[#002f6c]">{vData.visitLocation || 'زيارة بدون اسم'}</span>
+                                                    <span className="text-xs text-gray-500 font-sans flex items-center gap-1 mr-2">
+                                                      <Calendar size={13} className="text-gray-400" />
+                                                      <span>{vData.visitDate}</span>
+                                                    </span>
+                                                    <span className="bg-white text-[#002f6c] border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-sans">
+                                                      {formatNumber(vData.cases.length)} حالات بهذه النزلة
+                                                    </span>
+                                                    {vData.exemptedCasesCount > 0 && (
+                                                      <span className="bg-purple-100 text-purple-800 border border-purple-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-sans">
+                                                        💜 معفى: {formatNumber(vData.exemptedAmount)} ج.م ({vData.exemptedCasesCount})
+                                                      </span>
+                                                    )}
+                                                    {vData.overdueCasesCount > 0 ? (
+                                                      <span className="bg-rose-100 text-rose-800 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-sans">
+                                                        ⚠️ متأخرات: {formatNumber(vData.overdueAmount)} ج.م ({vData.overdueCasesCount} حالة • {vData.overdueInstallments} قسط)
+                                                      </span>
+                                                    ) : (
+                                                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-sans">
+                                                        ✅ سداد منتظم
+                                                      </span>
+                                                    )}
+                                                  </div>
+
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => triggerBatchPayment(`سداد قسط لنزلة (${vData.visitLocation} - ${vData.visitDate}) بكنيسة ${ch.churchName}`, vData.cases, vData.visitId)}
+                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 shadow-sm"
+                                                    title="تسجيل سداد قسط لحالات هذه النزلة فقط"
+                                                  >
+                                                    <CreditCard size={12} />
+                                                    <span>سداد هذه النزلة ({vData.cases.length})</span>
+                                                  </button>
+                                                </div>
+
+                                                {/* Desktop Table View */}
+                                                <div className="hidden md:block overflow-x-auto">
+                                                  <table className="w-full text-right text-xs">
+                                                    <thead className="bg-gray-50 text-gray-600 font-bold border-b border-gray-200">
+                                                      <tr>
+                                                        <th className="p-3 w-12 text-center">م</th>
+                                                        <th className="p-3">اسم المستفيد</th>
+                                                        <th className="p-3">نوع المشروع المنفذ</th>
+                                                        <th className="p-3">تاريخ التنفيذ</th>
+                                                        <th className="p-3">أصل المبلغ</th>
+                                                        <th className="p-3">القسط الشهري</th>
+                                                        <th className="p-3">المسدد والمتبقي</th>
+                                                        <th className="p-3">نسبة السداد</th>
+                                                        <th className="p-3 text-center">الحالة</th>
+                                                        <th className="p-3 text-center w-28">الإجراءات</th>
+                                                      </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-100">
+                                                      {vData.cases.map((item, cIdx) => {
+                                                        const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
+                                                        return (
+                                                          <tr key={item.caseObj.id || cIdx} className="hover:bg-blue-50/30 transition-colors">
+                                                            <td className="p-3 text-center font-sans text-gray-400 font-bold">{cIdx + 1}</td>
+                                                            <td className="p-3 font-bold text-gray-900">
+                                                              <div>{item.caseObj.caseName}</div>
+                                                              {item.caseObj.nationalId && (
+                                                                <div className="text-[10px] text-gray-400 font-sans mt-0.5">رقم قومي: {item.caseObj.nationalId}</div>
+                                                              )}
+                                                              <div className="text-[10px] text-gray-500 font-normal">الخدام: {item.servantsNames || '—'}</div>
+                                                            </td>
+                                                            <td className="p-3 font-medium text-blue-900">
+                                                              {item.caseObj.executedProjectType || item.caseObj.projectType || '—'}
+                                                            </td>
+                                                            <td className="p-3 font-sans text-gray-500">
+                                                              {item.caseObj.executionDate || '—'}
+                                                            </td>
+                                                            <td className="p-3 font-sans font-bold text-gray-900">
+                                                              {formatNumber(item.totalAmt)} ج.م
+                                                            </td>
+                                                            <td className="p-3">
+                                                              <div className="font-sans font-bold text-amber-800">{formatNumber(item.monthlyAmt)} ج.م / شهر</div>
+                                                              <div className="text-[10px] text-gray-500 font-sans">{item.totalMonths} شهر استحقاق</div>
+                                                            </td>
+                                                            <td className="p-3">
+                                                              <div className="font-sans font-bold text-emerald-700">{formatNumber(item.totalPaid)} ج.م مسدد</div>
+                                                              {item.isExempted ? (
+                                                                <div className="font-sans text-[11px] text-purple-700 font-bold">معفى: {formatNumber(item.exemptedAmount)} ج.م</div>
+                                                              ) : (
+                                                                <div className="font-sans text-[11px] text-rose-600 font-bold">متبقي: {formatNumber(item.remainingAmt)} ج.م</div>
+                                                              )}
+                                                            </td>
+                                                            <td className="p-3 w-28">
+                                                              <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
+                                                                <span>{pPct}%</span>
+                                                              </div>
+                                                              <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                                                <div 
+                                                                  className={`h-full ${item.isExempted ? 'bg-purple-600' : item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                                                                  style={{ width: `${pPct}%` }}
+                                                                />
+                                                              </div>
+                                                            </td>
+                                                            <td className="p-3 text-center">
+                                                              {item.isExempted ? (
+                                                                <span className="bg-purple-100 text-purple-800 border border-purple-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1" title={item.exemptionReason ? `سبب الإعفاء: ${item.exemptionReason}` : ''}>
+                                                                  <span>💜</span> معفى {item.exemptionReason ? `(${item.exemptionReason})` : ''}
+                                                                </span>
+                                                              ) : item.isCompleted ? (
+                                                                <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                                                  <span>✅</span> مكتمل
+                                                                </span>
+                                                              ) : item.isOverdue ? (
+                                                                <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 font-sans" title={`المستحق حتى اليوم: ${formatNumber(item.expectedDueAmount)} ج.م`}>
+                                                                  <span>⚠️</span> متأخر ({item.overdueCount} قسط • {formatNumber(item.overdueAmount)} ج.م)
+                                                                </span>
+                                                              ) : item.totalPaid > 0 ? (
+                                                                <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                                                  <span>🔄</span> جاري
+                                                                </span>
+                                                              ) : (
+                                                                <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                                                  <span>⏳</span> لم يبدأ
+                                                                </span>
+                                                              )}
+                                                            </td>
+                                                            <td className="p-3 text-center">
+                                                              <button
+                                                                type="button"
+                                                                onClick={() => setActiveModalCaseInfo(item)}
+                                                                className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1 transition-colors mx-auto"
+                                                              >
+                                                                <span>💵</span>
+                                                                <span>سداد ومتابعة</span>
+                                                              </button>
+                                                            </td>
+                                                          </tr>
+                                                        );
+                                                      })}
+                                                    </tbody>
+                                                  </table>
+                                                </div>
+
+                                                {/* Mobile Touch Cards View */}
+                                                <div className="md:hidden divide-y divide-gray-100 p-2.5 space-y-2.5 bg-gray-50/50">
+                                                  {vData.cases.map((item, cIdx) => {
+                                                    const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
+                                                    return (
+                                                      <div key={item.caseObj.id || cIdx} className="bg-white rounded-xl p-3 border border-gray-200 shadow-xs space-y-2.5">
+                                                        <div className="flex justify-between items-start gap-2">
+                                                          <div>
+                                                            <div className="font-bold text-xs sm:text-sm text-gray-900">{item.caseObj.caseName}</div>
+                                                            {item.caseObj.nationalId && (
+                                                              <div className="text-[10px] text-gray-500 font-sans mt-0.5">رقم قومي: {item.caseObj.nationalId}</div>
+                                                            )}
+                                                            <div className="text-[10px] text-gray-500 mt-0.5">الخدام: {item.servantsNames || '—'}</div>
+                                                          </div>
+                                                          {item.isExempted ? (
+                                                            <span className="bg-purple-100 text-purple-800 border border-purple-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
+                                                              💜 معفى {item.exemptionReason ? `(${item.exemptionReason})` : ''}
+                                                            </span>
+                                                          ) : item.isCompleted ? (
+                                                            <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
+                                                              ✅ مكتمل
+                                                            </span>
+                                                          ) : item.isOverdue ? (
+                                                            <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0 font-sans">
+                                                              ⚠️ متأخر ({item.overdueCount} قسط • {formatNumber(item.overdueAmount)} ج.م)
+                                                            </span>
+                                                          ) : item.totalPaid > 0 ? (
+                                                            <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
+                                                              🔄 جاري
+                                                            </span>
+                                                          ) : (
+                                                            <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
+                                                              ⏳ لم يبدأ
+                                                            </span>
+                                                          )}
+                                                        </div>
+
+                                                        <div className="grid grid-cols-3 gap-1.5 text-center bg-gray-50 p-2 rounded-lg border border-gray-100">
+                                                          <div>
+                                                            <div className="text-[9px] text-gray-500">أصل المبلغ</div>
+                                                            <div className="font-bold text-[11px] font-sans text-gray-900 mt-0.5">{formatNumber(item.totalAmt)} ج.م</div>
+                                                          </div>
+                                                          <div>
+                                                            <div className="text-[9px] text-gray-500">المسدد</div>
+                                                            <div className="font-bold text-[11px] font-sans text-emerald-700 mt-0.5">{formatNumber(item.totalPaid)} ج.م</div>
+                                                          </div>
+                                                          <div>
+                                                            {item.isExempted ? (
+                                                              <>
+                                                                <div className="text-[9px] text-purple-600">المعفى</div>
+                                                                <div className="font-bold text-[11px] font-sans text-purple-700 mt-0.5">{formatNumber(item.exemptedAmount)} ج.م</div>
+                                                              </>
+                                                            ) : (
+                                                              <>
+                                                                <div className="text-[9px] text-gray-500">المتبقي</div>
+                                                                <div className="font-bold text-[11px] font-sans text-rose-600 mt-0.5">{formatNumber(item.remainingAmt)} ج.م</div>
+                                                              </>
+                                                            )}
+                                                          </div>
+                                                        </div>
+
+                                                        <div className="space-y-1">
+                                                          <div className="flex justify-between text-[10px] text-gray-600 font-sans">
+                                                            <span>القسط: <strong className="text-amber-800">{formatNumber(item.monthlyAmt)}</strong> ج.م / شهر</span>
+                                                            <span className="font-bold text-[#002f6c]">{pPct}%</span>
+                                                          </div>
+                                                          <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                                                            <div 
+                                                              className={`h-full ${item.isExempted ? 'bg-purple-600' : item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                                                              style={{ width: `${pPct}%` }}
+                                                            />
+                                                          </div>
+                                                        </div>
+
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => setActiveModalCaseInfo(item)}
+                                                          className="w-full bg-[#002f6c] hover:bg-[#001f4c] text-white text-[11px] font-bold py-2 px-3 rounded-lg shadow-xs flex items-center justify-center gap-1.5 transition-colors"
+                                                        >
+                                                          <span>💵</span>
+                                                          <span>سداد ومتابعة الأقساط</span>
+                                                        </button>
+                                                      </div>
+                                                    );
+                                                  })}
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+    </div>
+  );
+}
+
+// ================================================================
+// MODULE: components/InstallmentsTableView.js
+// ================================================================
+function InstallmentsTableView({
+  allExecutedCases,
+  filteredCases,
+  filterStatus,
+  setFilterStatus,
+  filterChurch,
+  setFilterChurch,
+  uniqueChurches,
+  activeCount,
+  completedCount,
+  unpaidCount,
+  overdueCasesCount,
+  exemptedCasesCount,
+  projectAnalyticsData,
+  selectedAnalyticsCategory,
+  setSelectedAnalyticsCategory,
+  setShowProjectDictModal,
+  setActiveModalCaseInfo
+}) {
+  return (
+    <div className="space-y-4">
+                <div className="space-y-4">
+                  {/* Status Tabs */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+                    <div className="flex flex-wrap gap-2 border-b border-gray-100 pb-3">
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('all')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          filterStatus === 'all' 
+                            ? 'bg-[#002f6c] text-white shadow-sm' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        🌐 كل الحالات ({formatNumber(allExecutedCases.length)})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('active')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          filterStatus === 'active' 
+                            ? 'bg-amber-600 text-white shadow-sm' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        🔄 جاري السداد ({formatNumber(activeCount)})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('completed')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          filterStatus === 'completed' 
+                            ? 'bg-emerald-600 text-white shadow-sm' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        ✅ مكتمل السداد ({formatNumber(completedCount)})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('unpaid')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          filterStatus === 'unpaid' 
+                            ? 'bg-rose-600 text-white shadow-sm' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        ⏳ لم يبدأ السداد ({formatNumber(unpaidCount)})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('overdue')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          filterStatus === 'overdue' 
+                            ? 'bg-rose-700 text-white shadow-sm' 
+                            : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                        }`}
+                      >
+                        ⚠️ المتأخرين ({formatNumber(overdueCasesCount)})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterStatus('exempted')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          filterStatus === 'exempted' 
+                            ? 'bg-purple-700 text-white shadow-sm' 
+                            : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
+                        }`}
+                      >
+                        💜 معفى ({formatNumber(exemptedCasesCount)})
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <select
+                          value={filterChurch}
+                          onChange={(e) => setFilterChurch(e.target.value)}
+                          className="w-full py-2 px-3 text-xs rounded-xl border border-gray-200 focus:border-[#002f6c] outline-none bg-white font-medium"
+                        >
+                          <option value="">⛪ كل الكنائس ({formatNumber(uniqueChurches.length)})</option>
+                          {uniqueChurches.map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cases Container */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                      <span className="font-bold text-xs sm:text-sm text-gray-800">
+                        قائمة كل الحالات المنفذة ومتابعة السداد ({formatNumber(filteredCases.length)} حالة)
+                      </span>
+                    </div>
+
+                    {filteredCases.length === 0 ? (
+                      <div className="p-12 text-center text-gray-400 text-sm">
+                        لا توجد حالات منفذة مطابقة لمعايير البحث الحالية. يمكنك إضافة مشاريع سابقة يدوياً أو استيرادها من Excel.
+                      </div>
+                    ) : (
+                      <div>
+                        {/* Desktop Table View (Hidden on mobile < 768px) */}
+                        <div className="hidden md:block overflow-x-auto">
+                          <table className="w-full text-right text-xs">
+                            <thead className="bg-[#002f6c] text-white">
+                              <tr>
+                                <th className="p-3">#</th>
+                                <th className="p-3">اسم المستفيد</th>
+                                <th className="p-3">الزيارة / الكنيسة</th>
+                                <th className="p-3">نوع المشروع المنفذ</th>
+                                <th className="p-3 font-sans">أصل المبلغ</th>
+                                <th className="p-3 font-sans">القسط والمدة</th>
+                                <th className="p-3 font-sans">المسدد / المتبقي</th>
+                                <th className="p-3">نسبة السداد</th>
+                                <th className="p-3 text-center">حالة السداد</th>
+                                <th className="p-3 text-center">إجراء السداد</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 bg-white">
+                              {filteredCases.map((item, idx) => {
+                                const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
+                                return (
+                                  <tr key={item.caseObj.id || idx} className="hover:bg-blue-50/50 transition-colors">
+                                    <td className="p-3 font-sans font-bold text-gray-400">{idx + 1}</td>
+                                    <td className="p-3 font-bold text-gray-900">
+                                      <div>{item.caseObj.caseName}</div>
+                                      {item.caseObj.nationalId && (
+                                        <div className="text-[10px] text-gray-500 font-sans">{item.caseObj.nationalId}</div>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-gray-600">
+                                      <div className="font-semibold text-gray-800">{item.churchName}</div>
+                                      <div className="text-[10px] text-gray-500">
+                                        {item.visitLocation || 'زيارة'} • {item.regionName} {item.villageName ? `• ${item.villageName}` : ''}
+                                      </div>
+                                    </td>
+                                    <td className="p-3">
+                                      <span className="bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-full text-[11px] font-medium">
+                                        {item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع'}
+                                      </span>
+                                      {item.caseObj.executionDate && (
+                                        <div className="text-[10px] text-gray-500 font-sans mt-0.5">نفذ: {item.caseObj.executionDate}</div>
+                                      )}
+                                    </td>
+                                    <td className="p-3 font-sans font-bold text-gray-900 text-sm">
+                                      {formatNumber(item.totalAmt)} ج.م
+                                    </td>
+                                    <td className="p-3">
+                                      <div className="font-sans font-bold text-amber-800">{formatNumber(item.monthlyAmt)} ج.م / شهر</div>
+                                      <div className="text-[10px] text-gray-500 font-sans">{item.totalMonths} شهر استحقاق</div>
+                                    </td>
+                                    <td className="p-3">
+                                      <div className="font-sans font-bold text-emerald-700">{formatNumber(item.totalPaid)} ج.م مسدد</div>
+                                      {item.isExempted ? (
+                                        <div className="font-sans text-[11px] text-purple-700 font-bold">معفى: {formatNumber(item.exemptedAmount)} ج.م</div>
+                                      ) : (
+                                        <div className="font-sans text-[11px] text-rose-600 font-bold">متبقي: {formatNumber(item.remainingAmt)} ج.م</div>
+                                      )}
+                                    </td>
+                                    <td className="p-3 w-36">
+                                      <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
+                                        <span>{pPct}%</span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                        <div 
+                                          className={`h-full ${item.isExempted ? 'bg-purple-600' : item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                                          style={{ width: `${pPct}%` }}
+                                        ></div>
+                                      </div>
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      {item.isExempted ? (
+                                        <span className="bg-purple-100 text-purple-800 border border-purple-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1" title={item.exemptionReason ? `سبب الإعفاء: ${item.exemptionReason}` : ''}>
+                                          <span>💜</span> معفى {item.exemptionReason ? `(${item.exemptionReason})` : ''}
+                                        </span>
+                                      ) : item.isCompleted ? (
+                                        <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                          <span>✅</span> مكتمل
+                                        </span>
+                                      ) : item.isOverdue ? (
+                                        <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 font-sans" title={`المستحق حتى اليوم: ${formatNumber(item.expectedDueAmount)} ج.م`}>
+                                          <span>⚠️</span> متأخر ({item.overdueCount} قسط • {formatNumber(item.overdueAmount)} ج.م)
+                                        </span>
+                                      ) : item.totalPaid > 0 ? (
+                                        <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                          <span>🔄</span> جاري
+                                        </span>
+                                      ) : (
+                                        <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                                          <span>⏳</span> لم يبدأ
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveModalCaseInfo(item)}
+                                        className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-colors mx-auto"
+                                      >
+                                        <span>💵</span>
+                                        <span>سداد ومتابعة</span>
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Mobile Touch Cards View (Shown only on mobile < 768px) */}
+                        <div className="md:hidden divide-y divide-gray-100 p-3 space-y-3 bg-gray-50/60">
+                          {filteredCases.map((item, idx) => {
+                            const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
+                            return (
+                              <div key={item.caseObj.id || idx} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
+                                <div className="flex justify-between items-start gap-2">
+                                  <div>
+                                    <div className="font-bold text-sm text-gray-900">{item.caseObj.caseName}</div>
+                                    {item.caseObj.nationalId && (
+                                      <div className="text-[11px] text-gray-500 font-sans mt-0.5">رقم قومي: {item.caseObj.nationalId}</div>
+                                    )}
+                                    <div className="text-[11px] text-gray-600 font-medium mt-1">
+                                      ⛪ {item.churchName} ({item.regionName} {item.villageName ? `• ${item.villageName}` : ''})
+                                    </div>
+                                  </div>
+                                  {item.isExempted ? (
+                                    <span className="bg-purple-100 text-purple-800 border border-purple-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
+                                      💜 معفى {item.exemptionReason ? `(${item.exemptionReason})` : ''}
+                                    </span>
+                                  ) : item.isCompleted ? (
+                                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
+                                      ✅ مكتمل
+                                    </span>
+                                  ) : item.isOverdue ? (
+                                    <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0 font-sans">
+                                      ⚠️ متأخر ({item.overdueCount} قسط • {formatNumber(item.overdueAmount)} ج.م)
+                                    </span>
+                                  ) : item.totalPaid > 0 ? (
+                                    <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
+                                      🔄 جاري
+                                    </span>
+                                  ) : (
+                                    <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
+                                      ⏳ لم يبدأ
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                                  <span className="bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-md text-[11px] font-medium">
+                                    🏷️ {item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع'}
+                                  </span>
+                                  {item.caseObj.executionDate && (
+                                    <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md text-[10px] font-sans">
+                                      تاريخ التنفيذ: {item.caseObj.executionDate}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* 3-col Numbers Grid */}
+                                <div className="grid grid-cols-3 gap-2 text-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                                  <div>
+                                    <div className="text-[10px] text-gray-500">أصل المبلغ</div>
+                                    <div className="font-bold text-xs font-sans text-gray-900 mt-0.5">{formatNumber(item.totalAmt)} ج.م</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[10px] text-gray-500">المسدد</div>
+                                    <div className="font-bold text-xs font-sans text-emerald-700 mt-0.5">{formatNumber(item.totalPaid)} ج.م</div>
+                                  </div>
+                                  <div>
+                                    {item.isExempted ? (
+                                      <>
+                                        <div className="text-[10px] text-purple-600">المعفى</div>
+                                        <div className="font-bold text-xs font-sans text-purple-700 mt-0.5">{formatNumber(item.exemptedAmount)} ج.م</div>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <div className="text-[10px] text-gray-500">المتبقي</div>
+                                        <div className="font-bold text-xs font-sans text-rose-600 mt-0.5">{formatNumber(item.remainingAmt)} ج.م</div>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Installment & Progress Bar */}
+                                <div className="space-y-1">
+                                  <div className="flex justify-between text-[11px] text-gray-600 font-sans">
+                                    <span>القسط: <strong className="text-amber-800">{formatNumber(item.monthlyAmt)}</strong> ج.م / شهر ({item.totalMonths} شهر)</span>
+                                    <span className="font-bold text-[#002f6c]">{pPct}%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                    <div 
+                                      className={`h-full ${item.isExempted ? 'bg-purple-600' : item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                                      style={{ width: `${pPct}%` }}
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Action Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveModalCaseInfo(item)}
+                                  className="w-full bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition-colors"
+                                >
+                                  <span>💵</span>
+                                  <span>سداد ومتابعة الأقساط</span>
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ---------------------------------------------------- */}
+              {/* SUBVIEW D: PROJECT ANALYTICS & DISTRIBUTION VIEW     */}
+              {/* ---------------------------------------------------- */}
+              {viewMode === 'analytics' && (
+                <div className="space-y-5 animate-fade-in">
+                  {/* Top Analytics Banner */}
+                  <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">📊</span>
+                        <h3 className="font-bold text-base sm:text-lg">تحليل وتوزيع المشاريع والأنشطة بالخدمة</h3>
+                      </div>
+                      <p className="text-xs text-purple-200 mt-1">
+                        إحصائيات تفصيلية لمجموعات الأنشطة وفقاً للقاموس الذكي الموحد (عدد الحالات، القيمة، والنسبة)
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowProjectDictModal(true)}
+                      className="bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-xs shrink-0"
+                    >
+                      <span>📚</span>
+                      <span>إدارة قاموس المشاريع</span>
+                    </button>
+                  </div>
+
+                  {/* Analytics KPI Summary Row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                      <span className="text-xs text-gray-500 font-medium">إجمالي الأنشطة المعتمدة</span>
+                      <div className="text-xl sm:text-2xl font-bold font-sans text-purple-900 mt-1">
+                        {formatNumber(projectAnalyticsData.list.length)}
+                      </div>
+                      <span className="text-[10px] text-gray-400">نشاط / مشروع مختلف</span>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                      <span className="text-xs text-gray-500 font-medium">إجمالي الحالات المنفذة</span>
+                      <div className="text-xl sm:text-2xl font-bold font-sans text-[#002f6c] mt-1">
+                        {formatNumber(projectAnalyticsData.grandTotalCases)}
+                      </div>
+                      <span className="text-[10px] text-gray-400">مستفيد بجميع الزيارات</span>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                      <span className="text-xs text-gray-500 font-medium">إجمالي المبالغ المنفذة</span>
+                      <div className="text-xl sm:text-2xl font-bold font-sans text-emerald-700 mt-1">
+                        {formatNumber(projectAnalyticsData.grandTotalValue)} <span className="text-xs font-normal">ج.م</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400">تكلفة المشاريع الإجمالية</span>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                      <span className="text-xs text-gray-500 font-medium">إجمالي المسدد ونسبة التحصيل</span>
+                      <div className="text-xl sm:text-2xl font-bold font-sans text-emerald-800 mt-1">
+                        {formatNumber(projectAnalyticsData.grandTotalPaid)} <span className="text-xs font-normal">ج.م</span>
+                      </div>
+                      <span className="text-[10px] text-emerald-600 font-bold font-sans">
+                        {projectAnalyticsData.grandTotalValue > 0 ? Math.round((projectAnalyticsData.grandTotalPaid / projectAnalyticsData.grandTotalValue) * 100) : 0}% تم تحصيله
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Project Categories Grid / Cards */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-gray-100 pb-3">
+                      <div>
+                        <h4 className="font-bold text-sm sm:text-base text-gray-900">
+                          ترتيب المشاريع حسب الأكثر عدداً وتنفيذاً
+                        </h4>
+                        <p className="text-xs text-gray-500">
+                          اضغط على أي مشروع لعرض حالاته وتفاصيل سداده ومتابعتها مباشرة
+                        </p>
+                      </div>
+
+                      {selectedAnalyticsCategory && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedAnalyticsCategory(null)}
+                          className="text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-xl border border-purple-200 transition-colors"
+                        >
+                          إلغاء التحديد وتصفح كل المشاريع
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                      {projectAnalyticsData.list.map((item, idx) => {
+                        const isSelected = selectedAnalyticsCategory === item.name;
+                        return (
+                          <div
+                            key={item.name || idx}
+                            onClick={() => setSelectedAnalyticsCategory(isSelected ? null : item.name)}
+                            className={`p-4 rounded-2xl border transition-all cursor-pointer select-none space-y-3 ${
+                              isSelected
+                                ? 'bg-purple-50/80 border-purple-500 shadow-md ring-2 ring-purple-400/30'
+                                : 'bg-gray-50/60 hover:bg-blue-50/40 border-gray-200 hover:border-blue-300'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start gap-2">
+                              <div>
+                                <div className="font-bold text-sm sm:text-base text-[#002f6c] flex items-center gap-1.5">
+                                  <span>🏷️</span>
+                                  <span>{item.name}</span>
+                                </div>
+                                {item.rawTypesList.length > 1 && (
+                                  <div className="text-[10px] text-gray-500 mt-0.5">
+                                    يشمل مسميات: {item.rawTypesList.join(' • ')}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="bg-purple-100 text-purple-900 border border-purple-200 font-bold px-2.5 py-0.5 rounded-full text-xs font-sans shrink-0">
+                                {item.pctOfTotal}% من الإجمالي
+                              </span>
+                            </div>
+
+                            {/* Numbers Row */}
+                            <div className="grid grid-cols-3 gap-1.5 bg-white p-2.5 rounded-xl border border-gray-100 text-center">
+                              <div>
+                                <div className="text-[10px] text-gray-500">الحالات</div>
+                                <div className="font-bold text-xs font-sans text-gray-900 mt-0.5">{formatNumber(item.count)} حالة</div>
+                              </div>
+                              <div>
+                                <div className="text-[10px] text-gray-500">أصل المبلغ</div>
+                                <div className="font-bold text-xs font-sans text-gray-900 mt-0.5">{formatNumber(item.totalValue)} ج.م</div>
+                              </div>
+                              <div>
+                                <div className="text-[10px] text-gray-500">المحصل</div>
+                                <div className="font-bold text-xs font-sans text-emerald-700 mt-0.5">{formatNumber(item.totalPaid)} ج.م</div>
+                              </div>
+                            </div>
+
+                            {/* Progress Bar of Collection */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] font-sans">
+                                <span className="text-gray-500">نسبة تحصيل المشروع:</span>
+                                <span className="font-bold text-emerald-700">{item.paidPct}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-emerald-500 rounded-full" 
+                                  style={{ width: `${item.paidPct}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Overdue / Arrears notice if any */}
+                            {item.overdueCount > 0 ? (
+                              <div className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg font-sans font-bold flex items-center justify-between">
+                                <span>⚠️ متأخرات: {formatNumber(item.overdueAmount)} ج.م</span>
+                                <span>({item.overdueCount} حالة)</span>
+                              </div>
+                            ) : (
+                              <div className="text-[11px] text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg font-medium flex items-center gap-1">
+                                <span>✅</span>
+                                <span>السداد منتظم بالكامل</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Drill-down cases section for the selected project */}
+                  {selectedAnalyticsCategory && (() => {
+                    const selectedCatObj = projectAnalyticsData.list.find(c => c.name === selectedAnalyticsCategory);
+                    const casesToShow = selectedCatObj ? selectedCatObj.cases : [];
+
+                    return (
+                      <div className="bg-white rounded-2xl shadow-sm border border-purple-200 overflow-hidden space-y-3 p-4 sm:p-5 animate-fade-in">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-gray-100 pb-3">
+                          <div>
+                            <h4 className="font-bold text-sm sm:text-base text-purple-900 flex items-center gap-2">
+                              <span>📋</span>
+                              <span>حالات مشروع: «{selectedAnalyticsCategory}» ({formatNumber(casesToShow.length)} حالة)</span>
+                            </h4>
+                            <p className="text-xs text-gray-500">
+                              إجمالي القيمة المنفذة: {formatNumber(selectedCatObj?.totalValue || 0)} ج.م • المسدد: {formatNumber(selectedCatObj?.totalPaid || 0)} ج.م • المتبقي: {formatNumber(selectedCatObj?.totalRemaining || 0)} ج.م
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Cases Table */}
+                        <div className="hidden md:block overflow-x-auto">
+                          <table className="w-full text-right text-xs">
+                            <thead className="bg-[#002f6c] text-white">
+                              <tr>
+                                <th className="p-3">#</th>
+                                <th className="p-3">اسم المستفيد</th>
+                                <th className="p-3">الكنيسة والمنطقة</th>
+                                <th className="p-3">المسمى المسجل</th>
+                                <th className="p-3 font-sans">أصل المبلغ</th>
+                                <th className="p-3 font-sans">المسدد / المتبقي</th>
+                                <th className="p-3">نسبة السداد</th>
+                                <th className="p-3 text-center">الحالة</th>
+                                <th className="p-3 text-center">الإجراء</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {casesToShow.map((item, idx) => {
+                                const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
+                                return (
+                                  <tr key={item.caseObj.id || idx} className="hover:bg-purple-50/40 transition-colors">
+                                    <td className="p-3 font-sans font-bold text-gray-400">{idx + 1}</td>
+                                    <td className="p-3 font-bold text-gray-900">
+                                      <div>{item.caseObj.caseName}</div>
+                                      {item.caseObj.nationalId && (
+                                        <div className="text-[10px] text-gray-500 font-sans">{item.caseObj.nationalId}</div>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-gray-700">
+                                      <div>⛪ {item.churchName}</div>
+                                      <div className="text-[10px] text-gray-500">{item.regionName} {item.villageName ? `• ${item.villageName}` : ''}</div>
+                                    </td>
+                                    <td className="p-3">
+                                      <span className="bg-purple-50 text-purple-800 border border-purple-200 px-2 py-0.5 rounded-md text-[11px] font-medium">
+                                        {item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع'}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 font-sans font-bold text-gray-900">
+                                      {formatNumber(item.totalAmt)} ج.م
+                                    </td>
+                                    <td className="p-3">
+                                      <div className="font-sans font-bold text-emerald-700">{formatNumber(item.totalPaid)} ج.م مسدد</div>
+                                      {item.isExempted ? (
+                                        <div className="font-sans text-[11px] text-purple-700 font-bold">معفى: {formatNumber(item.exemptedAmount)} ج.م</div>
+                                      ) : (
+                                        <div className="font-sans text-[11px] text-rose-600 font-bold">متبقي: {formatNumber(item.remainingAmt)} ج.م</div>
+                                      )}
+                                    </td>
+                                    <td className="p-3 w-28">
+                                      <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
+                                        <span>{pPct}%</span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                        <div 
+                                          className={`h-full ${item.isExempted ? 'bg-purple-600' : item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                                          style={{ width: `${pPct}%` }}
+                                        />
+                                      </div>
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      {item.isExempted ? (
+                                        <span className="bg-purple-100 text-purple-800 border border-purple-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                          💜 معفى
+                                        </span>
+                                      ) : item.isCompleted ? (
+                                        <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                          ✅ مكتمل
+                                        </span>
+                                      ) : item.isOverdue ? (
+                                        <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full text-[10px] font-bold font-sans">
+                                          ⚠️ متأخر ({item.overdueCount})
+                                        </span>
+                                      ) : item.totalPaid > 0 ? (
+                                        <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                          🔄 جاري
+                                        </span>
+                                      ) : (
+                                        <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                          ⏳ لم يبدأ
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveModalCaseInfo(item)}
+                                        className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1 mx-auto"
+                                      >
+                                        <span>💵</span>
+                                        <span>سداد ومتابعة</span>
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Cases Mobile Touch Cards */}
+                        <div className="md:hidden space-y-2.5">
+                          {casesToShow.map((item, idx) => (
+                            <div key={item.caseObj.id || idx} className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2.5">
+                              <div className="flex justify-between items-start gap-2">
+                                <div>
+                                  <div className="font-bold text-xs sm:text-sm text-gray-900">{item.caseObj.caseName}</div>
+                                  <div className="text-[10px] text-gray-500">⛪ {item.churchName} ({item.regionName})</div>
+                                </div>
+                                <span className="bg-purple-100 text-purple-800 border border-purple-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                                  {item.caseObj.executedProjectType || item.caseObj.projectType}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-1 bg-white p-2 rounded-lg border border-gray-100 text-center text-xs">
+                                <div>
+                                  <div className="text-[9px] text-gray-500">أصل المبلغ</div>
+                                  <div className="font-bold font-sans text-gray-800">{formatNumber(item.totalAmt)} ج.م</div>
+                                </div>
+                                <div>
+                                  <div className="text-[9px] text-gray-500">المسدد</div>
+                                  <div className="font-bold font-sans text-emerald-700">{formatNumber(item.totalPaid)} ج.م</div>
+                                </div>
+                                <div>
+                                  <div className="text-[9px] text-gray-500">المتبقي</div>
+                                  <div className="font-bold font-sans text-rose-600">{formatNumber(item.remainingAmt)} ج.م</div>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setActiveModalCaseInfo(item)}
+                                className="w-full bg-[#002f6c] text-white text-xs font-bold py-2 px-3 rounded-lg shadow-xs flex items-center justify-center gap-1.5"
+                              >
+                                <span>💵</span>
+                                <span>سداد ومتابعة الأقساط</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+    </div>
+  );
+}
+
+// ================================================================
 // MODULE: pages/InstallmentsPage.js
 // ================================================================
     function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
@@ -8800,1062 +9898,46 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
               )}
 
               {/* ---------------------------------------------------- */}
+              {/* ---------------------------------------------------- */}
               {/* SUBVIEW: REGIONS & CHURCHES HIERARCHICAL VIEW        */}
               {/* ---------------------------------------------------- */}
               {viewMode === 'regions' && (
-                <div>
-                  {filteredGeoRegions.length === 0 ? (
-                    <div className="bg-white rounded-2xl p-12 text-center text-gray-400 text-sm border border-gray-100 shadow-sm space-y-3">
-                      <div className="text-3xl">🏛️</div>
-                      <div className="font-bold text-gray-700">لا توجد مناطق أو كنائس مطابقة لمعايير البحث.</div>
-                      <p className="text-xs text-gray-500">
-                        تأكد من كتابة الاسم بصورة صحيحة أو إلغاء فلاتر البحث المختارة.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {filteredGeoRegions.map(reg => {
-                        const isRegExpanded = expandedGeoRegions[reg.regionName] !== false;
-                        const regProgress = reg.totalVal > 0 ? Math.min(100, Math.round((reg.paidVal / reg.totalVal) * 100)) : 0;
-
-                        return (
-                          <div key={reg.regionName} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                            {/* Region Accordion Header */}
-                            <div
-                              onClick={() => toggleGeoRegion(reg.regionName)}
-                              className="p-4 sm:p-5 bg-gradient-to-r from-[#002f6c]/10 to-blue-50/40 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer hover:bg-[#002f6c]/15 transition-colors select-none"
-                            >
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-xl">🏛️</span>
-                                <h3 className="font-bold text-base sm:text-lg text-[#002f6c]">{reg.regionName}</h3>
-                                <div className="flex flex-wrap gap-2 items-center mr-2">
-                                  <span className="bg-white text-[#002f6c] border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
-                                    ⛪ {formatNumber(reg.churches.length)} كنائس
-                                  </span>
-                                  <span className="bg-white text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
-                                    📊 {formatNumber(reg.casesCount)} مشاريع
-                                  </span>
-                                  <span className="bg-white text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
-                                    💰 {formatNumber(reg.totalVal)} ج.م
-                                  </span>
-                                  <span className="bg-white text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
-                                    ✅ {formatNumber(reg.paidVal)} ج.م ({regProgress}%)
-                                  </span>
-                                  <span className="bg-white text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
-                                    ⏳ {formatNumber(reg.remVal)} ج.م متبقي
-                                  </span>
-                                  {reg.exemptedCasesCount > 0 && (
-                                    <span className="bg-purple-50 text-purple-800 border border-purple-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
-                                      💜 معفى: {formatNumber(reg.exemptedAmount)} ج.م ({reg.exemptedCasesCount} حالة)
-                                    </span>
-                                  )}
-                                  {reg.overdueCasesCount > 0 ? (
-                                    <span className="bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
-                                      ⚠️ المتأخرات: {formatNumber(reg.overdueAmount)} ج.م ({reg.overdueCasesCount} حالة • {reg.overdueInstallments} قسط • {reg.overduePct}%)
-                                    </span>
-                                  ) : (
-                                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-sm">
-                                      ✅ السداد منتظم
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2 mr-auto sm:mr-0">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    triggerBatchPayment(`سداد قسط لمنطقة: ${reg.regionName} (كل النزلات)`, reg.cases, null);
-                                  }}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
-                                  title={`تسجيل سداد قسط لجميع حالات منطقة ${reg.regionName}`}
-                                >
-                                  <CreditCard size={14} />
-                                  <span>سداد المنطقة كلها</span>
-                                </button>
-                                <div className="text-gray-500">
-                                  {isRegExpanded ? <ChevronUp size={22} /> : <ChevronDown size={22} />}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Churches within Region */}
-                            {isRegExpanded && (
-                              <div className="divide-y divide-gray-100 bg-gray-50/30 p-3 sm:p-4 space-y-4">
-                                {reg.churches.map(ch => {
-                                  const isChExpanded = expandedGeoChurches[ch.key] !== false;
-                                  const chProgress = ch.totalVal > 0 ? Math.min(100, Math.round((ch.paidVal / ch.totalVal) * 100)) : 0;
-
-                                  return (
-                                    <div key={ch.key} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                                      {/* Church Header */}
-                                      <div
-                                        onClick={() => toggleGeoChurch(ch.key)}
-                                        className="p-3.5 sm:p-4 bg-gray-50/80 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 cursor-pointer hover:bg-gray-100/90 transition-colors select-none"
-                                      >
-                                        <div className="flex items-center gap-2">
-                                          <div className="text-gray-400">
-                                            {isChExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                                          </div>
-                                          <span className="text-base">⛪</span>
-                                          <h4 className="font-bold text-sm sm:text-base text-gray-900">
-                                            {ch.churchName}
-                                            {ch.villageName && (
-                                              <span className="text-xs font-normal text-gray-500 mr-2">
-                                                • {ch.villageName}
-                                              </span>
-                                            )}
-                                          </h4>
-                                        </div>
-
-                                        <div className="flex flex-wrap items-center gap-2 mr-6 sm:mr-0">
-                                          <span className="bg-white text-blue-900 border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
-                                            🗂️ {formatNumber(ch.visits.length)} زيارات
-                                          </span>
-                                          <span className="bg-white text-gray-700 border border-gray-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
-                                            📊 {formatNumber(ch.casesCount)} مشاريع
-                                          </span>
-                                          <span className="bg-white text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
-                                            ✅ {formatNumber(ch.paidVal)} ج.م ({chProgress}%)
-                                          </span>
-                                          <span className="bg-white text-rose-700 border border-rose-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
-                                            ⏳ {formatNumber(ch.remVal)} ج.م متبقي
-                                          </span>
-                                          {ch.exemptedCasesCount > 0 && (
-                                            <span className="bg-purple-50 text-purple-800 border border-purple-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
-                                              💜 معفى: {formatNumber(ch.exemptedAmount)} ج.م ({ch.exemptedCasesCount})
-                                            </span>
-                                          )}
-                                          <span className="bg-white text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
-                                            📅 {formatNumber(ch.monthlyInst)} ج.م/شهر
-                                          </span>
-                                          {ch.overdueCasesCount > 0 ? (
-                                            <span className="bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
-                                              ⚠️ المتأخرات: {formatNumber(ch.overdueAmount)} ج.م ({ch.overdueCasesCount} حالة • {ch.overdueInstallments} قسط • {ch.overduePct}%)
-                                            </span>
-                                          ) : (
-                                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md text-[11px] font-bold font-sans">
-                                              ✅ السداد منتظم
-                                            </span>
-                                          )}
-
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              triggerBatchPayment(`سداد قسط لكنيسة: ${ch.churchName} (كل النزلات)`, ch.cases, null);
-                                            }}
-                                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-sm flex items-center gap-1 transition-all mr-1"
-                                            title={`تسجيل سداد قسط لجميع حالات كنيسة ${ch.churchName}`}
-                                          >
-                                            <CreditCard size={13} />
-                                            <span>سداد الكنيسة كلها</span>
-                                          </button>
-                                        </div>
-                                      </div>
-
-                                      {/* Church Visits and Cases Container */}
-                                      {isChExpanded && (
-                                        <div className="p-3 sm:p-4 space-y-4 bg-gray-50/30">
-                                          {ch.visits.map(vData => {
-                                            return (
-                                              <div key={vData.visitId} className="border border-blue-100 rounded-xl overflow-hidden bg-white shadow-xs">
-                                                {/* Visit Partition Banner */}
-                                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50/40 p-2.5 sm:p-3 border-b border-blue-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                                                  <div className="flex flex-wrap items-center gap-2">
-                                                    <span className="text-sm">🏛️</span>
-                                                    <span className="font-bold text-xs sm:text-sm text-[#002f6c]">{vData.visitLocation || 'زيارة بدون اسم'}</span>
-                                                    <span className="text-xs text-gray-500 font-sans flex items-center gap-1 mr-2">
-                                                      <Calendar size={13} className="text-gray-400" />
-                                                      <span>{vData.visitDate}</span>
-                                                    </span>
-                                                    <span className="bg-white text-[#002f6c] border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-sans">
-                                                      {formatNumber(vData.cases.length)} حالات بهذه النزلة
-                                                    </span>
-                                                    {vData.exemptedCasesCount > 0 && (
-                                                      <span className="bg-purple-100 text-purple-800 border border-purple-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-sans">
-                                                        💜 معفى: {formatNumber(vData.exemptedAmount)} ج.م ({vData.exemptedCasesCount})
-                                                      </span>
-                                                    )}
-                                                    {vData.overdueCasesCount > 0 ? (
-                                                      <span className="bg-rose-100 text-rose-800 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-sans">
-                                                        ⚠️ متأخرات: {formatNumber(vData.overdueAmount)} ج.م ({vData.overdueCasesCount} حالة • {vData.overdueInstallments} قسط)
-                                                      </span>
-                                                    ) : (
-                                                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-sans">
-                                                        ✅ سداد منتظم
-                                                      </span>
-                                                    )}
-                                                  </div>
-
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => triggerBatchPayment(`سداد قسط لنزلة (${vData.visitLocation} - ${vData.visitDate}) بكنيسة ${ch.churchName}`, vData.cases, vData.visitId)}
-                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 shadow-sm"
-                                                    title="تسجيل سداد قسط لحالات هذه النزلة فقط"
-                                                  >
-                                                    <CreditCard size={12} />
-                                                    <span>سداد هذه النزلة ({vData.cases.length})</span>
-                                                  </button>
-                                                </div>
-
-                                                {/* Desktop Table View */}
-                                                <div className="hidden md:block overflow-x-auto">
-                                                  <table className="w-full text-right text-xs">
-                                                    <thead className="bg-gray-50 text-gray-600 font-bold border-b border-gray-200">
-                                                      <tr>
-                                                        <th className="p-3 w-12 text-center">م</th>
-                                                        <th className="p-3">اسم المستفيد</th>
-                                                        <th className="p-3">نوع المشروع المنفذ</th>
-                                                        <th className="p-3">تاريخ التنفيذ</th>
-                                                        <th className="p-3">أصل المبلغ</th>
-                                                        <th className="p-3">القسط الشهري</th>
-                                                        <th className="p-3">المسدد والمتبقي</th>
-                                                        <th className="p-3">نسبة السداد</th>
-                                                        <th className="p-3 text-center">الحالة</th>
-                                                        <th className="p-3 text-center w-28">الإجراءات</th>
-                                                      </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-gray-100">
-                                                      {vData.cases.map((item, cIdx) => {
-                                                        const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
-                                                        return (
-                                                          <tr key={item.caseObj.id || cIdx} className="hover:bg-blue-50/30 transition-colors">
-                                                            <td className="p-3 text-center font-sans text-gray-400 font-bold">{cIdx + 1}</td>
-                                                            <td className="p-3 font-bold text-gray-900">
-                                                              <div>{item.caseObj.caseName}</div>
-                                                              {item.caseObj.nationalId && (
-                                                                <div className="text-[10px] text-gray-400 font-sans mt-0.5">رقم قومي: {item.caseObj.nationalId}</div>
-                                                              )}
-                                                              <div className="text-[10px] text-gray-500 font-normal">الخدام: {item.servantsNames || '—'}</div>
-                                                            </td>
-                                                            <td className="p-3 font-medium text-blue-900">
-                                                              {item.caseObj.executedProjectType || item.caseObj.projectType || '—'}
-                                                            </td>
-                                                            <td className="p-3 font-sans text-gray-500">
-                                                              {item.caseObj.executionDate || '—'}
-                                                            </td>
-                                                            <td className="p-3 font-sans font-bold text-gray-900">
-                                                              {formatNumber(item.totalAmt)} ج.م
-                                                            </td>
-                                                            <td className="p-3">
-                                                              <div className="font-sans font-bold text-amber-800">{formatNumber(item.monthlyAmt)} ج.م / شهر</div>
-                                                              <div className="text-[10px] text-gray-500 font-sans">{item.totalMonths} شهر استحقاق</div>
-                                                            </td>
-                                                            <td className="p-3">
-                                                              <div className="font-sans font-bold text-emerald-700">{formatNumber(item.totalPaid)} ج.م مسدد</div>
-                                                              {item.isExempted ? (
-                                                                <div className="font-sans text-[11px] text-purple-700 font-bold">معفى: {formatNumber(item.exemptedAmount)} ج.م</div>
-                                                              ) : (
-                                                                <div className="font-sans text-[11px] text-rose-600 font-bold">متبقي: {formatNumber(item.remainingAmt)} ج.م</div>
-                                                              )}
-                                                            </td>
-                                                            <td className="p-3 w-28">
-                                                              <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
-                                                                <span>{pPct}%</span>
-                                                              </div>
-                                                              <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                                                                <div 
-                                                                  className={`h-full ${item.isExempted ? 'bg-purple-600' : item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
-                                                                  style={{ width: `${pPct}%` }}
-                                                                />
-                                                              </div>
-                                                            </td>
-                                                            <td className="p-3 text-center">
-                                                              {item.isExempted ? (
-                                                                <span className="bg-purple-100 text-purple-800 border border-purple-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1" title={item.exemptionReason ? `سبب الإعفاء: ${item.exemptionReason}` : ''}>
-                                                                  <span>💜</span> معفى {item.exemptionReason ? `(${item.exemptionReason})` : ''}
-                                                                </span>
-                                                              ) : item.isCompleted ? (
-                                                                <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                                                  <span>✅</span> مكتمل
-                                                                </span>
-                                                              ) : item.isOverdue ? (
-                                                                <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 font-sans" title={`المستحق حتى اليوم: ${formatNumber(item.expectedDueAmount)} ج.م`}>
-                                                                  <span>⚠️</span> متأخر ({item.overdueCount} قسط • {formatNumber(item.overdueAmount)} ج.م)
-                                                                </span>
-                                                              ) : item.totalPaid > 0 ? (
-                                                                <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                                                  <span>🔄</span> جاري
-                                                                </span>
-                                                              ) : (
-                                                                <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                                                  <span>⏳</span> لم يبدأ
-                                                                </span>
-                                                              )}
-                                                            </td>
-                                                            <td className="p-3 text-center">
-                                                              <button
-                                                                type="button"
-                                                                onClick={() => setActiveModalCaseInfo(item)}
-                                                                className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1 transition-colors mx-auto"
-                                                              >
-                                                                <span>💵</span>
-                                                                <span>سداد ومتابعة</span>
-                                                              </button>
-                                                            </td>
-                                                          </tr>
-                                                        );
-                                                      })}
-                                                    </tbody>
-                                                  </table>
-                                                </div>
-
-                                                {/* Mobile Touch Cards View */}
-                                                <div className="md:hidden divide-y divide-gray-100 p-2.5 space-y-2.5 bg-gray-50/50">
-                                                  {vData.cases.map((item, cIdx) => {
-                                                    const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
-                                                    return (
-                                                      <div key={item.caseObj.id || cIdx} className="bg-white rounded-xl p-3 border border-gray-200 shadow-xs space-y-2.5">
-                                                        <div className="flex justify-between items-start gap-2">
-                                                          <div>
-                                                            <div className="font-bold text-xs sm:text-sm text-gray-900">{item.caseObj.caseName}</div>
-                                                            {item.caseObj.nationalId && (
-                                                              <div className="text-[10px] text-gray-500 font-sans mt-0.5">رقم قومي: {item.caseObj.nationalId}</div>
-                                                            )}
-                                                            <div className="text-[10px] text-gray-500 mt-0.5">الخدام: {item.servantsNames || '—'}</div>
-                                                          </div>
-                                                          {item.isExempted ? (
-                                                            <span className="bg-purple-100 text-purple-800 border border-purple-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
-                                                              💜 معفى {item.exemptionReason ? `(${item.exemptionReason})` : ''}
-                                                            </span>
-                                                          ) : item.isCompleted ? (
-                                                            <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
-                                                              ✅ مكتمل
-                                                            </span>
-                                                          ) : item.isOverdue ? (
-                                                            <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0 font-sans">
-                                                              ⚠️ متأخر ({item.overdueCount} قسط • {formatNumber(item.overdueAmount)} ج.م)
-                                                            </span>
-                                                          ) : item.totalPaid > 0 ? (
-                                                            <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
-                                                              🔄 جاري
-                                                            </span>
-                                                          ) : (
-                                                            <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
-                                                              ⏳ لم يبدأ
-                                                            </span>
-                                                          )}
-                                                        </div>
-
-                                                        <div className="grid grid-cols-3 gap-1.5 text-center bg-gray-50 p-2 rounded-lg border border-gray-100">
-                                                          <div>
-                                                            <div className="text-[9px] text-gray-500">أصل المبلغ</div>
-                                                            <div className="font-bold text-[11px] font-sans text-gray-900 mt-0.5">{formatNumber(item.totalAmt)} ج.م</div>
-                                                          </div>
-                                                          <div>
-                                                            <div className="text-[9px] text-gray-500">المسدد</div>
-                                                            <div className="font-bold text-[11px] font-sans text-emerald-700 mt-0.5">{formatNumber(item.totalPaid)} ج.م</div>
-                                                          </div>
-                                                          <div>
-                                                            {item.isExempted ? (
-                                                              <>
-                                                                <div className="text-[9px] text-purple-600">المعفى</div>
-                                                                <div className="font-bold text-[11px] font-sans text-purple-700 mt-0.5">{formatNumber(item.exemptedAmount)} ج.م</div>
-                                                              </>
-                                                            ) : (
-                                                              <>
-                                                                <div className="text-[9px] text-gray-500">المتبقي</div>
-                                                                <div className="font-bold text-[11px] font-sans text-rose-600 mt-0.5">{formatNumber(item.remainingAmt)} ج.م</div>
-                                                              </>
-                                                            )}
-                                                          </div>
-                                                        </div>
-
-                                                        <div className="space-y-1">
-                                                          <div className="flex justify-between text-[10px] text-gray-600 font-sans">
-                                                            <span>القسط: <strong className="text-amber-800">{formatNumber(item.monthlyAmt)}</strong> ج.م / شهر</span>
-                                                            <span className="font-bold text-[#002f6c]">{pPct}%</span>
-                                                          </div>
-                                                          <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
-                                                            <div 
-                                                              className={`h-full ${item.isExempted ? 'bg-purple-600' : item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
-                                                              style={{ width: `${pPct}%` }}
-                                                            />
-                                                          </div>
-                                                        </div>
-
-                                                        <button
-                                                          type="button"
-                                                          onClick={() => setActiveModalCaseInfo(item)}
-                                                          className="w-full bg-[#002f6c] hover:bg-[#001f4c] text-white text-[11px] font-bold py-2 px-3 rounded-lg shadow-xs flex items-center justify-center gap-1.5 transition-colors"
-                                                        >
-                                                          <span>💵</span>
-                                                          <span>سداد ومتابعة الأقساط</span>
-                                                        </button>
-                                                      </div>
-                                                    );
-                                                  })}
-                                                </div>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <InstallmentsGeoView
+                  geoRegionsData={geoRegionsData}
+                  expandedGeoRegions={expandedGeoRegions}
+                  toggleGeoRegion={toggleGeoRegion}
+                  expandedGeoChurches={expandedGeoChurches}
+                  toggleGeoChurch={toggleGeoChurch}
+                  triggerBatchPayment={triggerBatchPayment}
+                  setActiveModalCaseInfo={setActiveModalCaseInfo}
+                  setEditingCaseInfo={setEditingCaseInfo}
+                  handleDeleteCase={handleDeleteCase}
+                />
               )}
 
               {/* ---------------------------------------------------- */}
               {/* SUBVIEW B: ALL CASES (TABLE + MOBILE CARDS VIEW)     */}
               {/* ---------------------------------------------------- */}
               {viewMode === 'allCases' && (
-                <div className="space-y-4">
-                  {/* Status Tabs */}
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
-                    <div className="flex flex-wrap gap-2 border-b border-gray-100 pb-3">
-                      <button
-                        type="button"
-                        onClick={() => setFilterStatus('all')}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                          filterStatus === 'all' 
-                            ? 'bg-[#002f6c] text-white shadow-sm' 
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        🌐 كل الحالات ({formatNumber(allExecutedCases.length)})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFilterStatus('active')}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                          filterStatus === 'active' 
-                            ? 'bg-amber-600 text-white shadow-sm' 
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        🔄 جاري السداد ({formatNumber(activeCount)})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFilterStatus('completed')}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                          filterStatus === 'completed' 
-                            ? 'bg-emerald-600 text-white shadow-sm' 
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        ✅ مكتمل السداد ({formatNumber(completedCount)})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFilterStatus('unpaid')}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                          filterStatus === 'unpaid' 
-                            ? 'bg-rose-600 text-white shadow-sm' 
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        ⏳ لم يبدأ السداد ({formatNumber(unpaidCount)})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFilterStatus('overdue')}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                          filterStatus === 'overdue' 
-                            ? 'bg-rose-700 text-white shadow-sm' 
-                            : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
-                        }`}
-                      >
-                        ⚠️ المتأخرين ({formatNumber(overdueCasesCount)})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFilterStatus('exempted')}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                          filterStatus === 'exempted' 
-                            ? 'bg-purple-700 text-white shadow-sm' 
-                            : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
-                        }`}
-                      >
-                        💜 معفى ({formatNumber(exemptedCasesCount)})
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <div>
-                        <select
-                          value={filterChurch}
-                          onChange={(e) => setFilterChurch(e.target.value)}
-                          className="w-full py-2 px-3 text-xs rounded-xl border border-gray-200 focus:border-[#002f6c] outline-none bg-white font-medium"
-                        >
-                          <option value="">⛪ كل الكنائس ({formatNumber(uniqueChurches.length)})</option>
-                          {uniqueChurches.map(c => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Cases Container */}
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-                      <span className="font-bold text-xs sm:text-sm text-gray-800">
-                        قائمة كل الحالات المنفذة ومتابعة السداد ({formatNumber(filteredCases.length)} حالة)
-                      </span>
-                    </div>
-
-                    {filteredCases.length === 0 ? (
-                      <div className="p-12 text-center text-gray-400 text-sm">
-                        لا توجد حالات منفذة مطابقة لمعايير البحث الحالية. يمكنك إضافة مشاريع سابقة يدوياً أو استيرادها من Excel.
-                      </div>
-                    ) : (
-                      <div>
-                        {/* Desktop Table View (Hidden on mobile < 768px) */}
-                        <div className="hidden md:block overflow-x-auto">
-                          <table className="w-full text-right text-xs">
-                            <thead className="bg-[#002f6c] text-white">
-                              <tr>
-                                <th className="p-3">#</th>
-                                <th className="p-3">اسم المستفيد</th>
-                                <th className="p-3">الزيارة / الكنيسة</th>
-                                <th className="p-3">نوع المشروع المنفذ</th>
-                                <th className="p-3 font-sans">أصل المبلغ</th>
-                                <th className="p-3 font-sans">القسط والمدة</th>
-                                <th className="p-3 font-sans">المسدد / المتبقي</th>
-                                <th className="p-3">نسبة السداد</th>
-                                <th className="p-3 text-center">حالة السداد</th>
-                                <th className="p-3 text-center">إجراء السداد</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 bg-white">
-                              {filteredCases.map((item, idx) => {
-                                const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
-                                return (
-                                  <tr key={item.caseObj.id || idx} className="hover:bg-blue-50/50 transition-colors">
-                                    <td className="p-3 font-sans font-bold text-gray-400">{idx + 1}</td>
-                                    <td className="p-3 font-bold text-gray-900">
-                                      <div>{item.caseObj.caseName}</div>
-                                      {item.caseObj.nationalId && (
-                                        <div className="text-[10px] text-gray-500 font-sans">{item.caseObj.nationalId}</div>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-gray-600">
-                                      <div className="font-semibold text-gray-800">{item.churchName}</div>
-                                      <div className="text-[10px] text-gray-500">
-                                        {item.visitLocation || 'زيارة'} • {item.regionName} {item.villageName ? `• ${item.villageName}` : ''}
-                                      </div>
-                                    </td>
-                                    <td className="p-3">
-                                      <span className="bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-full text-[11px] font-medium">
-                                        {item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع'}
-                                      </span>
-                                      {item.caseObj.executionDate && (
-                                        <div className="text-[10px] text-gray-500 font-sans mt-0.5">نفذ: {item.caseObj.executionDate}</div>
-                                      )}
-                                    </td>
-                                    <td className="p-3 font-sans font-bold text-gray-900 text-sm">
-                                      {formatNumber(item.totalAmt)} ج.م
-                                    </td>
-                                    <td className="p-3">
-                                      <div className="font-sans font-bold text-amber-800">{formatNumber(item.monthlyAmt)} ج.م / شهر</div>
-                                      <div className="text-[10px] text-gray-500 font-sans">{item.totalMonths} شهر استحقاق</div>
-                                    </td>
-                                    <td className="p-3">
-                                      <div className="font-sans font-bold text-emerald-700">{formatNumber(item.totalPaid)} ج.م مسدد</div>
-                                      {item.isExempted ? (
-                                        <div className="font-sans text-[11px] text-purple-700 font-bold">معفى: {formatNumber(item.exemptedAmount)} ج.م</div>
-                                      ) : (
-                                        <div className="font-sans text-[11px] text-rose-600 font-bold">متبقي: {formatNumber(item.remainingAmt)} ج.م</div>
-                                      )}
-                                    </td>
-                                    <td className="p-3 w-36">
-                                      <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
-                                        <span>{pPct}%</span>
-                                      </div>
-                                      <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                                        <div 
-                                          className={`h-full ${item.isExempted ? 'bg-purple-600' : item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
-                                          style={{ width: `${pPct}%` }}
-                                        ></div>
-                                      </div>
-                                    </td>
-                                    <td className="p-3 text-center">
-                                      {item.isExempted ? (
-                                        <span className="bg-purple-100 text-purple-800 border border-purple-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1" title={item.exemptionReason ? `سبب الإعفاء: ${item.exemptionReason}` : ''}>
-                                          <span>💜</span> معفى {item.exemptionReason ? `(${item.exemptionReason})` : ''}
-                                        </span>
-                                      ) : item.isCompleted ? (
-                                        <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                          <span>✅</span> مكتمل
-                                        </span>
-                                      ) : item.isOverdue ? (
-                                        <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 font-sans" title={`المستحق حتى اليوم: ${formatNumber(item.expectedDueAmount)} ج.م`}>
-                                          <span>⚠️</span> متأخر ({item.overdueCount} قسط • {formatNumber(item.overdueAmount)} ج.م)
-                                        </span>
-                                      ) : item.totalPaid > 0 ? (
-                                        <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                          <span>🔄</span> جاري
-                                        </span>
-                                      ) : (
-                                        <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                                          <span>⏳</span> لم يبدأ
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-center">
-                                      <button
-                                        type="button"
-                                        onClick={() => setActiveModalCaseInfo(item)}
-                                        className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-colors mx-auto"
-                                      >
-                                        <span>💵</span>
-                                        <span>سداد ومتابعة</span>
-                                      </button>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* Mobile Touch Cards View (Shown only on mobile < 768px) */}
-                        <div className="md:hidden divide-y divide-gray-100 p-3 space-y-3 bg-gray-50/60">
-                          {filteredCases.map((item, idx) => {
-                            const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
-                            return (
-                              <div key={item.caseObj.id || idx} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
-                                <div className="flex justify-between items-start gap-2">
-                                  <div>
-                                    <div className="font-bold text-sm text-gray-900">{item.caseObj.caseName}</div>
-                                    {item.caseObj.nationalId && (
-                                      <div className="text-[11px] text-gray-500 font-sans mt-0.5">رقم قومي: {item.caseObj.nationalId}</div>
-                                    )}
-                                    <div className="text-[11px] text-gray-600 font-medium mt-1">
-                                      ⛪ {item.churchName} ({item.regionName} {item.villageName ? `• ${item.villageName}` : ''})
-                                    </div>
-                                  </div>
-                                  {item.isExempted ? (
-                                    <span className="bg-purple-100 text-purple-800 border border-purple-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
-                                      💜 معفى {item.exemptionReason ? `(${item.exemptionReason})` : ''}
-                                    </span>
-                                  ) : item.isCompleted ? (
-                                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
-                                      ✅ مكتمل
-                                    </span>
-                                  ) : item.isOverdue ? (
-                                    <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0 font-sans">
-                                      ⚠️ متأخر ({item.overdueCount} قسط • {formatNumber(item.overdueAmount)} ج.م)
-                                    </span>
-                                  ) : item.totalPaid > 0 ? (
-                                    <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
-                                      🔄 جاري
-                                    </span>
-                                  ) : (
-                                    <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0">
-                                      ⏳ لم يبدأ
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                                  <span className="bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-md text-[11px] font-medium">
-                                    🏷️ {item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع'}
-                                  </span>
-                                  {item.caseObj.executionDate && (
-                                    <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md text-[10px] font-sans">
-                                      تاريخ التنفيذ: {item.caseObj.executionDate}
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* 3-col Numbers Grid */}
-                                <div className="grid grid-cols-3 gap-2 text-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                                  <div>
-                                    <div className="text-[10px] text-gray-500">أصل المبلغ</div>
-                                    <div className="font-bold text-xs font-sans text-gray-900 mt-0.5">{formatNumber(item.totalAmt)} ج.م</div>
-                                  </div>
-                                  <div>
-                                    <div className="text-[10px] text-gray-500">المسدد</div>
-                                    <div className="font-bold text-xs font-sans text-emerald-700 mt-0.5">{formatNumber(item.totalPaid)} ج.م</div>
-                                  </div>
-                                  <div>
-                                    {item.isExempted ? (
-                                      <>
-                                        <div className="text-[10px] text-purple-600">المعفى</div>
-                                        <div className="font-bold text-xs font-sans text-purple-700 mt-0.5">{formatNumber(item.exemptedAmount)} ج.م</div>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <div className="text-[10px] text-gray-500">المتبقي</div>
-                                        <div className="font-bold text-xs font-sans text-rose-600 mt-0.5">{formatNumber(item.remainingAmt)} ج.م</div>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Installment & Progress Bar */}
-                                <div className="space-y-1">
-                                  <div className="flex justify-between text-[11px] text-gray-600 font-sans">
-                                    <span>القسط: <strong className="text-amber-800">{formatNumber(item.monthlyAmt)}</strong> ج.م / شهر ({item.totalMonths} شهر)</span>
-                                    <span className="font-bold text-[#002f6c]">{pPct}%</span>
-                                  </div>
-                                  <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                                    <div 
-                                      className={`h-full ${item.isExempted ? 'bg-purple-600' : item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
-                                      style={{ width: `${pPct}%` }}
-                                    />
-                                  </div>
-                                </div>
-
-                                {/* Action Button */}
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveModalCaseInfo(item)}
-                                  className="w-full bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition-colors"
-                                >
-                                  <span>💵</span>
-                                  <span>سداد ومتابعة الأقساط</span>
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* ---------------------------------------------------- */}
-              {/* SUBVIEW D: PROJECT ANALYTICS & DISTRIBUTION VIEW     */}
-              {/* ---------------------------------------------------- */}
-              {viewMode === 'analytics' && (
-                <div className="space-y-5 animate-fade-in">
-                  {/* Top Analytics Banner */}
-                  <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">📊</span>
-                        <h3 className="font-bold text-base sm:text-lg">تحليل وتوزيع المشاريع والأنشطة بالخدمة</h3>
-                      </div>
-                      <p className="text-xs text-purple-200 mt-1">
-                        إحصائيات تفصيلية لمجموعات الأنشطة وفقاً للقاموس الذكي الموحد (عدد الحالات، القيمة، والنسبة)
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setShowProjectDictModal(true)}
-                      className="bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-xs shrink-0"
-                    >
-                      <span>📚</span>
-                      <span>إدارة قاموس المشاريع</span>
-                    </button>
-                  </div>
-
-                  {/* Analytics KPI Summary Row */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
-                      <span className="text-xs text-gray-500 font-medium">إجمالي الأنشطة المعتمدة</span>
-                      <div className="text-xl sm:text-2xl font-bold font-sans text-purple-900 mt-1">
-                        {formatNumber(projectAnalyticsData.list.length)}
-                      </div>
-                      <span className="text-[10px] text-gray-400">نشاط / مشروع مختلف</span>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
-                      <span className="text-xs text-gray-500 font-medium">إجمالي الحالات المنفذة</span>
-                      <div className="text-xl sm:text-2xl font-bold font-sans text-[#002f6c] mt-1">
-                        {formatNumber(projectAnalyticsData.grandTotalCases)}
-                      </div>
-                      <span className="text-[10px] text-gray-400">مستفيد بجميع الزيارات</span>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
-                      <span className="text-xs text-gray-500 font-medium">إجمالي المبالغ المنفذة</span>
-                      <div className="text-xl sm:text-2xl font-bold font-sans text-emerald-700 mt-1">
-                        {formatNumber(projectAnalyticsData.grandTotalValue)} <span className="text-xs font-normal">ج.م</span>
-                      </div>
-                      <span className="text-[10px] text-gray-400">تكلفة المشاريع الإجمالية</span>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
-                      <span className="text-xs text-gray-500 font-medium">إجمالي المسدد ونسبة التحصيل</span>
-                      <div className="text-xl sm:text-2xl font-bold font-sans text-emerald-800 mt-1">
-                        {formatNumber(projectAnalyticsData.grandTotalPaid)} <span className="text-xs font-normal">ج.م</span>
-                      </div>
-                      <span className="text-[10px] text-emerald-600 font-bold font-sans">
-                        {projectAnalyticsData.grandTotalValue > 0 ? Math.round((projectAnalyticsData.grandTotalPaid / projectAnalyticsData.grandTotalValue) * 100) : 0}% تم تحصيله
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Project Categories Grid / Cards */}
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 space-y-4">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-gray-100 pb-3">
-                      <div>
-                        <h4 className="font-bold text-sm sm:text-base text-gray-900">
-                          ترتيب المشاريع حسب الأكثر عدداً وتنفيذاً
-                        </h4>
-                        <p className="text-xs text-gray-500">
-                          اضغط على أي مشروع لعرض حالاته وتفاصيل سداده ومتابعتها مباشرة
-                        </p>
-                      </div>
-
-                      {selectedAnalyticsCategory && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedAnalyticsCategory(null)}
-                          className="text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-xl border border-purple-200 transition-colors"
-                        >
-                          إلغاء التحديد وتصفح كل المشاريع
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                      {projectAnalyticsData.list.map((item, idx) => {
-                        const isSelected = selectedAnalyticsCategory === item.name;
-                        return (
-                          <div
-                            key={item.name || idx}
-                            onClick={() => setSelectedAnalyticsCategory(isSelected ? null : item.name)}
-                            className={`p-4 rounded-2xl border transition-all cursor-pointer select-none space-y-3 ${
-                              isSelected
-                                ? 'bg-purple-50/80 border-purple-500 shadow-md ring-2 ring-purple-400/30'
-                                : 'bg-gray-50/60 hover:bg-blue-50/40 border-gray-200 hover:border-blue-300'
-                            }`}
-                          >
-                            <div className="flex justify-between items-start gap-2">
-                              <div>
-                                <div className="font-bold text-sm sm:text-base text-[#002f6c] flex items-center gap-1.5">
-                                  <span>🏷️</span>
-                                  <span>{item.name}</span>
-                                </div>
-                                {item.rawTypesList.length > 1 && (
-                                  <div className="text-[10px] text-gray-500 mt-0.5">
-                                    يشمل مسميات: {item.rawTypesList.join(' • ')}
-                                  </div>
-                                )}
-                              </div>
-                              <span className="bg-purple-100 text-purple-900 border border-purple-200 font-bold px-2.5 py-0.5 rounded-full text-xs font-sans shrink-0">
-                                {item.pctOfTotal}% من الإجمالي
-                              </span>
-                            </div>
-
-                            {/* Numbers Row */}
-                            <div className="grid grid-cols-3 gap-1.5 bg-white p-2.5 rounded-xl border border-gray-100 text-center">
-                              <div>
-                                <div className="text-[10px] text-gray-500">الحالات</div>
-                                <div className="font-bold text-xs font-sans text-gray-900 mt-0.5">{formatNumber(item.count)} حالة</div>
-                              </div>
-                              <div>
-                                <div className="text-[10px] text-gray-500">أصل المبلغ</div>
-                                <div className="font-bold text-xs font-sans text-gray-900 mt-0.5">{formatNumber(item.totalValue)} ج.م</div>
-                              </div>
-                              <div>
-                                <div className="text-[10px] text-gray-500">المحصل</div>
-                                <div className="font-bold text-xs font-sans text-emerald-700 mt-0.5">{formatNumber(item.totalPaid)} ج.م</div>
-                              </div>
-                            </div>
-
-                            {/* Progress Bar of Collection */}
-                            <div className="space-y-1">
-                              <div className="flex justify-between text-[10px] font-sans">
-                                <span className="text-gray-500">نسبة تحصيل المشروع:</span>
-                                <span className="font-bold text-emerald-700">{item.paidPct}%</span>
-                              </div>
-                              <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-emerald-500 rounded-full" 
-                                  style={{ width: `${item.paidPct}%` }}
-                                />
-                              </div>
-                            </div>
-
-                            {/* Overdue / Arrears notice if any */}
-                            {item.overdueCount > 0 ? (
-                              <div className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg font-sans font-bold flex items-center justify-between">
-                                <span>⚠️ متأخرات: {formatNumber(item.overdueAmount)} ج.م</span>
-                                <span>({item.overdueCount} حالة)</span>
-                              </div>
-                            ) : (
-                              <div className="text-[11px] text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg font-medium flex items-center gap-1">
-                                <span>✅</span>
-                                <span>السداد منتظم بالكامل</span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Drill-down cases section for the selected project */}
-                  {selectedAnalyticsCategory && (() => {
-                    const selectedCatObj = projectAnalyticsData.list.find(c => c.name === selectedAnalyticsCategory);
-                    const casesToShow = selectedCatObj ? selectedCatObj.cases : [];
-
-                    return (
-                      <div className="bg-white rounded-2xl shadow-sm border border-purple-200 overflow-hidden space-y-3 p-4 sm:p-5 animate-fade-in">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-gray-100 pb-3">
-                          <div>
-                            <h4 className="font-bold text-sm sm:text-base text-purple-900 flex items-center gap-2">
-                              <span>📋</span>
-                              <span>حالات مشروع: «{selectedAnalyticsCategory}» ({formatNumber(casesToShow.length)} حالة)</span>
-                            </h4>
-                            <p className="text-xs text-gray-500">
-                              إجمالي القيمة المنفذة: {formatNumber(selectedCatObj?.totalValue || 0)} ج.م • المسدد: {formatNumber(selectedCatObj?.totalPaid || 0)} ج.م • المتبقي: {formatNumber(selectedCatObj?.totalRemaining || 0)} ج.م
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Cases Table */}
-                        <div className="hidden md:block overflow-x-auto">
-                          <table className="w-full text-right text-xs">
-                            <thead className="bg-[#002f6c] text-white">
-                              <tr>
-                                <th className="p-3">#</th>
-                                <th className="p-3">اسم المستفيد</th>
-                                <th className="p-3">الكنيسة والمنطقة</th>
-                                <th className="p-3">المسمى المسجل</th>
-                                <th className="p-3 font-sans">أصل المبلغ</th>
-                                <th className="p-3 font-sans">المسدد / المتبقي</th>
-                                <th className="p-3">نسبة السداد</th>
-                                <th className="p-3 text-center">الحالة</th>
-                                <th className="p-3 text-center">الإجراء</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {casesToShow.map((item, idx) => {
-                                const pPct = item.totalAmt > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalAmt) * 100)) : 0;
-                                return (
-                                  <tr key={item.caseObj.id || idx} className="hover:bg-purple-50/40 transition-colors">
-                                    <td className="p-3 font-sans font-bold text-gray-400">{idx + 1}</td>
-                                    <td className="p-3 font-bold text-gray-900">
-                                      <div>{item.caseObj.caseName}</div>
-                                      {item.caseObj.nationalId && (
-                                        <div className="text-[10px] text-gray-500 font-sans">{item.caseObj.nationalId}</div>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-gray-700">
-                                      <div>⛪ {item.churchName}</div>
-                                      <div className="text-[10px] text-gray-500">{item.regionName} {item.villageName ? `• ${item.villageName}` : ''}</div>
-                                    </td>
-                                    <td className="p-3">
-                                      <span className="bg-purple-50 text-purple-800 border border-purple-200 px-2 py-0.5 rounded-md text-[11px] font-medium">
-                                        {item.caseObj.executedProjectType || item.caseObj.projectType || 'مشروع'}
-                                      </span>
-                                    </td>
-                                    <td className="p-3 font-sans font-bold text-gray-900">
-                                      {formatNumber(item.totalAmt)} ج.م
-                                    </td>
-                                    <td className="p-3">
-                                      <div className="font-sans font-bold text-emerald-700">{formatNumber(item.totalPaid)} ج.م مسدد</div>
-                                      {item.isExempted ? (
-                                        <div className="font-sans text-[11px] text-purple-700 font-bold">معفى: {formatNumber(item.exemptedAmount)} ج.م</div>
-                                      ) : (
-                                        <div className="font-sans text-[11px] text-rose-600 font-bold">متبقي: {formatNumber(item.remainingAmt)} ج.م</div>
-                                      )}
-                                    </td>
-                                    <td className="p-3 w-28">
-                                      <div className="flex justify-between text-[10px] font-bold font-sans text-gray-600 mb-1">
-                                        <span>{pPct}%</span>
-                                      </div>
-                                      <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                                        <div 
-                                          className={`h-full ${item.isExempted ? 'bg-purple-600' : item.isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`} 
-                                          style={{ width: `${pPct}%` }}
-                                        />
-                                      </div>
-                                    </td>
-                                    <td className="p-3 text-center">
-                                      {item.isExempted ? (
-                                        <span className="bg-purple-100 text-purple-800 border border-purple-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                                          💜 معفى
-                                        </span>
-                                      ) : item.isCompleted ? (
-                                        <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                                          ✅ مكتمل
-                                        </span>
-                                      ) : item.isOverdue ? (
-                                        <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full text-[10px] font-bold font-sans">
-                                          ⚠️ متأخر ({item.overdueCount})
-                                        </span>
-                                      ) : item.totalPaid > 0 ? (
-                                        <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                                          🔄 جاري
-                                        </span>
-                                      ) : (
-                                        <span className="bg-gray-100 text-gray-700 border border-gray-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                                          ⏳ لم يبدأ
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-center">
-                                      <button
-                                        type="button"
-                                        onClick={() => setActiveModalCaseInfo(item)}
-                                        className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1 mx-auto"
-                                      >
-                                        <span>💵</span>
-                                        <span>سداد ومتابعة</span>
-                                      </button>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* Cases Mobile Touch Cards */}
-                        <div className="md:hidden space-y-2.5">
-                          {casesToShow.map((item, idx) => (
-                            <div key={item.caseObj.id || idx} className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2.5">
-                              <div className="flex justify-between items-start gap-2">
-                                <div>
-                                  <div className="font-bold text-xs sm:text-sm text-gray-900">{item.caseObj.caseName}</div>
-                                  <div className="text-[10px] text-gray-500">⛪ {item.churchName} ({item.regionName})</div>
-                                </div>
-                                <span className="bg-purple-100 text-purple-800 border border-purple-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                                  {item.caseObj.executedProjectType || item.caseObj.projectType}
-                                </span>
-                              </div>
-
-                              <div className="grid grid-cols-3 gap-1 bg-white p-2 rounded-lg border border-gray-100 text-center text-xs">
-                                <div>
-                                  <div className="text-[9px] text-gray-500">أصل المبلغ</div>
-                                  <div className="font-bold font-sans text-gray-800">{formatNumber(item.totalAmt)} ج.م</div>
-                                </div>
-                                <div>
-                                  <div className="text-[9px] text-gray-500">المسدد</div>
-                                  <div className="font-bold font-sans text-emerald-700">{formatNumber(item.totalPaid)} ج.م</div>
-                                </div>
-                                <div>
-                                  <div className="text-[9px] text-gray-500">المتبقي</div>
-                                  <div className="font-bold font-sans text-rose-600">{formatNumber(item.remainingAmt)} ج.م</div>
-                                </div>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() => setActiveModalCaseInfo(item)}
-                                className="w-full bg-[#002f6c] text-white text-xs font-bold py-2 px-3 rounded-lg shadow-xs flex items-center justify-center gap-1.5"
-                              >
-                                <span>💵</span>
-                                <span>سداد ومتابعة الأقساط</span>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
+                <InstallmentsTableView
+                  allExecutedCases={allExecutedCases}
+                  filteredCases={filteredCases}
+                  filterStatus={filterStatus}
+                  setFilterStatus={setFilterStatus}
+                  filterChurch={filterChurch}
+                  setFilterChurch={setFilterChurch}
+                  uniqueChurches={uniqueChurches}
+                  activeCount={activeCount}
+                  completedCount={completedCount}
+                  unpaidCount={unpaidCount}
+                  overdueCasesCount={overdueCasesCount}
+                  exemptedCasesCount={exemptedCasesCount}
+                  projectAnalyticsData={projectAnalyticsData}
+                  selectedAnalyticsCategory={selectedAnalyticsCategory}
+                  setSelectedAnalyticsCategory={setSelectedAnalyticsCategory}
+                  setShowProjectDictModal={setShowProjectDictModal}
+                  setActiveModalCaseInfo={setActiveModalCaseInfo}
+                />
               )}
             </div>
           )}
@@ -14179,7 +14261,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790762231672";
+      const CLIENT_BUILD_ID = "1790762473939";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
