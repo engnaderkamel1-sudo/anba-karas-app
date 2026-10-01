@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790852103302" />
+  <meta name="app-build-id" content="1790852669036" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -6950,61 +6950,6 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                     </button>
                   )}
 
-                  {/* LIVE CO-PILOT BROADCAST BUTTON */}
-                  {currentUser && (
-                    <>
-                      {!isLiveActive ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!fileName && parsedCases.length === 0) {
-                              if (typeof window.notifyWarning === 'function') window.notifyWarning('يرجى رفع ملف الإكسيل أولاً لبدء مشاركته لايف!');
-                              else alert('يرجى رفع ملف الإكسيل أولاً لبدء مشاركته لايف!');
-                              return;
-                            }
-                            CollaborationService.startLiveSession(currentUser, {
-                              fileName,
-                              parsedCases,
-                              customVisitLocation,
-                              customVisitDate
-                            });
-                            if (typeof window.notifySuccess === 'function') {
-                              window.notifySuccess('تم بدء البث المباشر للشاشة بنجاح! يمكن للخدام المتصلين الانضمام الآن.');
-                            }
-                          }}
-                          disabled={(onlineCollaborators || []).length === 0}
-                          className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm ${
-                            (onlineCollaborators || []).length > 0
-                              ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse cursor-pointer'
-                              : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
-                          }`}
-                          title={
-                            (onlineCollaborators || []).length > 0
-                              ? `مشاركة الشاشة لايف مع ${(onlineCollaborators || []).map(u => u.name || u.email).join(', ')}`
-                              : 'لا يوجد خدام متصلون حالياً لمشاركة الشاشة معهم'
-                          }
-                        >
-                          <span className="w-2 h-2 rounded-full bg-white animate-ping"></span>
-                          <span>مشاركة لايف {(onlineCollaborators || []).length > 0 ? `(${(onlineCollaborators || []).length} متصل)` : ''}</span>
-                        </button>
-                      ) : (
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              CollaborationService.endLiveSession();
-                              if (typeof window.notifyInfo === 'function') window.notifyInfo('تم إنهاء البث المباشر.');
-                            }}
-                            className="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
-                            title="إنهاء جلسة البث الحي"
-                          >
-                            <span>🛑 إنهاء البث</span>
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-
                   <label className={`cursor-pointer px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow transition-colors flex items-center gap-1.5 shrink-0 ${isParsing ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
                     {isParsing ? (
                       <>
@@ -7028,69 +6973,6 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   </label>
                 </div>
               </div>
-
-              {/* LIVE CO-PILOT BANNER (المتحكم ووضع المشاهدة وتبديل الكنترول) - يظهر فقط في حال وجود متصلين فعليين */}
-              {isLiveActive && (onlineCollaborators || []).length > 0 && (
-                <div className="bg-gradient-to-r from-rose-50 via-amber-50 to-indigo-50 border-2 border-rose-300 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-sm animate-fade-in">
-                  <div className="flex items-center gap-2.5">
-                    <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
-                    </span>
-                    <div>
-                      <div className="text-xs font-bold text-gray-900 flex items-center gap-2">
-                        <span>جلسة عمل تشاركية حية (Live Co-Pilot)</span>
-                        <span className="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-bold">بث مباشر</span>
-                      </div>
-                      <div className="text-[11px] text-gray-600 mt-0.5">
-                        المتحكم بالتعديل حالياً: <strong className="text-[#002f6c]">{liveSession.controllerName || liveSession.controllerEmail}</strong>
-                        {isController ? ' (أنت من يتحكم)' : ' (أنت في وضع المشاهدة اللحظية)'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* تبديل الكنترول / تسليم التحكم */}
-                  <div className="flex items-center gap-2">
-                    {isController && (onlineCollaborators || []).length > 0 && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] font-bold text-gray-700">تسليم التحكم إلى:</span>
-                        {(onlineCollaborators || []).map(collab => (
-                          <button
-                            key={collab.id}
-                            type="button"
-                            onClick={() => {
-                              CollaborationService.passControl(collab);
-                              if (typeof window.notifySuccess === 'function') {
-                                window.notifySuccess(`تم تسليم التحكم لـ ${collab.name || collab.email} بنجاح!`);
-                              }
-                            }}
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all shadow-xs flex items-center gap-1"
-                          >
-                            <span>🔄 {collab.name || collab.email.split('@')[0]}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {!isController && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (currentUser) {
-                            CollaborationService.passControl(currentUser);
-                            if (typeof window.notifySuccess === 'function') {
-                              window.notifySuccess('أصبحت أنت المتحكم بالتعديل الآن!');
-                            }
-                          }
-                        }}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1"
-                      >
-                        <span>✋ طلب / استلام التحكم</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
 
               {onOpenManualEntry && !fileName && (
                 <div className="text-center py-0.5">
@@ -7565,6 +7447,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         </div>
       );
     }
+
 // ================================================================
 // MODULE: components/ProjectDictionaryModal.js
 // ================================================================
@@ -14653,28 +14536,6 @@ function App() {
           setOnlineCollaborators(collaborators);
         });
 
-        const unsubScreen = CollaborationService.listenToScreenShareSession((session) => {
-          setActiveScreenShare(session);
-          if (session && session.status === 'active') {
-            const isMe = currentUser && session.controllerEmail === currentUser.email;
-            setIsScreenShareController(isMe);
-            if (!isMe) {
-              if (session.currentTab) {
-                setActiveTab(session.currentTab);
-                window.__currentActiveTab = session.currentTab;
-              }
-              if (typeof session.scrollY === 'number' && Math.abs(window.scrollY - session.scrollY) > 60) {
-                window.scrollTo({ top: session.scrollY, behavior: 'smooth' });
-              }
-            }
-
-
-
-          } else {
-            setIsScreenShareController(false);
-          }
-        });
-
         const unsubLive = CollaborationService.listenToLiveExcelSession((session) => {
           if (session && session.status === 'active' && session.hostEmail !== currentUser.email) {
             setIncomingLiveSession(session);
@@ -14687,7 +14548,6 @@ function App() {
           CollaborationService.stopPresence(currentUser);
           if (typeof unsubCollab === 'function') unsubCollab();
           if (typeof unsubLive === 'function') unsubLive();
-          if (typeof unsubScreen === 'function') unsubScreen();
         };
       }, [currentUser]);
 
@@ -15087,20 +14947,7 @@ function App() {
                                     {c.currentTab === 'installments' ? 'متابعة الأقساط' : c.currentTab === 'entry' ? 'تسجيل زيارة' : c.currentTab === 'analytics' ? 'التحليلات' : 'متابعة التنفيذ'}
                                   </div>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    CollaborationService.startScreenShare(currentUser, activeTab, c);
-                                    setShowOnlinePopover(false);
-                                    if (typeof window.notifySuccess === 'function') {
-                                      window.notifySuccess(`تم بدء بث الشاشة مع ${c.name || c.email}!`);
-                                    }
-                                  }}
-                                  className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-2 py-1 rounded shadow-xs transition-colors flex items-center gap-1"
-                                  title="مشاركة شاشتك الحالية معه"
-                                >
-                                  <span>📺 شير</span>
-                                </button>
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" title="Ù…ØªØµÙ„ Ø§Ù„Ø¢Ù†"></span>
                               </div>
                             ))}
                           </div>
@@ -15158,90 +15005,13 @@ function App() {
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    CollaborationService.startScreenShare(currentUser, activeTab, collaboratorToast);
-                    setCollaboratorToast(null);
-                    if (typeof window.notifySuccess === 'function') {
-                      window.notifySuccess('تم بدء مشاركة الشاشة وبث شاشتك له بنجاح!');
-                    }
-                  }}
-                  className="bg-emerald-500 hover:bg-emerald-600 text-blue-950 font-bold text-xs px-3.5 py-1.5 rounded-lg shadow transition-all active:scale-95 flex items-center gap-1.5"
-                >
-                  <span>📺 بدء مشاركة الشاشة معه</span>
-                </button>
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" title="Ù…ØªØµÙ„ Ø§Ù„Ø¢Ù†"></span>
                 <button
                   type="button"
                   onClick={() => setCollaboratorToast(null)}
                   className="text-white/80 hover:text-white text-xs px-2 py-1 rounded hover:bg-white/10"
                 >
                   ✕ إغلاق
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 2. LIVE ACTIVE SCREEN SHARE FLOATING BAR (محاكاة الشاشة وتبديل الكنترول) */}
-          {activeScreenShare && (onlineCollaborators.length > 0 || !isScreenShareController) && (
-            <div className="bg-gradient-to-r from-red-600 via-rose-700 to-indigo-800 text-white shadow-2xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-16 z-30 animate-fade-in border-b-2 border-red-300">
-              <div className="flex items-center gap-2.5">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-300 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-400"></span>
-                </span>
-                <div className="text-xs sm:text-sm">
-                  <span className="font-bold bg-white/20 px-2 py-0.5 rounded-full text-[11px] ml-2">🔴 بث شاشة مباشر</span>
-                  <span>المتحكم بالتنقل والتعديل حالياً: </span>
-                  <strong className="text-amber-300 font-bold underline">{activeScreenShare.controllerName || activeScreenShare.controllerEmail}</strong>
-                  {isScreenShareController ? ' (أنت تقود الشاشة ويراك الآخرون)' : ' (أنت تشاهد شاشته وسكروله لحظياً)'}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {/* تسليم التحكم أو طلبه */}
-                {isScreenShareController ? (
-                  (onlineCollaborators || []).map(collab => (
-                    <button
-                      key={collab.id}
-                      type="button"
-                      onClick={() => {
-                        CollaborationService.passControl(collab);
-                        if (typeof window.notifySuccess === 'function') {
-                          window.notifySuccess(`تم تسليم التحكم لـ ${collab.name || collab.email}!`);
-                        }
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1"
-                    >
-                      <span>🔄 تسليم الكنترول لـ {collab.name || collab.email.split('@')[0]}</span>
-                    </button>
-                  ))
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      CollaborationService.passControl(currentUser);
-                      if (typeof window.notifySuccess === 'function') {
-                        window.notifySuccess('أصبحت أنت المتحكم بالشاشة الآن!');
-                      }
-                    }}
-                    className="bg-amber-400 hover:bg-amber-300 text-blue-950 text-xs font-bold px-3.5 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1"
-                  >
-                    <span>✋ استلام التحكم</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    CollaborationService.endScreenShare();
-                    if (typeof window.notifyInfo === 'function') {
-                      window.notifyInfo('تم إنهاء جلسة مشاركة الشاشة.');
-                    }
-                  }}
-                  className="bg-gray-900 hover:bg-black text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1"
-                >
-                  <span>🛑 إنهاء البث</span>
                 </button>
               </div>
             </div>
@@ -15384,20 +15154,7 @@ function App() {
                             </div>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              CollaborationService.startScreenShare(currentUser, activeTab, c);
-                              setIsSidebarOpen(false);
-                              if (typeof window.notifySuccess === 'function') {
-                                window.notifySuccess(`تم بدء بث ومشاركة الشاشة مع ${c.name || c.email}!`);
-                              }
-                            }}
-                            className="bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold px-2 py-1 rounded-md transition-colors flex items-center gap-1"
-                            title="مشاركة شاشتك الحالية معه ليرى نفس ما تراه"
-                          >
-                            <span>📺 شير</span>
-                          </button>
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" title="Ù…ØªØµÙ„ Ø§Ù„Ø¢Ù†"></span>
                         </div>
                       ))}
                     </div>
@@ -15723,7 +15480,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790852103302";
+      const CLIENT_BUILD_ID = "1790852669036";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
