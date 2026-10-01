@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790839748757" />
+  <meta name="app-build-id" content="1790840830907" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -6376,7 +6376,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 
                 for (let ec of sameVillageCandidates) {
                   const sim = getSimilarity(c.churchName, ec.churchName);
-                  if (sim >= 0.70 && sim < 1.0 && sim > highestSim) {
+                  if (sim >= 0.60 && sim < 1.0 && sim > highestSim && c.churchName.trim() !== ec.churchName.trim()) {
                     highestSim = sim;
                     matchedCandidate = ec;
                   }
@@ -6391,7 +6391,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   );
                   for (let r of otherRowsSameVillage) {
                     const sim = getSimilarity(c.churchName, r.churchName);
-                    if (sim >= 0.70 && sim < 1.0 && sim > highestSim) {
+                    if (sim >= 0.60 && sim < 1.0 && sim > highestSim && c.churchName.trim() !== r.churchName.trim()) {
                       highestSim = sim;
                       matchedCandidate = {
                         churchName: r.churchName,
@@ -6402,7 +6402,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   }
                 }
 
-                if (matchedCandidate && highestSim >= 0.70) {
+                if (matchedCandidate && highestSim >= 0.60) {
                   const matchCount = cleanRows.filter(x => 
                     x.churchName === c.churchName && 
                     (!c.villageName || x.villageName === c.villageName)
@@ -6426,7 +6426,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 processedRegions.add(c.regionName);
                 for (let existReg of existingRegions) {
                   const sim = getSimilarity(c.regionName, existReg);
-                  if (sim >= 0.70 && sim < 1.0) {
+                  if (sim >= 0.60 && sim < 1.0 && c.regionName.trim() !== existReg.trim()) {
                     const matchCount = cleanRows.filter(x => x.regionName === c.regionName).length;
                     suggestions.push({
                       id: `sug_${Date.now()}_${Math.random().toString(36).substr(2, 7)}`,
@@ -6446,7 +6446,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 processedProjects.add(c.projectType);
                 for (let existProj of existingProjects) {
                   const sim = getSimilarity(c.projectType, existProj);
-                  if (sim >= 0.70 && sim < 1.0) {
+                  if (sim >= 0.60 && sim < 1.0 && c.projectType.trim() !== existProj.trim()) {
                     const matchCount = cleanRows.filter(x => x.projectType === c.projectType).length;
                     suggestions.push({
                       id: `sug_${Date.now()}_${Math.random().toString(36).substr(2, 7)}`,
@@ -7304,7 +7304,18 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-xs font-bold text-gray-700">جدول مراجعة ومعاينة الحالات قبل التأكيد (يمكنك التعديل أو الحذف المباشر):</span>
-                      <span className="text-[11px] text-rose-600 font-medium">💡 لن يتم حفظ أي شيء في صفحة السداد إلا بعد الضغط على زر "تأكيد الاستيراد" بالأسفل</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSaveDraftManually}
+                          className="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 shadow-xs"
+                          title="حفظ ما وصلت إليه ومتابعته في أي وقت لاحق"
+                        >
+                          <span>💾</span>
+                          <span>حفظ مسودة</span>
+                        </button>
+                        <span className="text-[11px] text-rose-600 font-medium">💡 لن يتم حفظ أي شيء في صفحة السداد إلا بعد الضغط على زر "تأكيد الاستيراد" بالأسفل</span>
+                      </div>
                     </div>
 
                     {/* Datalists for Autocomplete */}
@@ -7321,7 +7332,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                       {existingProjects.map((p, pIdx) => <option key={pIdx} value={p} />)}
                     </datalist>
 
-                    <div className="border border-gray-200 rounded-xl overflow-hidden max-h-72 overflow-y-auto shadow-xs">
+                    <div className="border border-gray-200 rounded-xl overflow-auto max-h-72 shadow-xs">
                       <table className="w-full text-right text-xs">
                         <thead className="bg-[#002f6c] text-white sticky top-0 z-10 shadow-xs">
                           <tr>
@@ -14776,6 +14787,7 @@ function App() {
                      </div>
                    )}
                                                        {/* Ø´Ø§Ø±Ø© Ø§Ù„Ø®Ø¯Ø§Ù… Ø§Ù„Ù…ØªÙˆØ§Ø¬Ø¯ÙˆÙ† Ø§Ù„Ø¢Ù† ÙˆÙ…Ø´Ø§Ø±ÙƒØ© Ø§Ù„Ø´Ø§Ø´Ø© */}
+                                    {/* شارة الخدام المتواجدون الآن ومشاركة الشاشة */}
                   <div className="relative">
                     <button
                       type="button"
@@ -14785,7 +14797,7 @@ function App() {
                           ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400/50 shadow-emerald-900/20' 
                           : 'bg-white/10 hover:bg-white/20 text-blue-200 border-white/20'
                       }`}
-                      title="Ø§Ù„Ø®Ø¯Ø§Ù… Ø§Ù„Ù…ØªÙˆØ§Ø¬Ø¯ÙˆÙ† Ø£ÙˆÙ†Ù„Ø§ÙŠÙ† Ø§Ù„Ø¢Ù† ÙˆÙ…Ø´Ø§Ø±ÙƒØ© Ø§Ù„Ø´Ø§Ø´Ø© Ø§Ù„ÙÙˆØ±ÙŠØ©"
+                      title="الخدام المتواجدون أونلاين الآن ومشاركة الشاشة الفورية"
                     >
                       <span className="relative flex h-2 w-2">
                         {onlineCollaborators.length > 0 && (
@@ -14793,7 +14805,7 @@ function App() {
                         )}
                         <span className={`relative inline-flex rounded-full h-2 w-2 ${onlineCollaborators.length > 0 ? 'bg-emerald-300' : 'bg-gray-400'}`}></span>
                       </span>
-                      <span>ðŸŸ¢ {onlineCollaborators.length} Ù…ØªØµÙ„</span>
+                      <span>🟢 {onlineCollaborators.length} متصل</span>
                     </button>
 
                     {showOnlinePopover && (
@@ -14801,20 +14813,20 @@ function App() {
                         <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-2">
                           <span className="text-xs font-bold text-[#002f6c] flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            <span>Ø§Ù„Ø®Ø¯Ø§Ù… Ø§Ù„Ù…ØªÙˆØ§Ø¬Ø¯ÙˆÙ† Ø§Ù„Ø¢Ù† ({onlineCollaborators.length})</span>
+                            <span>الخدام المتواجدون الآن ({onlineCollaborators.length})</span>
                           </span>
                           <button 
                             type="button" 
                             onClick={() => setShowOnlinePopover(false)}
                             className="text-gray-400 hover:text-gray-600 text-xs px-1 font-bold"
                           >
-                            âœ•
+                            ✕
                           </button>
                         </div>
 
                         {onlineCollaborators.length === 0 ? (
                           <div className="py-4 text-center text-xs text-gray-500">
-                            Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ø®Ø¯Ø§Ù… Ù…ØªØµÙ„ÙˆÙ† Ø­Ø§Ù„ÙŠØ§Ù‹
+                            لا يوجد خدام متصلون حالياً
                           </div>
                         ) : (
                           <div className="space-y-2 max-h-56 overflow-y-auto">
@@ -14823,7 +14835,7 @@ function App() {
                                 <div>
                                   <div className="font-bold text-gray-900 leading-tight">{c.name || c.email}</div>
                                   <div className="text-[10px] text-gray-500 mt-0.5">
-                                    {c.currentTab === 'installments' ? 'Ù…ØªØ§Ø¨Ø¹Ø© Ø§Ù„Ø£Ù‚Ø³Ø§Ø·' : c.currentTab === 'entry' ? 'ØªØ³Ø¬ÙŠÙ„ Ø²ÙŠØ§Ø±Ø©' : c.currentTab === 'analytics' ? 'Ø§Ù„ØªØ­Ù„ÙŠÙ„Ø§Øª' : 'Ù…ØªØ§Ø¨Ø¹Ø© Ø§Ù„ØªÙ†ÙÙŠØ°'}
+                                    {c.currentTab === 'installments' ? 'متابعة الأقساط' : c.currentTab === 'entry' ? 'تسجيل زيارة' : c.currentTab === 'analytics' ? 'التحليلات' : 'متابعة التنفيذ'}
                                   </div>
                                 </div>
                                 <button
@@ -14832,13 +14844,13 @@ function App() {
                                     CollaborationService.startScreenShare(currentUser, activeTab, c);
                                     setShowOnlinePopover(false);
                                     if (typeof window.notifySuccess === 'function') {
-                                      window.notifySuccess(`ØªÙ… Ø¨Ø¯Ø¡ Ø¨Ø« Ø§Ù„Ø´Ø§Ø´Ø© Ù…Ø¹ ${c.name || c.email}!`);
+                                      window.notifySuccess(`تم بدء بث الشاشة مع ${c.name || c.email}!`);
                                     }
                                   }}
                                   className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-2 py-1 rounded shadow-xs transition-colors flex items-center gap-1"
-                                  title="Ù…Ø´Ø§Ø±ÙƒØ© Ø´Ø§Ø´ØªÙƒ Ø§Ù„Ø­Ø§Ù„ÙŠØ© Ù…Ø¹Ù‡"
+                                  title="مشاركة شاشتك الحالية معه"
                                 >
-                                  <span>ðŸ“º Ø´ÙŠØ±</span>
+                                  <span>📺 شير</span>
                                 </button>
                               </div>
                             ))}
@@ -14847,6 +14859,7 @@ function App() {
                       </div>
                     )}
                   </div>
+
 <button 
                     type="button"
                     onClick={() => setShowGlobalSearch(true)}
@@ -14921,7 +14934,7 @@ function App() {
           )}
 
           {/* 2. LIVE ACTIVE SCREEN SHARE FLOATING BAR (محاكاة الشاشة وتبديل الكنترول) */}
-          {activeScreenShare && (
+          {activeScreenShare && (onlineCollaborators.length > 0 || !isScreenShareController) && (
             <div className="bg-gradient-to-r from-red-600 via-rose-700 to-indigo-800 text-white shadow-2xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-16 z-30 animate-fade-in border-b-2 border-red-300">
               <div className="flex items-center gap-2.5">
                 <span className="relative flex h-3 w-3">
@@ -15450,7 +15463,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790839748757";
+      const CLIENT_BUILD_ID = "1790840830907";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
