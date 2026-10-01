@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790834642286" />
+  <meta name="app-build-id" content="1790835102790" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -5920,6 +5920,26 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         return Array.from(new Set(activeVisits.flatMap(v => (v.churches || []).map(ch => ch.churchName)).filter(Boolean)));
       }, [activeVisits]);
 
+      const existingChurchesWithContext = useMemo(() => {
+        const list = [];
+        const seen = new Set();
+        (activeVisits || []).forEach(v => {
+          (v.churches || []).forEach(ch => {
+            const cName = (ch.churchName || '').trim();
+            const vName = (ch.villageName || ch.village || '').trim();
+            const rName = (ch.regionName || '').trim();
+            if (cName) {
+              const key = `${rName}___${vName}___${cName}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                list.push({ churchName: cName, villageName: vName, regionName: rName });
+              }
+            }
+          });
+        });
+        return list;
+      }, [activeVisits]);
+
       const existingVillages = useMemo(() => {
         return Array.from(new Set(activeVisits.flatMap(v => (v.churches || []).map(ch => ch.villageName || ch.village)).filter(Boolean)));
       }, [activeVisits]);
@@ -6138,23 +6158,64 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             const processedProjects = new Set();
 
             cleanRows.forEach(c => {
-              // Check Church similarity against existing churches
-              if (!processedChurches.has(c.churchName)) {
-                processedChurches.add(c.churchName);
-                for (let existCh of existingChurches) {
-                  const sim = getSimilarity(c.churchName, existCh);
-                  if (sim >= 0.70 && sim < 1.0) {
-                    const matchCount = cleanRows.filter(x => x.churchName === c.churchName).length;
-                    suggestions.push({
-                      id: `sug_${Date.now()}_${Math.random().toString(36).substr(2, 7)}`,
-                      type: 'church',
-                      original: c.churchName,
-                      suggested: existCh,
-                      similarity: Math.round(sim * 100),
-                      count: matchCount
-                    });
-                    break;
+              // Check Church similarity scoped by Village & Region
+              const churchVillageKey = `${c.regionName || ''}___${c.villageName || ''}___${c.churchName || ''}`;
+              if (c.churchName && !processedChurches.has(churchVillageKey)) {
+                processedChurches.add(churchVillageKey);
+
+                // Priority 1: Check against existing database churches in the EXACT SAME village & region
+                let matchedCandidate = null;
+                let highestSim = 0;
+
+                const sameVillageCandidates = existingChurchesWithContext.filter(ec => 
+                  (!c.villageName || !ec.villageName || ec.villageName === c.villageName) &&
+                  (!c.regionName || !ec.regionName || ec.regionName === c.regionName)
+                );
+
+                for (let ec of sameVillageCandidates) {
+                  const sim = getSimilarity(c.churchName, ec.churchName);
+                  if (sim >= 0.70 && sim < 1.0 && sim > highestSim) {
+                    highestSim = sim;
+                    matchedCandidate = ec;
                   }
+                }
+
+                // Priority 2: If none in same village, check other rows in the SAME EXCEL sheet with the SAME village
+                if (!matchedCandidate) {
+                  const otherRowsSameVillage = cleanRows.filter(r => 
+                    r.villageName === c.villageName && 
+                    r.churchName && 
+                    r.churchName !== c.churchName
+                  );
+                  for (let r of otherRowsSameVillage) {
+                    const sim = getSimilarity(c.churchName, r.churchName);
+                    if (sim >= 0.70 && sim < 1.0 && sim > highestSim) {
+                      highestSim = sim;
+                      matchedCandidate = {
+                        churchName: r.churchName,
+                        villageName: c.villageName,
+                        regionName: c.regionName
+                      };
+                    }
+                  }
+                }
+
+                if (matchedCandidate && highestSim >= 0.70) {
+                  const matchCount = cleanRows.filter(x => 
+                    x.churchName === c.churchName && 
+                    (!c.villageName || x.villageName === c.villageName)
+                  ).length;
+
+                  suggestions.push({
+                    id: `sug_${Date.now()}_${Math.random().toString(36).substr(2, 7)}`,
+                    type: 'church',
+                    original: c.churchName,
+                    suggested: matchedCandidate.churchName,
+                    villageName: c.villageName || matchedCandidate.villageName,
+                    regionName: c.regionName || matchedCandidate.regionName,
+                    similarity: Math.round(highestSim * 100),
+                    count: matchCount
+                  });
                 }
               }
 
@@ -6214,7 +6275,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       };
 
       // Apply a fuzzy unification suggestion (e.g. replace Excel's original with existing suggested)
-      const handleApplyFuzzySuggestion = (sugId, original, suggested, type) => {
+      const handleApplyFuzzySuggestion = (sugId, original, suggested, type, targetVillage = null, targetRegion = null) => {
         const normOrig = (typeof normalizeArabicText === 'function' ? normalizeArabicText(original) : String(original).trim()).replace(/\s+/g, '');
         setAppliedMappings(prev => ({ ...prev, [original]: suggested }));
         let updatedCount = 0;
@@ -6222,7 +6283,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           const next = prev.map(c => {
             if (type === 'church') {
               const curNorm = (typeof normalizeArabicText === 'function' ? normalizeArabicText(c.churchName) : String(c.churchName).trim()).replace(/\s+/g, '');
-              if (c.churchName === original || curNorm === normOrig) {
+              // If targetVillage provided, only update rows belonging to that village!
+              const matchesVillage = !targetVillage || (c.villageName || '') === targetVillage;
+              if ((c.churchName === original || curNorm === normOrig) && matchesVillage) {
                 updatedCount++;
                 return { ...c, churchName: suggested };
               }
@@ -6251,12 +6314,13 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         setFuzzySuggestions(prev => prev.filter(s => (sugId ? s.id !== sugId : s.original !== original)));
 
         if (typeof window.notifySuccess === 'function') {
-          window.notifySuccess(`تم بنجاح تحويل "${original}" إلى "${suggested}" في جميع حالات الملف (${updatedCount} حالة)!`);
+          const scopeLabel = targetVillage ? ` (في قرية ${targetVillage})` : '';
+          window.notifySuccess(`تم بنجاح تحويل "${original}" إلى "${suggested}"${scopeLabel} في حالات الملف (${updatedCount} حالة)!`);
         }
       };
 
       // Adopt Excel's name (e.g. "فراخ") and globally rename old/typo name ("فريخ") across all past visits
-      const handleGlobalAdoptAndRename = (sugId, excelName, oldName, type) => {
+      const handleGlobalAdoptAndRename = (sugId, excelName, oldName, type, targetVillage = null, targetRegion = null) => {
         const normOld = (typeof normalizeArabicText === 'function' ? normalizeArabicText(oldName) : String(oldName).trim()).replace(/\s+/g, '');
         const normExcel = (typeof normalizeArabicText === 'function' ? normalizeArabicText(excelName) : String(excelName).trim()).replace(/\s+/g, '');
 
@@ -6271,7 +6335,8 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             }
             if (type === 'church') {
               const curNorm = (typeof normalizeArabicText === 'function' ? normalizeArabicText(c.churchName) : String(c.churchName).trim()).replace(/\s+/g, '');
-              if (c.churchName === oldName || c.churchName === excelName || curNorm === normOld || curNorm === normExcel) {
+              const matchesVillage = !targetVillage || (c.villageName || '') === targetVillage;
+              if ((c.churchName === oldName || c.churchName === excelName || curNorm === normOld || curNorm === normExcel) && matchesVillage) {
                 return { ...c, churchName: excelName };
               }
             }
@@ -6303,7 +6368,12 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
               }
               if (type === 'church') {
                 const curNorm = (typeof normalizeArabicText === 'function' ? normalizeArabicText(churchObj.churchName) : String(churchObj.churchName).trim()).replace(/\s+/g, '');
-                if (churchObj.churchName === oldName || curNorm === normOld) {
+                const curVillage = (churchObj.villageName || churchObj.village || '').trim();
+                const curReg = (churchObj.regionName || '').trim();
+                const matchesVillage = !targetVillage || curVillage === targetVillage;
+                const matchesReg = !targetRegion || curReg === targetRegion;
+
+                if ((churchObj.churchName === oldName || curNorm === normOld) && matchesVillage && matchesReg) {
                   churchObj.churchName = excelName;
                   visitChanged = true;
                 }
@@ -6358,6 +6428,49 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       // Dismiss a suggestion (keep original text)
       const handleDismissFuzzySuggestion = (sugId, original) => {
         setFuzzySuggestions(prev => prev.filter(s => (sugId ? s.id !== sugId : s.original !== original)));
+      };
+
+      // Cascade a church name to all cases belonging to the same village in this preview
+      const handleAskCascadeChurchToVillage = (churchName, villageName) => {
+        if (!churchName || !villageName) return;
+        const otherCasesCount = parsedCases.filter(c => (c.villageName || '') === villageName && (c.churchName || '') !== churchName).length;
+        if (otherCasesCount === 0) {
+          if (typeof window.notifyInfo === 'function') {
+            window.notifyInfo(`جميع حالات قرية "${villageName}" في هذا الملف مسجل لها نفس الكنيسة بالفعل.`);
+          }
+          return;
+        }
+
+        const msg = `هل تريد تعميم كنيسة "${churchName}" على باقي حالات قرية "${villageName}" في هذا الملف؟\n(سيتم تحديث ${otherCasesCount} حالة تلقائياً)`;
+        const doCascade = () => {
+          setParsedCases(prev => {
+            const next = prev.map(c => {
+              if ((c.villageName || '') === villageName) {
+                return { ...c, churchName: churchName };
+              }
+              return c;
+            });
+            broadcastLiveUpdate(next);
+            return next;
+          });
+          if (typeof window.notifySuccess === 'function') {
+            window.notifySuccess(`تم تعميم كنيسة "${churchName}" على جميع حالات قرية "${villageName}" (${otherCasesCount} حالة)!`);
+          }
+        };
+
+        if (typeof window.showConfirm === 'function') {
+          window.showConfirm({
+            title: `تعميم الكنيسة على مستوى القرية`,
+            message: msg,
+            confirmText: `نعم، عمّم على باقي القرية`,
+            cancelText: `لا، هذه الحالة فقط`,
+            onConfirm: doCascade
+          });
+        } else {
+          if (window.confirm(msg)) {
+            doCascade();
+          }
+        }
       };
 
       // Inline case deletion from preview table
@@ -6776,22 +6889,32 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                           <span className="text-gray-600">في الملف: <strong className="text-rose-700 font-sans">{sug.original}</strong></span>
                           <span>⬅️</span>
                           <span className="text-gray-800">هل تقصد: <strong className="text-emerald-700 font-sans">{sug.suggested}</strong>؟</span>
+                          {sug.villageName && (
+                            <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 rounded text-[10px] font-bold">
+                              🏘️ قرية: {sug.villageName}
+                            </span>
+                          )}
+                          {sug.regionName && (
+                            <span className="bg-gray-100 text-gray-700 px-1.5 py-0.2 rounded text-[10px]">
+                              📍 {sug.regionName}
+                            </span>
+                          )}
                           <span className="text-[10px] text-gray-400 font-sans">({sug.count} حالة • تطابق {sug.similarity}%)</span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                           <button
                             type="button"
-                            onClick={() => handleApplyFuzzySuggestion(sug.id, sug.original, sug.suggested, sug.type)}
+                            onClick={() => handleApplyFuzzySuggestion(sug.id, sug.original, sug.suggested, sug.type, sug.villageName, sug.regionName)}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1 rounded text-xs transition-colors flex items-center gap-1"
-                            title={`تغيير كل حالات الملف من "${sug.original}" إلى "${sug.suggested}"`}
+                            title={`تغيير حالات الملف من "${sug.original}" إلى "${sug.suggested}"`}
                           >
                             <span>✓ نعم، حوّل إلى "{sug.suggested}"</span>
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleGlobalAdoptAndRename(sug.id, sug.original, sug.suggested, sug.type)}
+                            onClick={() => handleGlobalAdoptAndRename(sug.id, sug.original, sug.suggested, sug.type, sug.villageName, sug.regionName)}
                             className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded text-xs transition-colors flex items-center gap-1 shadow-xs"
-                            title={`اعتماد اسم "${sug.original}" في هذا الملف وتعديل كل المشاريع السابقة المسجلة بـ "${sug.suggested}" إلى "${sug.original}"`}
+                            title={sug.type === 'church' ? `اعتماد اسم "${sug.original}" لهذه الكنيسة وتعديل القديم المسجل بـ "${sug.suggested}" لنفس القرية (${sug.villageName || ''}) في جميع الزيارات السابقة` : `اعتماد اسم "${sug.original}" في هذا الملف وتعديل كل المسجل بـ "${sug.suggested}" إلى "${sug.original}"`}
                           >
                             <span>🔄 اعتمد "{sug.original}" وعدّل القديم كله</span>
                           </button>
@@ -7045,6 +7168,17 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                     onChange={e => handleUpdatePreviewCase(c.id, 'churchName', e.target.value)}
                                     className={`w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#002f6c] text-gray-700 outline-none px-1 py-0.5 rounded font-medium ${!isController && isLiveActive ? 'cursor-not-allowed opacity-90' : ''}`}
                                   />
+                                  {c.churchName && c.villageName && (
+                                    <button
+                                      type="button"
+                                      tabIndex={-1}
+                                      onClick={() => handleAskCascadeChurchToVillage(c.churchName, c.villageName)}
+                                      className="text-amber-600 hover:text-amber-800 hover:bg-amber-100 p-0.5 rounded text-[11px] font-bold opacity-75 group-hover:opacity-100 transition-all ml-0.5"
+                                      title={`تعميم كنيسة "${c.churchName}" على جميع حالات قرية "${c.villageName}" في هذا الملف`}
+                                    >
+                                      ⚡
+                                    </button>
+                                  )}
                                   {c.churchName && (
                                     <button
                                       type="button"
@@ -14987,7 +15121,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790834642286";
+      const CLIENT_BUILD_ID = "1790835102790";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
