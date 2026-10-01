@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790840830907" />
+  <meta name="app-build-id" content="1790852103302" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -13970,6 +13970,254 @@ function UserProfileModal({ currentUser, onClose, onProfileUpdated }) {
 }
 
 // ================================================================
+// MODULE: components/UnifyNamesModal.js
+// ================================================================
+    function UnifyNamesModal({ allVisits, onUpdateVisit, onClose }) {
+      const activeVisits = (allVisits || []).filter(v => !v.isDeleted);
+
+      // Compute similarity (Levenshtein)
+      const getSim = (a, b) => {
+        const s1 = String(a).trim().replace(/\s+/g, ' ');
+        const s2 = String(b).trim().replace(/\s+/g, ' ');
+        if (!s1 || !s2) return 0;
+        if (s1 === s2) return 1.0;
+        if (s1.includes(s2) || s2.includes(s1)) return Math.min(s1.length, s2.length) / Math.max(s1.length, s2.length);
+        const m = s1.length, n = s2.length;
+        const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+        for (let i = 0; i <= m; i++) dp[i][0] = i;
+        for (let j = 0; j <= n; j++) dp[0][j] = j;
+        for (let i = 1; i <= m; i++)
+          for (let j = 1; j <= n; j++)
+            dp[i][j] = s1[i-1] === s2[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+        return Math.max(0, 1 - dp[m][n] / Math.max(m, n));
+      };
+
+      // Normalize Arabic for comparison
+      const norm = (s) => {
+        if (!s) return '';
+        return String(s).trim()
+          .replace(/[أإآا]/g, 'ا')
+          .replace(/[ةه]/g, 'ه')
+          .replace(/[يى]/g, 'ي')
+          .replace(/\s+/g, ' ')
+          .replace(/^ال/, '');
+      };
+
+      // Collect all unique project types with counts
+      const projectCounts = {};
+      const churchCounts = {};
+
+      activeVisits.forEach(v => {
+        (v.churches || []).forEach(ch => {
+          const cName = (ch.churchName || '').trim();
+          if (cName && cName !== 'كنيسة عامة') {
+            churchCounts[cName] = (churchCounts[cName] || 0) + (ch.servantsGroups || []).reduce((sum, sg) => sum + (sg.cases || []).length, 0);
+          }
+          (ch.servantsGroups || []).forEach(sg => {
+            (sg.cases || []).forEach(c => {
+              const pType = (c.executedProjectType || c.projectType || '').trim();
+              if (pType) projectCounts[pType] = (projectCounts[pType] || 0) + 1;
+            });
+          });
+        });
+      });
+
+      // Find similar pairs
+      const findPairs = (counts) => {
+        const names = Object.keys(counts);
+        const pairs = [];
+        const processed = new Set();
+
+        for (let i = 0; i < names.length; i++) {
+          if (processed.has(names[i])) continue;
+          const group = [names[i]];
+          for (let j = i + 1; j < names.length; j++) {
+            if (processed.has(names[j])) continue;
+            const sim = getSim(norm(names[i]), norm(names[j]));
+            if (sim >= 0.60 && names[i].trim() !== names[j].trim()) {
+              group.push(names[j]);
+              processed.add(names[j]);
+            }
+          }
+          if (group.length > 1) {
+            processed.add(names[i]);
+            pairs.push(group.map(n => ({ name: n, count: counts[n] || 0 })).sort((a, b) => b.count - a.count));
+          }
+        }
+        return pairs;
+      };
+
+      const projectPairs = React.useMemo(() => findPairs(projectCounts), [allVisits]);
+      const churchPairs = React.useMemo(() => findPairs(churchCounts), [allVisits]);
+
+      const [dismissed, setDismissed] = React.useState(new Set());
+
+      const handleUnify = (keepName, replaceName, type) => {
+        let updatedCount = 0;
+        const normReplace = norm(replaceName);
+
+        activeVisits.forEach(v => {
+          let changed = false;
+          const updatedChurches = (v.churches || []).map(ch => {
+            if (type === 'church') {
+              const curNorm = norm(ch.churchName || '');
+              if ((ch.churchName || '').trim() === replaceName.trim() || curNorm === normReplace) {
+                changed = true;
+                updatedCount++;
+                return { ...ch, churchName: keepName };
+              }
+            }
+            if (type === 'project') {
+              let churchChanged = false;
+              const updatedGroups = (ch.servantsGroups || []).map(sg => {
+                let groupChanged = false;
+                const updatedCases = (sg.cases || []).map(c => {
+                  const pType = c.executedProjectType || c.projectType || '';
+                  const curNorm = norm(pType);
+                  if (pType.trim() === replaceName.trim() || curNorm === normReplace) {
+                    groupChanged = true;
+                    churchChanged = true;
+                    changed = true;
+                    updatedCount++;
+                    return { ...c, projectType: keepName, executedProjectType: keepName };
+                  }
+                  return c;
+                });
+                return groupChanged ? { ...sg, cases: updatedCases } : sg;
+              });
+              if (churchChanged) return { ...ch, servantsGroups: updatedGroups };
+            }
+            return ch;
+          });
+          if (changed) onUpdateVisit({ ...v, churches: updatedChurches });
+        });
+
+        setDismissed(prev => new Set([...prev, `${type}__${replaceName}`]));
+        if (typeof window.notifySuccess === 'function') {
+          window.notifySuccess(`تم توحيد "${replaceName}" → "${keepName}" في ${updatedCount} حالة بنجاح!`);
+        }
+      };
+
+      const visibleProjectPairs = projectPairs.filter(group =>
+        group.some(g => !dismissed.has(`project__${g.name}`)) && group.length > 1
+      );
+      const visibleChurchPairs = churchPairs.filter(group =>
+        group.some(g => !dismissed.has(`church__${g.name}`)) && group.length > 1
+      );
+      const total = visibleProjectPairs.length + visibleChurchPairs.length;
+
+      const renderGroup = (group, type) => {
+        const icon = type === 'project' ? '💼' : '⛪';
+        const label = type === 'project' ? 'مشروع / نشاط' : 'كنيسة';
+        const colorClass = type === 'project' ? 'bg-purple-100 text-purple-900 border-purple-200' : 'bg-amber-100 text-amber-900 border-amber-200';
+
+        return (
+          <div key={group.map(g => g.name).join('|')} className="bg-white rounded-xl border border-gray-200 p-3.5 shadow-xs space-y-2.5">
+            <div className="flex items-center gap-2 text-xs">
+              <span className={`px-2 py-0.5 rounded font-bold border ${colorClass}`}>{icon} {label}</span>
+              <span className="text-gray-500">أسماء متشابهة — اختر الاسم الصحيح ليحل محل الباقي:</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {group.map(item => (
+                <div key={item.name} className="flex-1 min-w-[140px] bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-right">
+                  <div className="font-bold text-gray-900 text-sm leading-snug">{item.name}</div>
+                  <div className="text-[11px] text-gray-500 mt-0.5 font-sans">{item.count} حالة</div>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {group.filter(other => other.name !== item.name).map(other => (
+                      <button
+                        key={other.name}
+                        type="button"
+                        onClick={() => handleUnify(item.name, other.name, type)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-2 py-1 rounded transition-colors"
+                        title={`احتفظ بـ "${item.name}" واستبدل "${other.name}" في كل السجلات`}
+                      >
+                        ✓ احتفظ بهذا واحذف "{other.name}"
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => group.forEach(g => setDismissed(prev => new Set([...prev, `${type}__${g.name}`])))}
+              className="text-xs text-gray-400 hover:text-gray-600 underline mt-1"
+            >
+              تجاهل هذه المجموعة
+            </button>
+          </div>
+        );
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4" onClick={e => e.target === e.currentTarget && onClose()}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#002f6c] to-[#1a4a9f] text-white px-5 py-4 rounded-t-2xl flex items-center justify-between shrink-0">
+              <div>
+                <div className="font-bold text-base flex items-center gap-2">
+                  <span>🔗</span>
+                  <span>توحيد المسميات في قاعدة البيانات</span>
+                </div>
+                <div className="text-blue-200 text-xs mt-0.5">مسح وتجميع الأسماء المتشابهة لمشاريع وكنائس جميع الزيارات</div>
+              </div>
+              <button type="button" onClick={onClose} className="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="overflow-y-auto p-4 space-y-3 flex-1">
+              {total === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-3">✅</div>
+                  <div className="font-bold text-gray-800 text-sm">كل المسميات موحدة!</div>
+                  <div className="text-gray-500 text-xs mt-1">لم يتم اكتشاف أي أسماء متشابهة أو متكررة في قاعدة البيانات.</div>
+                </div>
+              ) : (
+                <>
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex items-start gap-2">
+                    <span className="text-base shrink-0">⚠️</span>
+                    <span>تم اكتشاف <strong>{total} مجموعة</strong> من الأسماء المتشابهة. اضغط "احتفظ بهذا" على الاسم الصحيح لتوحيد الكل في قاعدة البيانات فوراً.</span>
+                  </div>
+
+                  {visibleProjectPairs.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-xs font-bold text-purple-900 flex items-center gap-1.5 px-1">
+                        <span>💼</span><span>مشاريع / أنشطة ({visibleProjectPairs.length} مجموعة)</span>
+                      </div>
+                      {visibleProjectPairs.map(group => renderGroup(group, 'project'))}
+                    </div>
+                  )}
+
+                  {visibleChurchPairs.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      <div className="text-xs font-bold text-amber-900 flex items-center gap-1.5 px-1">
+                        <span>⛪</span><span>كنائس ({visibleChurchPairs.length} مجموعة)</span>
+                      </div>
+                      {visibleChurchPairs.map(group => renderGroup(group, 'church'))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3 border-t border-gray-100 flex justify-end shrink-0">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+// ================================================================
 // MODULE: components/GlobalSearchModal.js
 // ================================================================
     function GlobalSearchModal({ isOpen, onClose, allVisits, onNavigateToCase, onQuickPay }) {
@@ -14320,6 +14568,7 @@ function App() {
       const [collaboratorToast, setCollaboratorToast] = useState(null);
       const [dismissedSessionId, setDismissedSessionId] = useState(null);
       const [showOnlinePopover, setShowOnlinePopover] = useState(false);
+      const [showUnifyNamesModal, setShowUnifyNamesModal] = useState(false);
 
       const [quickActionModalCase, setQuickActionModalCase] = useState(null);
       const [currentVisitId, setCurrentVisitId] = useState(null);
@@ -15091,6 +15340,10 @@ function App() {
                 <button onClick={() => { setShowBackupModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-amber-900 bg-amber-50/70 hover:bg-amber-100 border-t border-b border-amber-200/60 font-bold">
                    <ShieldCheck size={20} className="text-amber-600" /> النسخ الاحتياطي وتاريخ الإصدارات
                 </button>
+                 <button onClick={() => { setShowUnifyNamesModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-teal-900 bg-teal-50/70 hover:bg-teal-100 border-b border-teal-200/60 font-bold">
+                    <Link size={20} className="text-teal-600" /> توحيد المسميات في قاعدة البيانات
+                 </button>
+
                 {currentUser && currentUser.role === 'admin' && (
                   <button onClick={() => { setShowUsersModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-purple-900 bg-purple-50/70 hover:bg-purple-100 border-b border-purple-200/60 font-bold">
                     <Users size={20} className="text-purple-600" />
@@ -15219,7 +15472,14 @@ function App() {
                onQuickPay={handleQuickPay}
              />
            )}
-           {quickActionModalCase && (
+           {showUnifyNamesModal && (
+              <UnifyNamesModal
+                allVisits={allVisits}
+                onUpdateVisit={(upd) => safeUpdateVisit(upd, 'unifyNames')}
+                onClose={() => setShowUnifyNamesModal(false)}
+              />
+            )}
+            {quickActionModalCase && (
              <InstallmentModal
                caseObj={quickActionModalCase.caseObj}
                churchName={quickActionModalCase.churchName}
@@ -15463,7 +15723,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790840830907";
+      const CLIENT_BUILD_ID = "1790852103302";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
