@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790833814496" />
+  <meta name="app-build-id" content="1790834550327" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -5880,6 +5880,15 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         return () => unsub();
       }, [currentUser]);
 
+      // تنظيف تلقائي لأي جلسة بث معلقة سابقة إذا كان المستخدم بمفرده في التطبيق
+      useEffect(() => {
+        if (typeof CollaborationService !== 'undefined') {
+          if (!onlineCollaborators || onlineCollaborators.length === 0) {
+            CollaborationService.endLiveSession().catch(() => {});
+          }
+        }
+      }, []);
+
       // Broadcast changes if current user is the active live controller
       const broadcastLiveUpdate = (updatedCases, extra = {}) => {
         if (isLiveActive && isController && typeof CollaborationService !== 'undefined') {
@@ -6205,69 +6214,77 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 
       // Apply a fuzzy unification suggestion (e.g. replace Excel's original with existing suggested)
       const handleApplyFuzzySuggestion = (sugId, original, suggested, type) => {
-        const normOrig = typeof normalizeArabicText === 'function' ? normalizeArabicText(original) : String(original).trim();
+        const normOrig = (typeof normalizeArabicText === 'function' ? normalizeArabicText(original) : String(original).trim()).replace(/\s+/g, '');
         setAppliedMappings(prev => ({ ...prev, [original]: suggested }));
         let updatedCount = 0;
-        setParsedCases(prev => prev.map(c => {
-          if (type === 'church') {
-            const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(c.churchName) : String(c.churchName).trim();
-            if (c.churchName === original || curNorm === normOrig) {
-              updatedCount++;
-              return { ...c, churchName: suggested };
+        setParsedCases(prev => {
+          const next = prev.map(c => {
+            if (type === 'church') {
+              const curNorm = (typeof normalizeArabicText === 'function' ? normalizeArabicText(c.churchName) : String(c.churchName).trim()).replace(/\s+/g, '');
+              if (c.churchName === original || curNorm === normOrig) {
+                updatedCount++;
+                return { ...c, churchName: suggested };
+              }
             }
-          }
-          if (type === 'region') {
-            const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(c.regionName) : String(c.regionName).trim();
-            if (c.regionName === original || curNorm === normOrig) {
-              updatedCount++;
-              return { ...c, regionName: suggested };
+            if (type === 'region') {
+              const curNorm = (typeof normalizeArabicText === 'function' ? normalizeArabicText(c.regionName) : String(c.regionName).trim()).replace(/\s+/g, '');
+              if (c.regionName === original || curNorm === normOrig) {
+                updatedCount++;
+                return { ...c, regionName: suggested };
+              }
             }
-          }
-          if (type === 'project') {
-            const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(c.projectType) : String(c.projectType).trim();
-            if (c.projectType === original || curNorm === normOrig) {
-              updatedCount++;
-              return { ...c, projectType: suggested };
+            if (type === 'project') {
+              const curNorm = (typeof normalizeArabicText === 'function' ? normalizeArabicText(c.projectType) : String(c.projectType).trim()).replace(/\s+/g, '');
+              if (c.projectType === original || curNorm === normOrig) {
+                updatedCount++;
+                return { ...c, projectType: suggested };
+              }
             }
-          }
-          return c;
-        }));
+            return c;
+          });
+          broadcastLiveUpdate(next);
+          return next;
+        });
 
         // Remove suggestion after applied
         setFuzzySuggestions(prev => prev.filter(s => (sugId ? s.id !== sugId : s.original !== original)));
 
         if (typeof window.notifySuccess === 'function') {
-          window.notifySuccess(`تم بنجاح تحويل "${original}" إلى "${suggested}" في جميع حالات الملف!`);
+          window.notifySuccess(`تم بنجاح تحويل "${original}" إلى "${suggested}" في جميع حالات الملف (${updatedCount} حالة)!`);
         }
       };
 
       // Adopt Excel's name (e.g. "فراخ") and globally rename old/typo name ("فريخ") across all past visits
       const handleGlobalAdoptAndRename = (sugId, excelName, oldName, type) => {
-        const normOld = typeof normalizeArabicText === 'function' ? normalizeArabicText(oldName) : String(oldName).trim();
-        const normExcel = typeof normalizeArabicText === 'function' ? normalizeArabicText(excelName) : String(excelName).trim();
+        const normOld = (typeof normalizeArabicText === 'function' ? normalizeArabicText(oldName) : String(oldName).trim()).replace(/\s+/g, '');
+        const normExcel = (typeof normalizeArabicText === 'function' ? normalizeArabicText(excelName) : String(excelName).trim()).replace(/\s+/g, '');
 
-        // 1. Keep excelName in parsedCases
-        setParsedCases(prev => prev.map(c => {
-          if (type === 'project') {
-            const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(c.projectType) : String(c.projectType).trim();
-            if (c.projectType === oldName || c.projectType === excelName || curNorm === normOld || curNorm === normExcel) {
-              return { ...c, projectType: excelName };
+        // 1. Keep excelName in parsedCases and normalize across all rows
+        setParsedCases(prev => {
+          const next = prev.map(c => {
+            if (type === 'project') {
+              const curNorm = (typeof normalizeArabicText === 'function' ? normalizeArabicText(c.projectType) : String(c.projectType).trim()).replace(/\s+/g, '');
+              if (c.projectType === oldName || c.projectType === excelName || curNorm === normOld || curNorm === normExcel) {
+                return { ...c, projectType: excelName };
+              }
             }
-          }
-          if (type === 'church') {
-            const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(c.churchName) : String(c.churchName).trim();
-            if (c.churchName === oldName || c.churchName === excelName || curNorm === normOld || curNorm === normExcel) {
-              return { ...c, churchName: excelName };
+            if (type === 'church') {
+              const curNorm = (typeof normalizeArabicText === 'function' ? normalizeArabicText(c.churchName) : String(c.churchName).trim()).replace(/\s+/g, '');
+              if (c.churchName === oldName || c.churchName === excelName || curNorm === normOld || curNorm === normExcel) {
+                return { ...c, churchName: excelName };
+              }
             }
-          }
-          if (type === 'region') {
-            const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(c.regionName) : String(c.regionName).trim();
-            if (c.regionName === oldName || c.regionName === excelName || curNorm === normOld || curNorm === normExcel) {
-              return { ...c, regionName: excelName };
+            if (type === 'region') {
+              const curNorm = (typeof normalizeArabicText === 'function' ? normalizeArabicText(c.regionName) : String(c.regionName).trim()).replace(/\s+/g, '');
+              if (c.regionName === oldName || c.regionName === excelName || curNorm === normOld || curNorm === normExcel) {
+                return { ...c, regionName: excelName };
+              }
             }
-          }
-          return c;
-        }));
+            return c;
+          });
+          broadcastLiveUpdate(next);
+          return next;
+        });
 
         // 2. Globally update all existing visits in the system if onUpdateVisit provided
         if (typeof onUpdateVisit === 'function' && Array.isArray(allVisits)) {
@@ -6277,27 +6294,29 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             const updatedChurches = (v.churches || []).map(ch => {
               let churchObj = { ...ch };
               if (type === 'region') {
-                const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(churchObj.regionName) : String(churchObj.regionName).trim();
+                const curNorm = (typeof normalizeArabicText === 'function' ? normalizeArabicText(churchObj.regionName) : String(churchObj.regionName).trim()).replace(/\s+/g, '');
                 if (churchObj.regionName === oldName || curNorm === normOld) {
                   churchObj.regionName = excelName;
                   visitChanged = true;
                 }
               }
               if (type === 'church') {
-                const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(churchObj.churchName) : String(churchObj.churchName).trim();
+                const curNorm = (typeof normalizeArabicText === 'function' ? normalizeArabicText(churchObj.churchName) : String(churchObj.churchName).trim()).replace(/\s+/g, '');
                 if (churchObj.churchName === oldName || curNorm === normOld) {
                   churchObj.churchName = excelName;
                   visitChanged = true;
                 }
               }
               if (type === 'project') {
+                let churchHadProjectChange = false;
                 const updatedGroups = (churchObj.servantsGroups || []).map(sg => {
                   let groupChanged = false;
                   const updatedCases = (sg.cases || []).map(c => {
                     const curPType = c.executedProjectType || c.projectType;
-                    const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(curPType) : String(curPType).trim();
+                    const curNorm = (typeof normalizeArabicText === 'function' ? normalizeArabicText(curPType) : String(curPType).trim()).replace(/\s+/g, '');
                     if (curPType === oldName || curNorm === normOld) {
                       groupChanged = true;
+                      churchHadProjectChange = true;
                       visitChanged = true;
                       return {
                         ...c,
@@ -6309,7 +6328,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   });
                   return groupChanged ? { ...sg, cases: updatedCases } : sg;
                 });
-                if (groupChanged || visitChanged) {
+                if (churchHadProjectChange || visitChanged) {
                   churchObj.servantsGroups = updatedGroups;
                 }
               }
@@ -6640,8 +6659,8 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 </div>
               </div>
 
-              {/* LIVE CO-PILOT BANNER (المتحكم ووضع المشاهدة وتبديل الكنترول) */}
-              {isLiveActive && (
+              {/* LIVE CO-PILOT BANNER (المتحكم ووضع المشاهدة وتبديل الكنترول) - يظهر فقط في حال وجود متصلين فعليين */}
+              {isLiveActive && (onlineCollaborators || []).length > 0 && (
                 <div className="bg-gradient-to-r from-rose-50 via-amber-50 to-indigo-50 border-2 border-rose-300 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-sm animate-fade-in">
                   <div className="flex items-center gap-2.5">
                     <span className="relative flex h-3 w-3">
@@ -14967,7 +14986,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790833814496";
+      const CLIENT_BUILD_ID = "1790834550327";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
