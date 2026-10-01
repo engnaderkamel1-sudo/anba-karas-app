@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23001f4c'/%3E%3Ccircle cx='50' cy='45' r='28' fill='none' stroke='%23d4af37' stroke-width='3'/%3E%3Cpath d='M50 25 V55 M35 38 H65' stroke='%23d4af37' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30 100 C30 70, 70 70, 70 100' fill='%23d4af37'/%3E%3C/svg%3E" />
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790833515975" />
+  <meta name="app-build-id" content="1790833814496" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -11998,37 +11998,49 @@ const AuthService = (() => {
 // ================================================================
 // MODULE: services/collaborationService.js
 // ================================================================
-    // --- COLLABORATION & PRESENCE SERVICE ---
-    // Manages online user presence and real-time live excel co-pilot sessions
+    // --- COLLABORATION & GLOBAL SCREEN SHARING SERVICE ---
+    // Manages online user presence, login notifications, and full-screen state mirroring
     const CollaborationService = {
       presenceInterval: null,
-      sessionDocRef: null,
+      scrollThrottleTimer: null,
+      knownCollaborators: new Set(),
+      hasInitializedPresence: false,
 
-      // Register current user as active and heartbeat every 90 seconds
-      startPresence(user) {
+      // Register current user as active with their current page tab and ping every 30 seconds
+      startPresence(user, currentTab = 'execution') {
         if (!db || !user || !user.email) return;
         const safeId = user.email.replace(/[.@]/g, '_');
         const userRef = db.collection('app_collaborators').doc(safeId);
 
-        const ping = () => {
+        const ping = (tab) => {
           userRef.set({
             email: user.email,
             name: user.name || user.email.split('@')[0],
             role: user.role || 'servant',
+            currentTab: tab || currentTab,
             lastActive: Date.now()
           }, { merge: true }).catch(err => console.warn('Presence ping err:', err));
         };
 
-        ping();
+        ping(currentTab);
         if (this.presenceInterval) clearInterval(this.presenceInterval);
-        this.presenceInterval = setInterval(ping, 90000);
+        this.presenceInterval = setInterval(() => ping(window.__currentActiveTab || currentTab), 30000);
 
-        // Remove presence on window unload if possible
+        // Remove presence on window unload
         window.addEventListener('beforeunload', () => {
           try {
             userRef.delete();
           } catch(e) {}
         });
+      },
+
+      updateCurrentTab(user, tab) {
+        if (!db || !user || !user.email) return;
+        const safeId = user.email.replace(/[.@]/g, '_');
+        db.collection('app_collaborators').doc(safeId).set({
+          currentTab: tab,
+          lastActive: Date.now()
+        }, { merge: true }).catch(() => {});
       },
 
       stopPresence(user) {
@@ -12042,8 +12054,8 @@ const AuthService = (() => {
         }
       },
 
-      // Listen for other online collaborators active within last 3 minutes
-      listenToOnlineCollaborators(currentUser, onUpdate) {
+      // Listen for other online collaborators active within last 2 minutes and notify when someone joins
+      listenToOnlineCollaborators(currentUser, onUpdate, onUserJoined) {
         if (!db) return () => {};
         const safeCurrentId = currentUser?.email ? currentUser.email.replace(/[.@]/g, '_') : '';
 
@@ -12052,56 +12064,93 @@ const AuthService = (() => {
           const activeList = [];
           snap.forEach(doc => {
             const data = doc.data();
-            // Active if pinged in last 180 seconds and not current user
-            if (doc.id !== safeCurrentId && data.lastActive && (now - data.lastActive < 180000)) {
+            // Active if pinged in last 90 seconds and not current user
+            if (doc.id !== safeCurrentId && data.lastActive && (now - data.lastActive < 90000)) {
               activeList.push({ id: doc.id, ...data });
+
+              // Detect newly entered user
+              if (this.hasInitializedPresence && !this.knownCollaborators.has(doc.id)) {
+                if (typeof onUserJoined === 'function') {
+                  onUserJoined({ id: doc.id, ...data });
+                }
+              }
+              this.knownCollaborators.add(doc.id);
             }
           });
+
+          // Clean up users who went offline from known set
+          const currentActiveIds = new Set(activeList.map(a => a.id));
+          this.knownCollaborators.forEach(id => {
+            if (!currentActiveIds.has(id)) this.knownCollaborators.delete(id);
+          });
+
+          this.hasInitializedPresence = true;
           onUpdate(activeList);
         }, err => console.warn('Collaborators listen err:', err));
       },
 
-      // Listen for incoming live Excel session invitations
-      listenToLiveExcelSession(onSessionUpdate) {
+      // --- SCREEN SHARING & CO-BROWSING SESSION ---
+
+      // Listen to the active global screen share session
+      listenToScreenShareSession(onSessionUpdate) {
         if (!db) return () => {};
-        return db.collection('app_live_sessions').doc('excel_copilot').onSnapshot(snap => {
+        return db.collection('app_live_sessions').doc('screen_share').onSnapshot(snap => {
           if (snap.exists) {
             onSessionUpdate(snap.data());
           } else {
             onSessionUpdate(null);
           }
-        }, err => console.warn('Live session listen err:', err));
+        }, err => console.warn('Screen share session listen err:', err));
       },
 
-      // Start or broadcast a live Excel session
-      async startLiveSession(hostUser, sessionData) {
+      // Start broadcasting screen share to all or targeted user
+      async startScreenShare(hostUser, initialTab, targetUser = null) {
         if (!db || !hostUser) return;
-        const ref = db.collection('app_live_sessions').doc('excel_copilot');
+        const ref = db.collection('app_live_sessions').doc('screen_share');
         await ref.set({
-          ...sessionData,
           hostEmail: hostUser.email,
           hostName: hostUser.name || hostUser.email.split('@')[0],
           controllerEmail: hostUser.email,
           controllerName: hostUser.name || hostUser.email.split('@')[0],
+          targetEmail: targetUser ? targetUser.email : null,
+          targetName: targetUser ? (targetUser.name || targetUser.email.split('@')[0]) : 'الجميع',
+          currentTab: initialTab || 'execution',
+          activeModal: null, // modal name or null
+          activeCaseId: null, // if reviewing a specific case
+          scrollY: window.scrollY || 0,
           status: 'active',
           updatedAt: Date.now()
         });
       },
 
-      // Update session payload (parsedCases, custom location, date, etc.)
-      async updateLiveSessionData(data) {
+      // Update screen state (tab change, modal open/close, case selection)
+      async updateScreenState(state) {
         if (!db) return;
-        const ref = db.collection('app_live_sessions').doc('excel_copilot');
+        const ref = db.collection('app_live_sessions').doc('screen_share');
         await ref.set({
-          ...data,
+          ...state,
           updatedAt: Date.now()
         }, { merge: true });
       },
 
-      // Pass control to another collaborator
+      // Send scroll position with throttling (100ms)
+      broadcastScroll(scrollY) {
+        if (!db) return;
+        if (this.scrollThrottleTimer) return;
+        this.scrollThrottleTimer = setTimeout(() => {
+          this.scrollThrottleTimer = null;
+          const ref = db.collection('app_live_sessions').doc('screen_share');
+          ref.set({
+            scrollY: Math.round(scrollY),
+            updatedAt: Date.now()
+          }, { merge: true }).catch(() => {});
+        }, 120);
+      },
+
+      // Pass control to another user
       async passControl(targetUser) {
         if (!db || !targetUser) return;
-        const ref = db.collection('app_live_sessions').doc('excel_copilot');
+        const ref = db.collection('app_live_sessions').doc('screen_share');
         await ref.update({
           controllerEmail: targetUser.email,
           controllerName: targetUser.name || targetUser.email.split('@')[0],
@@ -12109,13 +12158,13 @@ const AuthService = (() => {
         });
       },
 
-      // Terminate live session
-      async endLiveSession() {
+      // End screen sharing session
+      async endScreenShare() {
         if (!db) return;
         try {
-          await db.collection('app_live_sessions').doc('excel_copilot').delete();
+          await db.collection('app_live_sessions').doc('screen_share').delete();
         } catch(e) {
-          console.warn('End session err:', e);
+          console.warn('End screen share err:', e);
         }
       }
     };
@@ -13779,6 +13828,28 @@ function App() {
       const [showExportModal, setShowExportModal] = useState(false);
       const [exportVisitData, setExportVisitData] = useState(null);
       
+      
+      // Sync scroll position when controller in active screen share session
+      useEffect(() => {
+        if (!activeScreenShare || !isScreenShareController) return;
+        const handleScroll = () => {
+          CollaborationService.broadcastScroll(window.scrollY);
+        };
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+      }, [activeScreenShare, isScreenShareController]);
+
+      // Broadcast tab change when controller in screen share
+      const switchTab = (tab) => {
+        setActiveTab(tab);
+        window.__currentActiveTab = tab;
+        setIsSidebarOpen(false);
+        if (currentUser) CollaborationService.updateCurrentTab(currentUser, tab);
+        if (activeScreenShare && isScreenShareController) {
+          CollaborationService.updateScreenState({ currentTab: tab });
+        }
+      };
+
       const openExportModal = (visitData) => {
          setExportVisitData(visitData);
          setShowExportModal(true);
@@ -13817,6 +13888,9 @@ function App() {
       const [pendingServantsCount, setPendingServantsCount] = useState(0);
       const [onlineCollaborators, setOnlineCollaborators] = useState([]);
       const [incomingLiveSession, setIncomingLiveSession] = useState(null);
+      const [activeScreenShare, setActiveScreenShare] = useState(null);
+      const [isScreenShareController, setIsScreenShareController] = useState(false);
+      const [collaboratorToast, setCollaboratorToast] = useState(null);
       const [dismissedSessionId, setDismissedSessionId] = useState(null);
 
       const [quickActionModalCase, setQuickActionModalCase] = useState(null);
@@ -14301,6 +14375,113 @@ function App() {
             </div>
           </nav>
 
+          
+          {/* 1. NOTIFICATION BANNER WHEN SOMEONE ENTERS THE APP */}
+          {collaboratorToast && (!activeScreenShare || activeScreenShare.status !== 'active') && (
+            <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-[#002f6c] text-white shadow-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-16 z-30 animate-fade-in border-b-2 border-amber-400">
+              <div className="flex items-center gap-3">
+                <span className="relative flex h-3.5 w-3.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
+                </span>
+                <div className="text-xs sm:text-sm">
+                  <span>🔔 الخادم </span>
+                  <strong className="text-amber-300 font-bold">{collaboratorToast.name || collaboratorToast.email}</strong>
+                  <span> دخل التطبيق الآن متواجداً في </span>
+                  <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-bold text-amber-200">{collaboratorToast.currentTab === 'installments' ? 'متابعة الأقساط' : collaboratorToast.currentTab === 'entry' ? 'تسجيل زيارة' : collaboratorToast.currentTab === 'analytics' ? 'التحليلات' : 'متابعة التنفيذ'}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    CollaborationService.startScreenShare(currentUser, activeTab, collaboratorToast);
+                    setCollaboratorToast(null);
+                    if (typeof window.notifySuccess === 'function') {
+                      window.notifySuccess('تم بدء مشاركة الشاشة وبث شاشتك له بنجاح!');
+                    }
+                  }}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-blue-950 font-bold text-xs px-3.5 py-1.5 rounded-lg shadow transition-all active:scale-95 flex items-center gap-1.5"
+                >
+                  <span>📺 بدء مشاركة الشاشة معه</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCollaboratorToast(null)}
+                  className="text-white/80 hover:text-white text-xs px-2 py-1 rounded hover:bg-white/10"
+                >
+                  ✕ إغلاق
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 2. LIVE ACTIVE SCREEN SHARE FLOATING BAR (محاكاة الشاشة وتبديل الكنترول) */}
+          {activeScreenShare && (
+            <div className="bg-gradient-to-r from-red-600 via-rose-700 to-indigo-800 text-white shadow-2xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-16 z-30 animate-fade-in border-b-2 border-red-300">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-300 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-400"></span>
+                </span>
+                <div className="text-xs sm:text-sm">
+                  <span className="font-bold bg-white/20 px-2 py-0.5 rounded-full text-[11px] ml-2">🔴 بث شاشة مباشر</span>
+                  <span>المتحكم بالتنقل والتعديل حالياً: </span>
+                  <strong className="text-amber-300 font-bold underline">{activeScreenShare.controllerName || activeScreenShare.controllerEmail}</strong>
+                  {isScreenShareController ? ' (أنت تقود الشاشة ويراك الآخرون)' : ' (أنت تشاهد شاشته وسكروله لحظياً)'}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* تسليم التحكم أو طلبه */}
+                {isScreenShareController ? (
+                  (onlineCollaborators || []).map(collab => (
+                    <button
+                      key={collab.id}
+                      type="button"
+                      onClick={() => {
+                        CollaborationService.passControl(collab);
+                        if (typeof window.notifySuccess === 'function') {
+                          window.notifySuccess(`تم تسليم التحكم لـ ${collab.name || collab.email}!`);
+                        }
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1"
+                    >
+                      <span>🔄 تسليم الكنترول لـ {collab.name || collab.email.split('@')[0]}</span>
+                    </button>
+                  ))
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      CollaborationService.passControl(currentUser);
+                      if (typeof window.notifySuccess === 'function') {
+                        window.notifySuccess('أصبحت أنت المتحكم بالشاشة الآن!');
+                      }
+                    }}
+                    className="bg-amber-400 hover:bg-amber-300 text-blue-950 text-xs font-bold px-3.5 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1"
+                  >
+                    <span>✋ استلام التحكم</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    CollaborationService.endScreenShare();
+                    if (typeof window.notifyInfo === 'function') {
+                      window.notifyInfo('تم إنهاء جلسة مشاركة الشاشة.');
+                    }
+                  }}
+                  className="bg-gray-900 hover:bg-black text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1"
+                >
+                  <span>🛑 إنهاء البث</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* INCOMING LIVE EXCEL CO-PILOT INVITATION BANNER */}
           {incomingLiveSession && dismissedSessionId !== incomingLiveSession.updatedAt && !showImportLegacyModal && (
             <div className="bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-700 text-white shadow-lg px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-16 z-20 animate-fade-in">
@@ -14373,7 +14554,7 @@ function App() {
                           {/* زيارة جديدة */}
                           <button 
                              type="button"
-                             onClick={() => { setActiveTab('entry'); setIsSidebarOpen(false); }} 
+                             onClick={() => { switchTab('entry'); }} 
                              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-right transition-all text-xs ${activeTab === 'entry' ? 'bg-[#002f6c] text-white font-bold shadow-sm' : 'bg-white hover:bg-blue-50 text-gray-800 border border-gray-100'}`}
                           >
                              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></div>
@@ -14398,16 +14579,16 @@ function App() {
                        </div>
                     )}
                  </div>
-                <button onClick={() => { setActiveTab('execution'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'execution' ? 'bg-amber-50 text-amber-900 border-r-4 border-amber-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
+                <button onClick={() => { switchTab('execution'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'execution' ? 'bg-amber-50 text-amber-900 border-r-4 border-amber-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
                    <Zap size={20} className="text-amber-600" /> متابعة واعتماد تنفيذ المشاريع
                 </button>
-                <button onClick={() => { setActiveTab('installments'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'installments' ? 'bg-emerald-50 text-emerald-900 border-r-4 border-emerald-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
+                <button onClick={() => { switchTab('installments'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'installments' ? 'bg-emerald-50 text-emerald-900 border-r-4 border-emerald-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
                    <DollarSign size={20} className="text-emerald-600" /> متابعة الأقساط والتحصيل الدوري
                 </button>
-                 <button onClick={() => { setActiveTab('analytics'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'analytics' ? 'bg-purple-50 text-purple-900 border-r-4 border-purple-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
+                 <button onClick={() => { switchTab('analytics'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'analytics' ? 'bg-purple-50 text-purple-900 border-r-4 border-purple-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
                     <BarChart3 size={20} className="text-purple-600" /> لوحة التحليلات ونسب المشاريع
                  </button>
-                <button onClick={() => { setActiveTab('archive'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'archive' || activeTab === 'archiveDetails' ? 'bg-blue-50 text-[#002f6c] border-r-4 border-[#002f6c] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                <button onClick={() => { switchTab('archive'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'archive' || activeTab === 'archiveDetails' ? 'bg-blue-50 text-[#002f6c] border-r-4 border-[#002f6c] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
                    <ListIcon size={20} /> أرشيف الزيارات والتقارير
                 </button>
 
@@ -14431,7 +14612,50 @@ function App() {
                     <span>تسجيل الخروج</span>
                   </button>
                 )}
-                <button onClick={() => { setActiveTab('trash'); setIsSidebarOpen(false); }} className={`flex items-center justify-between mt-auto px-6 py-4 text-right transition-colors border-t border-gray-100 ${activeTab === 'trash' ? 'bg-red-50 text-red-600 border-r-4 border-red-600 font-bold' : 'text-gray-600 hover:bg-red-50 hover:text-red-600'}`}>
+                
+                {/* المتواجدون أونلاين الآن ومشاركة الشاشة الفورية */}
+                <div className="mx-3 my-2 p-3 bg-gradient-to-br from-indigo-50 to-blue-50/60 rounded-xl border border-blue-200/80">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span>الخدام المتواجدون الآن ({onlineCollaborators.length})</span>
+                    </span>
+                  </div>
+
+                  {onlineCollaborators.length === 0 ? (
+                    <p className="text-[11px] text-gray-500 py-1">لا يوجد خدام آخرون متصلون حالياً</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                      {onlineCollaborators.map(c => (
+                        <div key={c.id} className="bg-white p-2 rounded-lg border border-blue-100 flex items-center justify-between text-xs shadow-xs">
+                          <div>
+                            <div className="font-bold text-gray-900 leading-tight">{c.name || c.email}</div>
+                            <div className="text-[10px] text-gray-500 mt-0.5">
+                              {c.currentTab === 'installments' ? 'متابعة الأقساط' : c.currentTab === 'entry' ? 'تسجيل زيارة' : c.currentTab === 'analytics' ? 'التحليلات' : 'متابعة التنفيذ'}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              CollaborationService.startScreenShare(currentUser, activeTab, c);
+                              setIsSidebarOpen(false);
+                              if (typeof window.notifySuccess === 'function') {
+                                window.notifySuccess(`تم بدء بث ومشاركة الشاشة مع ${c.name || c.email}!`);
+                              }
+                            }}
+                            className="bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                            title="مشاركة شاشتك الحالية معه ليرى نفس ما تراه"
+                          >
+                            <span>📺 شير</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <button onClick={() => { switchTab('trash'); }} className={`flex items-center justify-between mt-auto px-6 py-4 text-right transition-colors border-t border-gray-100 ${activeTab === 'trash' ? 'bg-red-50 text-red-600 border-r-4 border-red-600 font-bold' : 'text-gray-600 hover:bg-red-50 hover:text-red-600'}`}>
                    <div className="flex items-center gap-3"><Trash2 size={20} /> سلة المهملات</div>
                    {allVisits.filter(v => v.isDeleted).length > 0 && (
                        <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-bold font-sans">
@@ -14743,7 +14967,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790833515975";
+      const CLIENT_BUILD_ID = "1790833814496";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
