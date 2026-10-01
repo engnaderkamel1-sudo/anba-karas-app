@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790838978778" />
+  <meta name="app-build-id" content="1790839404770" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -14999,49 +14999,7 @@ function App() {
                   </div>
                 </button>
 
-                    <button 
-                       type="button"
-                       onClick={() => setIsAddMenuOpen(prev => !prev)} 
-                       className="w-full flex items-center justify-between px-3.5 py-3 text-right text-[#002f6c] hover:bg-blue-100/60 transition-colors font-bold"
-                    >
-                       <div className="flex items-center gap-2.5">
-                          <PlusCircle size={20} className="text-[#002f6c]" />
-                          <span className="text-sm font-bold text-[#002f6c]">إضافة زيارة</span>
-                       </div>
-                       {isAddMenuOpen ? <ChevronUp size={18} className="text-[#002f6c]" /> : <ChevronDown size={18} className="text-[#002f6c]" />}
-                    </button>
-
-                    {isAddMenuOpen && (
-                       <div className="p-2 pt-0 flex flex-col gap-1.5 border-t border-blue-100">
-                          {/* زيارة جديدة */}
-                          <button 
-                             type="button"
-                             onClick={() => { switchTab('entry'); }} 
-                             className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-right transition-all text-xs ${activeTab === 'entry' ? 'bg-[#002f6c] text-white font-bold shadow-sm' : 'bg-white hover:bg-blue-50 text-gray-800 border border-gray-100'}`}
-                          >
-                             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></div>
-                             <div className="flex flex-col text-right">
-                                <span className="font-bold">زيارة جديدة</span>
-                                <span className={`text-[10px] ${activeTab === 'entry' ? 'text-blue-100' : 'text-gray-500'}`}>تسجيل الحالات ميدانياً خطوة بخطوة</span>
-                             </div>
-                          </button>
-
-                          {/* زيارة قديمة */}
-                          <button 
-                             type="button"
-                             onClick={() => { setShowLegacyChoiceModal(true); setIsSidebarOpen(false); }} 
-                             className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-right transition-all text-xs bg-white hover:bg-blue-50 text-gray-800 border border-gray-100 hover:border-blue-200"
-                          >
-                             <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0"></div>
-                             <div className="flex flex-col text-right">
-                                <span className="font-bold">زيارة قديمة</span>
-                                <span className="text-[10px] text-gray-500">رفع من Excel أو إدخال يدوي</span>
-                             </div>
-                          </button>
-                       </div>
-                    )}
-                 </div>
-                <button onClick={() => { switchTab('execution'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'execution' ? 'bg-amber-50 text-amber-900 border-r-4 border-amber-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
+                    <button onClick={() => { switchTab('execution'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'execution' ? 'bg-amber-50 text-amber-900 border-r-4 border-amber-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
                    <Zap size={20} className="text-amber-600" /> متابعة واعتماد تنفيذ المشاريع
                 </button>
                 <button onClick={() => { switchTab('installments'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'installments' ? 'bg-emerald-50 text-emerald-900 border-r-4 border-emerald-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
@@ -15429,7 +15387,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790838978778";
+      const CLIENT_BUILD_ID = "1790839404770";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
