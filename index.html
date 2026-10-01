@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790839404770" />
+  <meta name="app-build-id" content="1790839748757" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -9394,18 +9394,7 @@ function InstallmentsTableView({
 
               {/* Actions: Add Legacy Project + Import from Excel + Export */}
               <div className="grid grid-cols-1 sm:grid-cols-1 gap-2 w-full lg:w-auto">
-                <button
-                  type="button"
-                  onClick={() => setShowImportLegacyModal(true)}
-                  className="bg-teal-700 hover:bg-teal-800 text-white py-2 px-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all text-right"
-                  title="استيراد مشاريع قديمة دفعة واحدة من ملف إكسيل"
-                >
-                  <Upload size={18} className="shrink-0 text-teal-100" />
-                  <div className="flex flex-col text-right">
-                    <span className="text-xs font-bold">استيراد نزلات (Excel)</span>
-                    <span className="text-[10px] text-teal-100 font-medium">رفع شيت نزلات سابقة</span>
-                  </div>
-                </button>
+                
 
                 <button
                   type="button"
@@ -12421,7 +12410,7 @@ const AuthService = (() => {
 
         ping(currentTab);
         if (this.presenceInterval) clearInterval(this.presenceInterval);
-        this.presenceInterval = setInterval(() => ping(window.__currentActiveTab || currentTab), 30000);
+        this.presenceInterval = setInterval(() => ping(window.__currentActiveTab || currentTab), 25000);
 
         // Remove presence on window unload
         window.addEventListener('beforeunload', () => {
@@ -12461,8 +12450,8 @@ const AuthService = (() => {
           const activeList = [];
           snap.forEach(doc => {
             const data = doc.data();
-            // Active if pinged in last 90 seconds and not current user
-            if (doc.id !== safeCurrentId && data.lastActive && (now - data.lastActive < 90000)) {
+            // Active if pinged in last 120 seconds (2 minutes) and not current user
+            if (doc.id !== safeCurrentId && data.lastActive && (now - data.lastActive < 120000)) {
               activeList.push({ id: doc.id, ...data });
 
               // Detect newly entered user
@@ -14319,6 +14308,7 @@ function App() {
       const [isScreenShareController, setIsScreenShareController] = useState(false);
       const [collaboratorToast, setCollaboratorToast] = useState(null);
       const [dismissedSessionId, setDismissedSessionId] = useState(null);
+      const [showOnlinePopover, setShowOnlinePopover] = useState(false);
 
       const [quickActionModalCase, setQuickActionModalCase] = useState(null);
       const [currentVisitId, setCurrentVisitId] = useState(null);
@@ -14406,10 +14396,20 @@ function App() {
         const unsubScreen = CollaborationService.listenToScreenShareSession((session) => {
           setActiveScreenShare(session);
           if (session && session.status === 'active') {
-            setIsScreenShareController(currentUser && session.controllerEmail === currentUser.email);
-            if (session.currentTab && session.currentTab !== activeTab) {
-              setActiveTab(session.currentTab);
+            const isMe = currentUser && session.controllerEmail === currentUser.email;
+            setIsScreenShareController(isMe);
+            if (!isMe) {
+              if (session.currentTab) {
+                setActiveTab(session.currentTab);
+                window.__currentActiveTab = session.currentTab;
+              }
+              if (typeof session.scrollY === 'number' && Math.abs(window.scrollY - session.scrollY) > 60) {
+                window.scrollTo({ top: session.scrollY, behavior: 'smooth' });
+              }
             }
+
+
+
           } else {
             setIsScreenShareController(false);
           }
@@ -14775,15 +14775,78 @@ function App() {
                        </div>
                      </div>
                    )}
-                                     <button 
-                     type="button"
-                     onClick={() => setShowLegacyChoiceModal(true)}
-                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/40 shadow-sm shrink-0"
-                     title="إضافة زيارة قديمة أو استيراد ملف إكسيل"
-                   >
-                     <Upload size={14} />
-                     <span>زيارة قديمة (Excel)</span>
-                   </button>
+                                                       {/* Ø´Ø§Ø±Ø© Ø§Ù„Ø®Ø¯Ø§Ù… Ø§Ù„Ù…ØªÙˆØ§Ø¬Ø¯ÙˆÙ† Ø§Ù„Ø¢Ù† ÙˆÙ…Ø´Ø§Ø±ÙƒØ© Ø§Ù„Ø´Ø§Ø´Ø© */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowOnlinePopover(prev => !prev)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border shadow-sm shrink-0 ${
+                        onlineCollaborators.length > 0 
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400/50 shadow-emerald-900/20' 
+                          : 'bg-white/10 hover:bg-white/20 text-blue-200 border-white/20'
+                      }`}
+                      title="Ø§Ù„Ø®Ø¯Ø§Ù… Ø§Ù„Ù…ØªÙˆØ§Ø¬Ø¯ÙˆÙ† Ø£ÙˆÙ†Ù„Ø§ÙŠÙ† Ø§Ù„Ø¢Ù† ÙˆÙ…Ø´Ø§Ø±ÙƒØ© Ø§Ù„Ø´Ø§Ø´Ø© Ø§Ù„ÙÙˆØ±ÙŠØ©"
+                    >
+                      <span className="relative flex h-2 w-2">
+                        {onlineCollaborators.length > 0 && (
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
+                        )}
+                        <span className={`relative inline-flex rounded-full h-2 w-2 ${onlineCollaborators.length > 0 ? 'bg-emerald-300' : 'bg-gray-400'}`}></span>
+                      </span>
+                      <span>ðŸŸ¢ {onlineCollaborators.length} Ù…ØªØµÙ„</span>
+                    </button>
+
+                    {showOnlinePopover && (
+                      <div className="absolute left-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-blue-100 z-50 text-right p-3 animate-fade-in text-gray-800">
+                        <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-2">
+                          <span className="text-xs font-bold text-[#002f6c] flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span>Ø§Ù„Ø®Ø¯Ø§Ù… Ø§Ù„Ù…ØªÙˆØ§Ø¬Ø¯ÙˆÙ† Ø§Ù„Ø¢Ù† ({onlineCollaborators.length})</span>
+                          </span>
+                          <button 
+                            type="button" 
+                            onClick={() => setShowOnlinePopover(false)}
+                            className="text-gray-400 hover:text-gray-600 text-xs px-1 font-bold"
+                          >
+                            âœ•
+                          </button>
+                        </div>
+
+                        {onlineCollaborators.length === 0 ? (
+                          <div className="py-4 text-center text-xs text-gray-500">
+                            Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ø®Ø¯Ø§Ù… Ù…ØªØµÙ„ÙˆÙ† Ø­Ø§Ù„ÙŠØ§Ù‹
+                          </div>
+                        ) : (
+                          <div className="space-y-2 max-h-56 overflow-y-auto">
+                            {onlineCollaborators.map(c => (
+                              <div key={c.id} className="bg-blue-50/60 p-2 rounded-lg border border-blue-100 flex items-center justify-between text-xs">
+                                <div>
+                                  <div className="font-bold text-gray-900 leading-tight">{c.name || c.email}</div>
+                                  <div className="text-[10px] text-gray-500 mt-0.5">
+                                    {c.currentTab === 'installments' ? 'Ù…ØªØ§Ø¨Ø¹Ø© Ø§Ù„Ø£Ù‚Ø³Ø§Ø·' : c.currentTab === 'entry' ? 'ØªØ³Ø¬ÙŠÙ„ Ø²ÙŠØ§Ø±Ø©' : c.currentTab === 'analytics' ? 'Ø§Ù„ØªØ­Ù„ÙŠÙ„Ø§Øª' : 'Ù…ØªØ§Ø¨Ø¹Ø© Ø§Ù„ØªÙ†ÙÙŠØ°'}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    CollaborationService.startScreenShare(currentUser, activeTab, c);
+                                    setShowOnlinePopover(false);
+                                    if (typeof window.notifySuccess === 'function') {
+                                      window.notifySuccess(`ØªÙ… Ø¨Ø¯Ø¡ Ø¨Ø« Ø§Ù„Ø´Ø§Ø´Ø© Ù…Ø¹ ${c.name || c.email}!`);
+                                    }
+                                  }}
+                                  className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-2 py-1 rounded shadow-xs transition-colors flex items-center gap-1"
+                                  title="Ù…Ø´Ø§Ø±ÙƒØ© Ø´Ø§Ø´ØªÙƒ Ø§Ù„Ø­Ø§Ù„ÙŠØ© Ù…Ø¹Ù‡"
+                                >
+                                  <span>ðŸ“º Ø´ÙŠØ±</span>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
 <button 
                     type="button"
                     onClick={() => setShowGlobalSearch(true)}
@@ -15387,7 +15450,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790839404770";
+      const CLIENT_BUILD_ID = "1790839748757";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
