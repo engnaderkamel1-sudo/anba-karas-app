@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790838649472" />
+  <meta name="app-build-id" content="1790838670804" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -9393,20 +9393,7 @@ function InstallmentsTableView({
               </div>
 
               {/* Actions: Add Legacy Project + Import from Excel + Export */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full lg:w-auto">
-                <button
-                  type="button"
-                  onClick={() => setShowAddLegacyModal(true)}
-                  className="bg-[#002f6c] hover:bg-[#001f4c] text-white py-2 px-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all text-right"
-                  title="إضافة نزلة / مشاريع سابقة يدوياً"
-                >
-                  <Plus size={18} className="shrink-0 text-blue-200" />
-                  <div className="flex flex-col text-right">
-                    <span className="text-xs font-bold">إضافة نزلة سابقة</span>
-                    <span className="text-[10px] text-blue-200 font-medium">تسجيل يدوي لحالة قديمة</span>
-                  </div>
-                </button>
-
+              <div className="grid grid-cols-1 sm:grid-cols-1 gap-2 w-full lg:w-auto">
                 <button
                   type="button"
                   onClick={() => setShowImportLegacyModal(true)}
@@ -9437,7 +9424,7 @@ function InstallmentsTableView({
           </div>
 
           {/* Global Aggregate Financial Metrics Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-1 lg:grid-cols-6 gap-3 sm:gap-4">
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
                 <span>إجمالي المصروف للمشاريع</span>
@@ -15442,7 +15429,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790838649472";
+      const CLIENT_BUILD_ID = "1790838670804";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
