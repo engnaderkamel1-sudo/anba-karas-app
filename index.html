@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1790852847800" />
+  <meta name="app-build-id" content="1791117897676" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -5975,7 +5975,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       const isLiveActive = liveSession && liveSession.status === 'active';
       const isController = !isLiveActive || (currentUser && liveSession.controllerEmail === currentUser.email);
 
-      // Local Draft State (لإمكانية إكمال المراجعة لاحقاً)
+      // Draft State (مزامنة المسودة سحابياً ومحلياً لإكمال المراجعة من الكمبيوتر أو الموبايل)
       const [draftInfo, setDraftInfo] = useState(() => {
         try {
           const raw = localStorage.getItem('legacy_import_draft');
@@ -5988,6 +5988,36 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         } catch(e) {}
         return null;
       });
+
+      // مفتاح المستند السحابي في الفايرستور الخاص بحساب المستخدم
+      const userDraftDocId = currentUser && currentUser.email ? `draft_${currentUser.email.replace(/[^a-zA-Z0-9]/g, '_')}` : 'draft_default_legacy_import';
+
+      // جلب المسودة السحابية من الفايرستور عند فتح النافذة
+      useEffect(() => {
+        if (!db) return;
+        const fetchCloudDraft = async () => {
+          try {
+            const docSnap = await db.collection('app_drafts').doc(userDraftDocId).get();
+            if (docSnap.exists) {
+              const data = docSnap.data();
+              if (data && Array.isArray(data.parsedCases) && data.parsedCases.length > 0) {
+                setDraftInfo(prev => {
+                  if (!prev || (data.savedAt && data.savedAt > (prev.savedAt || 0))) {
+                    try {
+                      localStorage.setItem('legacy_import_draft', JSON.stringify(data));
+                    } catch(err) {}
+                    return data;
+                  }
+                  return prev;
+                });
+              }
+            }
+          } catch(err) {
+            console.warn('Error fetching cloud draft:', err);
+          }
+        };
+        fetchCloudDraft();
+      }, [currentUser, userDraftDocId]);
 
       // Restore saved draft
       const handleRestoreDraft = () => {
@@ -6005,18 +6035,21 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         setDraftInfo(null);
       };
 
-      // Clear saved draft
+      // Clear saved draft (محلياً وسحابياً)
       const handleDiscardDraft = () => {
         try {
           localStorage.removeItem('legacy_import_draft');
         } catch(e) {}
+        if (db) {
+          db.collection('app_drafts').doc(userDraftDocId).delete().catch(() => {});
+        }
         setDraftInfo(null);
         if (typeof window.notifyInfo === 'function') {
           window.notifyInfo('تم مسح المسودة السابقة.');
         }
       };
 
-      // Save draft explicitly
+      // Save draft explicitly (حفظ فوري محلي وسحابي)
       const handleSaveDraftManually = () => {
         if (parsedCases.length === 0) {
           if (typeof window.notifyWarning === 'function') window.notifyWarning('لا توجد حالات لحفظها كمسودة حالياً.');
@@ -6031,18 +6064,22 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             targetVisitChoice,
             firstInstallmentDate,
             settlementOption,
+            userEmail: currentUser ? currentUser.email : '',
             savedAt: Date.now()
           };
           localStorage.setItem('legacy_import_draft', JSON.stringify(draftObj));
+          if (db) {
+            db.collection('app_drafts').doc(userDraftDocId).set(draftObj).catch(err => console.warn('Cloud draft set error:', err));
+          }
           if (typeof window.notifySuccess === 'function') {
-            window.notifySuccess(`تم حفظ المسودة بنجاح (${parsedCases.length} حالة)! يمكنك إغلاق النافذة والعودة لها في أي وقت.`);
+            window.notifySuccess(`تم حفظ المسودة بنجاح سحابياً ومحلياً (${parsedCases.length} حالة)! يمكنك فتحها من الموبايل أو أي جهاز.`);
           }
         } catch(e) {
           console.warn('Draft save err:', e);
         }
       };
 
-      // Auto-save draft on parsedCases changes (with debouncing)
+      // Auto-save draft on parsedCases changes (with debouncing - محلي وسحابي)
       useEffect(() => {
         if (parsedCases.length > 0) {
           const timer = setTimeout(() => {
@@ -6055,14 +6092,18 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 targetVisitChoice,
                 firstInstallmentDate,
                 settlementOption,
+                userEmail: currentUser ? currentUser.email : '',
                 savedAt: Date.now()
               };
               localStorage.setItem('legacy_import_draft', JSON.stringify(draftObj));
+              if (db) {
+                db.collection('app_drafts').doc(userDraftDocId).set(draftObj).catch(() => {});
+              }
             } catch(e) {}
-          }, 1000);
+          }, 1500);
           return () => clearTimeout(timer);
         }
-      }, [parsedCases, fileName, customVisitLocation, customVisitDate, targetVisitChoice, firstInstallmentDate, settlementOption]);
+      }, [parsedCases, fileName, customVisitLocation, customVisitDate, targetVisitChoice, firstInstallmentDate, settlementOption, userDraftDocId]);
 
       // Listen to real-time live session if active
       useEffect(() => {
@@ -6869,6 +6910,10 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         try {
           localStorage.removeItem('legacy_import_draft');
         } catch(e) {}
+
+        if (db) {
+          db.collection('app_drafts').doc(userDraftDocId).delete().catch(() => {});
+        }
 
         alert(`تم بنجاح اعتماد واستيراد (${formatNumber(parsedCases.length)}) مشروع وترحيلها لصفحة الأقساط!`);
         onClose();
@@ -15481,7 +15526,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1790852847800";
+      const CLIENT_BUILD_ID = "1791117897676";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
