@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1791202850275" />
+  <meta name="app-build-id" content="1791203287609" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -9504,7 +9504,7 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
         window.notifySuccess('تم تحديث بيانات الحالة بنجاح.');
       };
 
-      // Open edit visit modal (supports scope: 'all', 'region', 'church')
+      // Open edit visit modal (supports scope: 'all', 'region', 'church', 'custom_churches', 'custom_regions')
       const handleOpenEditVisit = (targetVisit, scope = 'all', regionName = '', churchId = '', churchName = '') => {
         if (!targetVisit) return;
         let defaultFirstDate = '';
@@ -9529,6 +9529,28 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
           defaultFirstDate = targetVisit.firstInstallmentDate || targetVisit.date || new Date().toISOString().split('T')[0];
         }
 
+        // Initialize maps for churches and regions with their currently configured dates
+        const churchDatesMap = {};
+        const regionDatesMap = {};
+
+        (targetVisit.churches || []).forEach(ch => {
+          let chDate = '';
+          for (const sg of (ch.servantsGroups || [])) {
+            for (const c of (sg.cases || [])) {
+              if (c.firstInstallmentDate) {
+                chDate = c.firstInstallmentDate;
+                break;
+              }
+            }
+            if (chDate) break;
+          }
+          churchDatesMap[ch.id] = chDate || defaultFirstDate;
+
+          if (ch.regionName && !regionDatesMap[ch.regionName]) {
+            regionDatesMap[ch.regionName] = chDate || defaultFirstDate;
+          }
+        });
+
         setEditingVisitInfo({
           visitId: targetVisit.id,
           location: targetVisit.location || '',
@@ -9536,10 +9558,12 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
           firstInstallmentDate: defaultFirstDate,
           applyFirstInstallmentToAll: true,
           notes: targetVisit.notes || '',
-          scopeType: scope, // 'all' | 'region' | 'church'
+          scopeType: scope, // 'all' | 'region' | 'church' | 'custom_churches' | 'custom_regions'
           selectedRegion: regionName,
           selectedChurchId: churchId,
-          selectedChurchName: churchName
+          selectedChurchName: churchName,
+          churchDatesMap,
+          regionDatesMap
         });
       };
 
@@ -9559,7 +9583,39 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
         const scope = editingVisitInfo.scopeType || 'all';
         let updatedChurches = targetVisit.churches || [];
 
-        if (editingVisitInfo.applyFirstInstallmentToAll && editingVisitInfo.firstInstallmentDate) {
+        if (scope === 'custom_churches') {
+          // Each church has its own date from churchDatesMap
+          updatedChurches = updatedChurches.map(ch => {
+            const chDate = (editingVisitInfo.churchDatesMap && editingVisitInfo.churchDatesMap[ch.id]) || editingVisitInfo.firstInstallmentDate;
+            if (!chDate) return ch;
+            return {
+              ...ch,
+              servantsGroups: (ch.servantsGroups || []).map(sg => ({
+                ...sg,
+                cases: (sg.cases || []).map(c => ({
+                  ...c,
+                  firstInstallmentDate: chDate
+                }))
+              }))
+            };
+          });
+        } else if (scope === 'custom_regions') {
+          // Each region has its own date from regionDatesMap
+          updatedChurches = updatedChurches.map(ch => {
+            const regDate = (editingVisitInfo.regionDatesMap && editingVisitInfo.regionDatesMap[ch.regionName]) || editingVisitInfo.firstInstallmentDate;
+            if (!regDate) return ch;
+            return {
+              ...ch,
+              servantsGroups: (ch.servantsGroups || []).map(sg => ({
+                ...sg,
+                cases: (sg.cases || []).map(c => ({
+                  ...c,
+                  firstInstallmentDate: regDate
+                }))
+              }))
+            };
+          });
+        } else if (editingVisitInfo.applyFirstInstallmentToAll && editingVisitInfo.firstInstallmentDate) {
           updatedChurches = updatedChurches.map(ch => {
             // Check scope filter
             const matchesRegion = scope !== 'region' || ch.regionName === editingVisitInfo.selectedRegion;
@@ -9593,11 +9649,15 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
 
         onUpdateVisit(updatedVisit);
         setEditingVisitInfo(null);
-        const scopeMsg = scope === 'region' 
-          ? `لمنطقة (${editingVisitInfo.selectedRegion})` 
-          : scope === 'church' 
-            ? `لكنيسة (${editingVisitInfo.selectedChurchName})` 
-            : 'للنزلة بالكامل';
+        const scopeMsg = scope === 'custom_churches'
+          ? 'لكل كنيسة بشكل مستقل'
+          : scope === 'custom_regions'
+            ? 'لكل منطقة بشكل مستقل'
+            : scope === 'region' 
+              ? `لمنطقة (${editingVisitInfo.selectedRegion})` 
+              : scope === 'church' 
+                ? `لكنيسة (${editingVisitInfo.selectedChurchName})` 
+                : 'للنزلة بالكامل';
         window.notifySuccess(`تم تحديث تاريخ الأقساط والبيانات بنجاح ${scopeMsg}.`);
       };
 
@@ -11002,18 +11062,23 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <span className="font-bold text-[#002f6c] text-xs flex items-center gap-1.5">
                           <span>🎯</span>
-                          <span>نطاق تطبيق تاريخ القسط:</span>
+                          <span>نطاق وطريقة تطبيق تاريخ القسط:</span>
                         </span>
                         <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white text-[#002f6c] border border-blue-300 shadow-xs">
                           {editingVisitInfo.scopeType === 'region' 
-                            ? `منطقة: ${editingVisitInfo.selectedRegion}` 
+                            ? `منطقة موحدة: ${editingVisitInfo.selectedRegion}` 
                             : editingVisitInfo.scopeType === 'church' 
-                              ? `كنيسة: ${editingVisitInfo.selectedChurchName}` 
-                              : 'النزلة بالكامل'}
+                              ? `كنيسة موحدة: ${editingVisitInfo.selectedChurchName}` 
+                              : editingVisitInfo.scopeType === 'custom_churches'
+                                ? 'جدول تواريخ لكل كنيسة'
+                                : editingVisitInfo.scopeType === 'custom_regions'
+                                  ? 'جدول تواريخ لكل منطقة'
+                                  : 'تاريخ موحد للنزلة بالكامل'}
                         </span>
                       </div>
                       
-                      <div className="grid grid-cols-3 gap-1.5 text-center">
+                      {/* Scope Type Tabs */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center">
                         <button
                           type="button"
                           onClick={() => setEditingVisitInfo(prev => ({ ...prev, scopeType: 'all' }))}
@@ -11038,7 +11103,7 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
                               : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
                           }`}
                         >
-                          📍 المنطقة
+                          📍 منطقة محددة
                         </button>
                         <button
                           type="button"
@@ -11058,7 +11123,18 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
                               : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
                           }`}
                         >
-                          ⛪ الكنيسة
+                          ⛪ كنيسة محددة
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingVisitInfo(prev => ({ ...prev, scopeType: 'custom_churches' }))}
+                          className={`py-1.5 px-2 rounded-lg font-bold text-xs transition-all border ${
+                            editingVisitInfo.scopeType === 'custom_churches'
+                              ? 'bg-indigo-700 text-white border-indigo-700 shadow-xs'
+                              : 'bg-white text-indigo-900 border-indigo-200 hover:bg-indigo-50'
+                          }`}
+                        >
+                          📋 تاريخ لكل كنيسة
                         </button>
                       </div>
 
@@ -11111,6 +11187,64 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
                           </div>
                         );
                       })()}
+
+                      {/* Comprehensive Multi-Church Table if scope is custom_churches */}
+                      {editingVisitInfo.scopeType === 'custom_churches' && (() => {
+                        const targetV = allVisits.find(v => v.id === editingVisitInfo.visitId);
+                        const chList = targetV?.churches || [];
+                        return (
+                          <div className="mt-3 pt-2.5 border-t border-blue-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-bold text-gray-800 text-xs">
+                                ⛪ حدد تاريخ أول قسط الخاص بكل كنيسة ({chList.length} كنيسة):
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const fillDate = editingVisitInfo.firstInstallmentDate;
+                                  if (!fillDate) return;
+                                  const newMap = {};
+                                  chList.forEach(ch => { newMap[ch.id] = fillDate; });
+                                  setEditingVisitInfo(prev => ({ ...prev, churchDatesMap: newMap }));
+                                }}
+                                className="text-[11px] font-bold text-blue-700 hover:text-blue-900 bg-white px-2 py-0.5 rounded-lg border border-blue-300"
+                              >
+                                تعميم تاريخ النزلة على الكل
+                              </button>
+                            </div>
+                            <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                              {chList.map(ch => (
+                                <div key={ch.id} className="flex items-center justify-between gap-2 p-1.5 bg-white rounded-xl border border-gray-200">
+                                  <div className="min-w-0 flex-1">
+                                    <span className="font-bold text-gray-900 block truncate text-xs">
+                                      {ch.churchName}
+                                    </span>
+                                    <span className="text-[10px] text-gray-500 block truncate">
+                                      {ch.regionName} {ch.villageName ? `• ${ch.villageName}` : ''}
+                                    </span>
+                                  </div>
+                                  <input
+                                    type="date"
+                                    required
+                                    value={(editingVisitInfo.churchDatesMap && editingVisitInfo.churchDatesMap[ch.id]) || editingVisitInfo.firstInstallmentDate || ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setEditingVisitInfo(prev => ({
+                                        ...prev,
+                                        churchDatesMap: {
+                                          ...(prev.churchDatesMap || {}),
+                                          [ch.id]: val
+                                        }
+                                      }));
+                                    }}
+                                    className="rounded-lg border border-gray-300 p-1 text-xs font-sans font-bold text-gray-800 outline-none focus:border-[#002f6c]"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Apply to cases checkbox */}
@@ -11128,7 +11262,9 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
                             ? `تحديث وتوحيد تاريخ أول قسط لجميع حالات منطقة (${editingVisitInfo.selectedRegion || 'المحددة'})`
                             : editingVisitInfo.scopeType === 'church'
                               ? `تحديث وتوحيد تاريخ أول قسط لجميع حالات كنيسة (${editingVisitInfo.selectedChurchName || 'المحددة'})`
-                              : 'تحديث وتوحيد تاريخ أول قسط لجميع حالات هذه النزلة بالكامل'}
+                              : editingVisitInfo.scopeType === 'custom_churches'
+                                ? 'تحديث وتطبيق التواريخ المحددة لكل كنيسة على حالاتها في خطوة واحدة'
+                                : 'تحديث وتوحيد تاريخ أول قسط لجميع حالات هذه النزلة بالكامل'}
                         </span>
                         <span className="text-[11px] text-emerald-700 block mt-0.5">
                           سيتم تحديث موعد استحقاق أول قسط لكافة مشاريع هذا النطاق وإعادة حساب المتأخرات بدقة.
@@ -16450,7 +16586,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1791202850275";
+      const CLIENT_BUILD_ID = "1791203287609";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
