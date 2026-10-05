@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1791193853726" />
+  <meta name="app-build-id" content="1791194120166" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -4447,6 +4447,20 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       const [newPaidDate, setNewPaidDate] = useState(() => new Date().toISOString().split('T')[0]);
       const [newNotes, setNewNotes] = useState('');
 
+      // State for editing firstInstallmentDate directly in modal
+      const [isEditingFirstDate, setIsEditingFirstDate] = useState(false);
+      const [tempFirstDate, setTempFirstDate] = useState(caseObj.firstInstallmentDate || '');
+
+      const handleSaveFirstDate = () => {
+        if (!tempFirstDate) {
+          window.notifyWarning('يرجى اختيار تاريخ صحيح.');
+          return;
+        }
+        onSavePayments(undefined, { firstInstallmentDate: tempFirstDate });
+        setIsEditingFirstDate(false);
+        window.notifySuccess('تم تحديث موعد استحقاق أول قسط للحالة بنجاح.');
+      };
+
       const handleAddPayment = (e) => {
         e.preventDefault();
         const amt = parseFloat(newAmount);
@@ -4775,17 +4789,57 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 border-t sm:border-t-0 sm:border-r border-gray-200 pt-2 sm:pt-0 sm:pr-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm shrink-0">
-                    🚀
-                  </div>
-                  <div>
-                    <div className="text-[11px] text-emerald-700 font-medium">تاريخ بداية السداد (أول قسط)</div>
-                    <div className="font-sans font-bold text-emerald-900 text-xs sm:text-sm">
-                      {firstDueDate}
+                {isEditingFirstDate ? (
+                  <div className="flex flex-col gap-1 border-t sm:border-t-0 sm:border-r border-emerald-300 pt-2 sm:pt-0 sm:pr-2.5 bg-emerald-50/70 p-2 rounded-xl">
+                    <span className="text-[11px] font-bold text-emerald-900">تعديل موعد أول قسط:</span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="date"
+                        value={tempFirstDate}
+                        onChange={(e) => setTempFirstDate(e.target.value)}
+                        className="rounded-lg border-2 border-emerald-400 p-1 text-xs font-sans font-bold text-emerald-950 outline-none w-full bg-white shadow-2xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveFirstDate}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-2 py-1 rounded-lg transition-colors shadow-2xs"
+                        title="حفظ التاريخ الجديد"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingFirstDate(false)}
+                        className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold px-2 py-1 rounded-lg transition-colors"
+                        title="إلغاء"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2 border-t sm:border-t-0 sm:border-r border-gray-200 pt-2 sm:pt-0 sm:pr-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm shrink-0">
+                        🚀
+                      </div>
+                      <div>
+                        <div className="text-[11px] text-emerald-700 font-medium">تاريخ بداية السداد (أول قسط)</div>
+                        <div className="font-sans font-bold text-emerald-900 text-xs sm:text-sm">
+                          {firstDueDate}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setTempFirstDate(caseObj.firstInstallmentDate || firstDueDate || ''); setIsEditingFirstDate(true); }}
+                      className="p-1 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors"
+                      title="تعديل موعد أول قسط"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2.5 border-t sm:border-t-0 sm:border-r border-gray-200 pt-2 sm:pt-0 sm:pr-2.5">
                   <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center font-bold text-sm shrink-0">
@@ -7759,6 +7813,25 @@ function InstallmentsGeoView({
   setEditingCaseInfo,
   handleDeleteCase
 }) {
+  const handleOpenEditCase = (item) => {
+    if (!setEditingCaseInfo || !item || !item.caseObj) return;
+    setEditingCaseInfo({
+      visitId: item.visitId,
+      churchId: item.churchId,
+      groupId: item.groupId,
+      caseObj: item.caseObj,
+      formValues: {
+        caseName: item.caseObj.caseName || item.caseObj.name || '',
+        nationalId: item.caseObj.nationalId || '',
+        projectType: item.caseObj.executedProjectType || item.caseObj.projectType || '',
+        projectValue: item.caseObj.executedProjectValue || item.caseObj.projectValue || 0,
+        installmentAmount: item.caseObj.executedInstallmentAmount || item.caseObj.installmentAmount || 0,
+        executionDate: item.caseObj.executionDate || '',
+        firstInstallmentDate: item.caseObj.firstInstallmentDate || '',
+        notes: item.caseObj.notes || ''
+      }
+    });
+  };
   return (
     <div className="space-y-3">
               
@@ -8045,14 +8118,24 @@ function InstallmentsGeoView({
                                                               )}
                                                             </td>
                                                             <td className="p-3 text-center">
-                                                              <button
-                                                                type="button"
-                                                                onClick={() => setActiveModalCaseInfo(item)}
-                                                                className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1 transition-colors mx-auto"
-                                                              >
-                                                                <span>💵</span>
-                                                                <span>سداد ومتابعة</span>
-                                                              </button>
+                                                              <div className="flex items-center justify-center gap-1">
+                                                                <button
+                                                                  type="button"
+                                                                  onClick={() => setActiveModalCaseInfo(item)}
+                                                                  className="bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1 transition-colors"
+                                                                >
+                                                                  <span>💵</span>
+                                                                  <span>سداد ومتابعة</span>
+                                                                </button>
+                                                                <button
+                                                                  type="button"
+                                                                  onClick={() => handleOpenEditCase(item)}
+                                                                  className="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold p-1.5 rounded-lg shadow-2xs flex items-center justify-center transition-colors"
+                                                                  title="تعديل بيانات الحالة ومبلغها وقسطها"
+                                                                >
+                                                                  <Edit2 size={13} className="text-amber-700" />
+                                                                </button>
+                                                              </div>
                                                             </td>
                                                           </tr>
                                                         );
@@ -9056,6 +9139,7 @@ function InstallmentsTableView({
 
       // State for editing a case
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
+      const [editingVisitInfo, setEditingVisitInfo] = useState(null);
 
       // Handle updating payments from InstallmentModal
       const handleSavePayments = (updatedPayments, caseMeta = {}) => {
@@ -9167,6 +9251,100 @@ function InstallmentsTableView({
         onUpdateVisit(updatedVisit);
         setEditingCaseInfo(null);
         window.notifySuccess('تم تحديث بيانات الحالة بنجاح.');
+      };
+
+      // Open edit visit modal
+      const handleOpenEditVisit = (targetVisit) => {
+        if (!targetVisit) return;
+        let defaultFirstDate = targetVisit.firstInstallmentDate || '';
+        if (!defaultFirstDate) {
+          for (const ch of (targetVisit.churches || [])) {
+            for (const sg of (ch.servantsGroups || [])) {
+              for (const c of (sg.cases || [])) {
+                if (c.firstInstallmentDate) {
+                  defaultFirstDate = c.firstInstallmentDate;
+                  break;
+                }
+              }
+              if (defaultFirstDate) break;
+            }
+            if (defaultFirstDate) break;
+          }
+        }
+        if (!defaultFirstDate) {
+          defaultFirstDate = targetVisit.date || new Date().toISOString().split('T')[0];
+        }
+
+        setEditingVisitInfo({
+          visitId: targetVisit.id,
+          location: targetVisit.location || '',
+          date: targetVisit.date || '',
+          firstInstallmentDate: defaultFirstDate,
+          applyFirstInstallmentToAll: true,
+          notes: targetVisit.notes || ''
+        });
+      };
+
+      // Save visit edits
+      const handleSaveVisitEdits = (e) => {
+        if (e) e.preventDefault();
+        if (!editingVisitInfo) return;
+
+        const targetVisit = allVisits.find(v => v.id === editingVisitInfo.visitId);
+        if (!targetVisit) return;
+
+        if (!editingVisitInfo.location.trim()) {
+          window.notifyWarning('يرجى إدخال اسم أو منطقة النزلة.');
+          return;
+        }
+
+        let updatedChurches = targetVisit.churches || [];
+        if (editingVisitInfo.applyFirstInstallmentToAll && editingVisitInfo.firstInstallmentDate) {
+          updatedChurches = updatedChurches.map(ch => ({
+            ...ch,
+            servantsGroups: (ch.servantsGroups || []).map(sg => ({
+              ...sg,
+              cases: (sg.cases || []).map(c => ({
+                ...c,
+                firstInstallmentDate: editingVisitInfo.firstInstallmentDate
+              }))
+            }))
+          }));
+        }
+
+        const updatedVisit = {
+          ...targetVisit,
+          location: editingVisitInfo.location.trim(),
+          date: editingVisitInfo.date,
+          firstInstallmentDate: editingVisitInfo.firstInstallmentDate,
+          notes: (editingVisitInfo.notes || '').trim(),
+          churches: updatedChurches
+        };
+
+        onUpdateVisit(updatedVisit);
+        setEditingVisitInfo(null);
+        window.notifySuccess('تم تحديث بيانات النزلة وتاريخ أول قسط بنجاح.');
+      };
+
+      // Open edit case modal
+      const handleOpenEditCase = (item) => {
+        if (!item || !item.caseObj) return;
+        setEditingCaseInfo({
+          visitId: item.visitId,
+          churchId: item.churchId,
+          groupId: item.groupId,
+          caseObj: item.caseObj,
+          formValues: {
+            caseName: item.caseObj.caseName || item.caseObj.name || '',
+            nationalId: item.caseObj.nationalId || '',
+            projectType: item.caseObj.executedProjectType || item.caseObj.projectType || '',
+            projectValue: item.caseObj.executedProjectValue || item.caseObj.projectValue || 0,
+            installmentAmount: item.caseObj.executedInstallmentAmount || item.caseObj.installmentAmount || 0,
+            executionDate: item.caseObj.executionDate || '',
+            firstInstallmentDate: item.caseObj.firstInstallmentDate || '',
+            notes: item.caseObj.notes || ''
+          }
+        });
       };
 
       // Trigger batch payment modal with prepared scope
@@ -9546,12 +9724,21 @@ function InstallmentsTableView({
 
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pt-2 border-t border-gray-100">
                     <div>
-                      <div className="flex items-center gap-2 text-lg sm:text-xl font-bold text-[#002f6c]">
+                      <div className="flex items-center flex-wrap gap-2 text-lg sm:text-xl font-bold text-[#002f6c]">
                         <span>🏛️</span>
                         <span>{v.location || 'زيارة بدون اسم'}</span>
                         <span className="text-gray-500 font-normal text-sm font-sans flex items-center gap-1 mr-2">
                           <Calendar size={14} /> {v.date}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditVisit(v)}
+                          className="mr-2 inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-xl transition-all shadow-xs"
+                          title="تعديل اسم وتاريخ النزلة وتاريخ أول قسط"
+                        >
+                          <Edit2 size={13} className="text-amber-700" />
+                          <span>تعديل بيانات النزلة</span>
+                        </button>
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
                         تفاصيل سداد وأقساط مشاريع هذه الزيارة مقسمة حسب المناطق والكنائس ومجموعات الخدام
@@ -10222,9 +10409,20 @@ function InstallmentsTableView({
                                     <span>🏛️</span>
                                     <span>{v.location || 'زيارة بدون اسم'}</span>
                                   </h3>
-                                  <div className="text-xs text-gray-500 font-sans flex items-center gap-1 mt-1">
-                                    <Calendar size={13} className="text-gray-400" />
-                                    <span>تاريخ الزيارة: {v.date}</span>
+                                  <div className="flex items-center justify-between gap-2 mt-1">
+                                    <div className="text-xs text-gray-500 font-sans flex items-center gap-1">
+                                      <Calendar size={13} className="text-gray-400" />
+                                      <span>تاريخ الزيارة: {v.date}</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); handleOpenEditVisit(v); }}
+                                      className="text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors shadow-xs"
+                                      title="تعديل اسم وتاريخ النزلة وتاريخ أول قسط"
+                                    >
+                                      <Edit2 size={11} className="text-amber-700" />
+                                      <span>تعديل</span>
+                                    </button>
                                   </div>
                                 </div>
 
@@ -10315,122 +10513,285 @@ function InstallmentsTableView({
 
                               <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                 {!isFullyCollected && (
-                                  <button
-                                    type="button"
-                                    onClick={() => triggerBatchPayment(`سداد قسط للنزلة كلها (${v.location || 'زيارة'} - ${v.date})`, item.cases, v.id)}
-                                    className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
-                                    title="سداد قسط للنزلة كلها"
-                                  >
-                                    <CreditCard size={13} />
-                                    <span>سداد النزلة</span>
-                                  </button>
-                                )}
-                                {isFullyCollected ? (
-                                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300">
-                                    ✅ مكتمل بالكامل
-                                  </span>
-                                ) : (
-                                  <span className="bg-gray-100 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                    {formatNumber(item.count - item.compCount)} متبقي
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                                  
                 </div>
-              )}
 
-              {/* ---------------------------------------------------- */}
-              {/* ---------------------------------------------------- */}
-              {/* SUBVIEW: REGIONS & CHURCHES HIERARCHICAL VIEW        */}
-              {/* ---------------------------------------------------- */}
-              {viewMode === 'regions' && (
-                <InstallmentsGeoView
-                  geoRegionsData={geoRegionsData}
-                  filteredGeoRegions={filteredGeoRegions}
-                  expandedGeoRegions={expandedGeoRegions}
-                  toggleGeoRegion={toggleGeoRegion}
-                  expandedGeoChurches={expandedGeoChurches}
-                  toggleGeoChurch={toggleGeoChurch}
-                  triggerBatchPayment={triggerBatchPayment}
-                  setActiveModalCaseInfo={setActiveModalCaseInfo}
-                  setEditingCaseInfo={setEditingCaseInfo}
-                  handleDeleteCase={handleDeleteCase}
-                />
-              )}
+                {/* Form Body */}
+                <form onSubmit={handleSaveVisitEdits} className="p-5 space-y-4 text-xs">
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">
+                      اسم النزلة / المراكز / المناطق *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editingVisitInfo.location}
+                      onChange={(e) => setEditingVisitInfo(prev => ({ ...prev, location: e.target.value }))}
+                      placeholder="مثال: ابو قرقاص + مطاي"
+                      className="w-full rounded-xl border border-gray-300 p-2.5 text-xs font-bold text-[#002f6c] outline-none focus:border-[#002f6c]"
+                    />
+                  </div>
 
-              {/* ---------------------------------------------------- */}
-              {/* SUBVIEW B: ALL CASES (TABLE + MOBILE CARDS VIEW)     */}
-              {/* ---------------------------------------------------- */}
-              {viewMode === 'allCases' && (
-                <InstallmentsTableView
-                  allExecutedCases={allExecutedCases}
-                  filteredCases={filteredCases}
-                  filterStatus={filterStatus}
-                  setFilterStatus={setFilterStatus}
-                  filterChurch={filterChurch}
-                  setFilterChurch={setFilterChurch}
-                  uniqueChurches={uniqueChurches}
-                  activeCount={activeCount}
-                  completedCount={completedCount}
-                  unpaidCount={unpaidCount}
-                  overdueCasesCount={overdueCasesCount}
-                  exemptedCasesCount={exemptedCasesCount}
-                  projectAnalyticsData={projectAnalyticsData}
-                  selectedAnalyticsCategory={selectedAnalyticsCategory}
-                  setSelectedAnalyticsCategory={setSelectedAnalyticsCategory}
-                  setShowProjectDictModal={setShowProjectDictModal}
-                  setActiveModalCaseInfo={setActiveModalCaseInfo}
-                />
-              )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        تاريخ النزلة / التنفيذ *
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={editingVisitInfo.date}
+                        onChange={(e) => setEditingVisitInfo(prev => ({ ...prev, date: e.target.value }))}
+                        className="w-full rounded-xl border border-gray-300 p-2 text-xs font-sans outline-none focus:border-[#002f6c]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-emerald-900 mb-1">
+                        🗓️ موعد استحقاق أول قسط *
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={editingVisitInfo.firstInstallmentDate}
+                        onChange={(e) => setEditingVisitInfo(prev => ({ ...prev, firstInstallmentDate: e.target.value }))}
+                        className="w-full rounded-xl border-2 border-emerald-400 p-2 text-xs font-sans font-bold text-emerald-950 outline-none focus:border-[#002f6c]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Apply to all cases checkbox */}
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      id="apply-first-inst-all"
+                      checked={editingVisitInfo.applyFirstInstallmentToAll}
+                      onChange={(e) => setEditingVisitInfo(prev => ({ ...prev, applyFirstInstallmentToAll: e.target.checked }))}
+                      className="w-4 h-4 rounded text-emerald-600 mt-0.5 cursor-pointer"
+                    />
+                    <label htmlFor="apply-first-inst-all" className="cursor-pointer">
+                      <span className="font-bold text-emerald-950 block">تحديث وتوحيد تاريخ أول قسط لجميع حالات هذه النزلة</span>
+                      <span className="text-[11px] text-emerald-700 block mt-0.5">
+                        سيتم تطبيق هذا التاريخ تلقائياً على كافة مشاريع النزلة لضبط جدول الاستحقاقات والمتأخرات بدقة.
+                      </span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">
+                      ملاحظات عامة حول النزلة
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={editingVisitInfo.notes || ''}
+                      onChange={(e) => setEditingVisitInfo(prev => ({ ...prev, notes: e.target.value }))}
+                      placeholder="أي ملاحظات تخص هذه الزيارة..."
+                      className="w-full rounded-xl border border-gray-300 p-2.5 text-xs outline-none focus:border-[#002f6c]"
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-2 border-t border-gray-100 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingVisitInfo(null)}
+                      className="px-4 py-2 rounded-xl text-gray-600 bg-gray-100 hover:bg-gray-200 font-bold transition-colors"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl text-white bg-[#002f6c] hover:bg-[#001f4c] font-bold shadow-md transition-all flex items-center gap-1.5"
+                    >
+                      <span>💾</span>
+                      <span>حفظ التعديلات</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           )}
 
-          {/* Installment Detail Modal */}
-          {activeModalCaseInfo && (
-            <InstallmentModal
-              caseObj={activeModalCaseInfo.caseObj}
-              churchName={activeModalCaseInfo.churchName}
-              regionName={activeModalCaseInfo.regionName}
-              onSavePayments={handleSavePayments}
-              onClose={() => setActiveModalCaseInfo(null)}
-            />
-          )}
+          {/* Edit Case Modal (تعديل بيانات الحالة والمشروع والقسط) */}
+          {editingCaseInfo && (
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-lg w-full overflow-hidden animate-scale-in">
+                {/* Header */}
+                <div className="bg-[#002f6c] text-white p-4 flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">✏️</span>
+                    <div>
+                      <h3 className="font-bold text-base">تعديل بيانات الحالة والمشروع</h3>
+                      <p className="text-blue-200 text-xs">تعديل اسم المستفيد، نوع المشروع، المبالغ، وتاريخ أول قسط</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingCaseInfo(null)}
+                    className="text-white/70 hover:text-white p-1 rounded-lg text-lg"
+                  >
+                    ✕
+                  </button>
+                </div>
 
-          {/* Add Legacy Project Modal (Manual) */}
-          {showAddLegacyModal && (
-            <AddLegacyProjectModal
-              allVisits={allVisits}
-              onUpdateVisit={onUpdateVisit}
-              onOpenImportExcel={() => {
-                setShowAddLegacyModal(false);
-                setShowImportLegacyModal(true);
-              }}
-              onClose={() => setShowAddLegacyModal(false)}
-            />
-          )}
+                {/* Form Body */}
+                <form onSubmit={handleSaveEditedCase} className="p-5 space-y-3.5 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        اسم المستفيد / الحالة *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editingCaseInfo.formValues.caseName}
+                        onChange={(e) => setEditingCaseInfo(prev => ({
+                          ...prev,
+                          formValues: { ...prev.formValues, caseName: e.target.value }
+                        }))}
+                        className="w-full rounded-xl border border-gray-300 p-2.5 text-xs font-bold text-gray-900 outline-none focus:border-[#002f6c]"
+                      />
+                    </div>
 
-          {/* Import Legacy Projects from Excel Modal */}
-          {showImportLegacyModal && (
-            <ImportLegacyExcelModal
-              allVisits={allVisits}
-              onUpdateVisit={onUpdateVisit}
-              onClose={() => setShowImportLegacyModal(false)}
-            />
-          )}
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        الرقم القومي (اختياري)
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={14}
+                        value={editingCaseInfo.formValues.nationalId}
+                        onChange={(e) => setEditingCaseInfo(prev => ({
+                          ...prev,
+                          formValues: { ...prev.formValues, nationalId: e.target.value }
+                        }))}
+                        className="w-full rounded-xl border border-gray-300 p-2.5 text-xs font-sans outline-none focus:border-[#002f6c]"
+                      />
+                    </div>
+                  </div>
 
-          {/* Batch Payment Modal (سداد مجمع للنزلة / المنطقة / الكنيسة) */}
-          {batchPaymentConfig && (
-            <BatchPaymentModal
-              title={batchPaymentConfig.title}
-              targetCases={batchPaymentConfig.targetCases}
-              onConfirm={handleExecuteBatchPayment}
-              onClose={() => setBatchPaymentConfig(null)}
-            />
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">
+                      نوع المشروع المنفذ *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editingCaseInfo.formValues.projectType}
+                      onChange={(e) => setEditingCaseInfo(prev => ({
+                        ...prev,
+                        formValues: { ...prev.formValues, projectType: e.target.value }
+                      }))}
+                      className="w-full rounded-xl border border-gray-300 p-2.5 text-xs font-bold text-[#002f6c] outline-none focus:border-[#002f6c]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        قيمة المشروع المنفذ (ج.م) *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        required
+                        value={editingCaseInfo.formValues.projectValue}
+                        onChange={(e) => setEditingCaseInfo(prev => ({
+                          ...prev,
+                          formValues: { ...prev.formValues, projectValue: e.target.value }
+                        }))}
+                        className="w-full rounded-xl border border-gray-300 p-2 text-xs font-sans font-bold text-blue-900 outline-none focus:border-[#002f6c]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        القسط الشهري (ج.م) *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        required
+                        value={editingCaseInfo.formValues.installmentAmount}
+                        onChange={(e) => setEditingCaseInfo(prev => ({
+                          ...prev,
+                          formValues: { ...prev.formValues, installmentAmount: e.target.value }
+                        }))}
+                        className="w-full rounded-xl border border-gray-300 p-2 text-xs font-sans font-bold text-amber-900 outline-none focus:border-[#002f6c]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        تاريخ التنفيذ
+                      </label>
+                      <input
+                        type="date"
+                        value={editingCaseInfo.formValues.executionDate}
+                        onChange={(e) => setEditingCaseInfo(prev => ({
+                          ...prev,
+                          formValues: { ...prev.formValues, executionDate: e.target.value }
+                        }))}
+                        className="w-full rounded-xl border border-gray-300 p-2 text-xs font-sans outline-none focus:border-[#002f6c]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-emerald-900 mb-1">
+                        🗓️ موعد استحقاق أول قسط
+                      </label>
+                      <input
+                        type="date"
+                        value={editingCaseInfo.formValues.firstInstallmentDate}
+                        onChange={(e) => setEditingCaseInfo(prev => ({
+                          ...prev,
+                          formValues: { ...prev.formValues, firstInstallmentDate: e.target.value }
+                        }))}
+                        className="w-full rounded-xl border-2 border-emerald-400 p-2 text-xs font-sans font-bold text-emerald-950 outline-none focus:border-[#002f6c]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">
+                      ملاحظات خاصة بهذه الحالة
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={editingCaseInfo.formValues.notes || ''}
+                      onChange={(e) => setEditingCaseInfo(prev => ({
+                        ...prev,
+                        formValues: { ...prev.formValues, notes: e.target.value }
+                      }))}
+                      placeholder="أي ملاحظات تخص الحالة أو المشروع..."
+                      className="w-full rounded-xl border border-gray-300 p-2 text-xs outline-none focus:border-[#002f6c]"
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-2 border-t border-gray-100 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingCaseInfo(null)}
+                      className="px-4 py-2 rounded-xl text-gray-600 bg-gray-100 hover:bg-gray-200 font-bold transition-colors"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl text-white bg-[#002f6c] hover:bg-[#001f4c] font-bold shadow-md transition-all flex items-center gap-1.5"
+                    >
+                      <span>💾</span>
+                      <span>حفظ التعديلات</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
           )}
 
           {/* Project Dictionary Modal (قاموس وضبط المشاريع وإضافة مشروع جديد) */}
@@ -15526,7 +15887,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1791193853726";
+      const CLIENT_BUILD_ID = "1791194120166";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
