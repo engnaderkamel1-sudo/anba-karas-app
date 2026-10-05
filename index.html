@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1791195555165" />
+  <meta name="app-build-id" content="1791196339089" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -2591,11 +2591,21 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 // ================================================================
 // MODULE: pages/ArchiveDetails.js
 // ================================================================
-    function ArchiveDetails({ visit, onBack, onExport, onUpdateVisit }) {
+    function ArchiveDetails({ visit, onBack, onExport, onUpdateVisit, onEditVisit }) {
       const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'initial' | 'executed' | 'cancelled'
       const [executingCaseInfo, setExecutingCaseInfo] = useState(null);
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
       const [editingChurchInfo, setEditingChurchInfo] = useState(null);
+      const [addingCaseToChurch, setAddingCaseToChurch] = useState(null);
+      const [newCaseForm, setNewCaseForm] = useState({
+        name: '',
+        nationalId: '',
+        servantsNames: '',
+        projectType: '',
+        projectValue: '',
+        installmentAmount: '',
+        notes: ''
+      });
       const [showImportModal, setShowImportModal] = useState(false);
 
       const [filterRegion, setFilterRegion] = useState('');
@@ -2698,6 +2708,59 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 
             const handleEditCase = (caseObj, churchId, groupId) => {
         setEditingCaseInfo({ caseObj, churchId, groupId });
+      };
+
+      const handleSaveNewCase = (e) => {
+        e.preventDefault();
+        if (!addingCaseToChurch || !newCaseForm.name.trim()) {
+          window.notifyWarning('يرجى إدخال اسم المستفيد.');
+          return;
+        }
+        const churchId = addingCaseToChurch.churchId;
+        const val = parseFloat(newCaseForm.projectValue) || 0;
+        const inst = parseFloat(newCaseForm.installmentAmount) || 0;
+        const servantName = (newCaseForm.servantsNames || addingCaseToChurch.servantName || '').trim() || 'خدام القرية';
+
+        const newCaseId = typeof uuidv4 === 'function' ? uuidv4() : Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+
+        const newCaseObj = {
+          id: newCaseId,
+          name: newCaseForm.name.trim(),
+          caseName: newCaseForm.name.trim(),
+          beneficiaryName: newCaseForm.name.trim(),
+          nationalId: (newCaseForm.nationalId || '').trim(),
+          projectType: (newCaseForm.projectType || 'مشروع').trim(),
+          projectValue: val,
+          installmentAmount: inst,
+          status: 'initial',
+          notes: (newCaseForm.notes || '').trim(),
+          createdAt: new Date().toISOString()
+        };
+
+        const updatedChurches = (visit.churches || []).map(ch => {
+          if (ch.id !== churchId) return ch;
+          let sgs = ch.servantsGroups || [];
+          if (sgs.length === 0) {
+            sgs = [{
+              id: typeof uuidv4 === 'function' ? uuidv4() : Date.now().toString(36),
+              servantsNames: servantName,
+              cases: [newCaseObj]
+            }];
+          } else {
+            let matchedSg = sgs.find(sg => (sg.servantsNames || '').trim() === servantName);
+            if (matchedSg) {
+              sgs = sgs.map(sg => sg.id === matchedSg.id ? { ...sg, cases: [...(sg.cases || []), newCaseObj] } : sg);
+            } else {
+              sgs = sgs.map((sg, idx) => idx === 0 ? { ...sg, cases: [...(sg.cases || []), newCaseObj] } : sg);
+            }
+          }
+          return { ...ch, servantsGroups: sgs };
+        });
+
+        onUpdateVisit({ ...visit, churches: updatedChurches });
+        setAddingCaseToChurch(null);
+        setNewCaseForm({ name: '', nationalId: '', servantsNames: '', projectType: '', projectValue: '', installmentAmount: '', notes: '' });
+        window.notifySuccess(`تم إضافة حالة "${newCaseForm.name.trim()}" بنجاح.`);
       };
 
       const handleSaveEditCase = (updatedCase) => {
@@ -2813,6 +2876,16 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   <p className="text-gray-500 text-sm mt-1 flex items-center gap-1"><Calendar size={14}/> {visit.date}</p>
                </div>
                <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                  {onEditVisit && !isReadOnly && (
+                     <button
+                        type="button"
+                        onClick={onEditVisit}
+                        className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-[#002f6c] text-white hover:bg-[#001f4c] px-4 py-2 rounded-xl shadow-xs transition-colors font-bold text-xs"
+                        title="فتح الزيارة في استمارة التسجيل الكاملة لإضافة كنائس ومجموعات ومطابقة كشف التنفيذ"
+                     >
+                        <Edit2 size={14} /> <span>فتح الزيارة للتعديل الكامل</span>
+                     </button>
+                  )}
                   {!isReadOnly && (
                      <button onClick={() => setShowImportModal(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-emerald-600 text-white hover:bg-emerald-700 px-5 py-2 rounded-md shadow transition-colors font-medium text-sm">
                         <Upload size={18} /> استيراد كشف التنفيذ
@@ -3304,6 +3377,29 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                           })
                         ))}
                       </div>
+
+                        {!isReadOnly && (
+                          <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const firstSg = (ch.servantsGroups || [])[0];
+                                setAddingCaseToChurch({
+                                  churchId: ch.id,
+                                  churchName: ch.churchName,
+                                  servantName: firstSg ? firstSg.servantsNames : ''
+                                });
+                              }}
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-3.5 py-2 rounded-xl transition-all shadow-xs"
+                            >
+                              <Plus size={14} className="text-emerald-700" />
+                              <span>+ إضافة حالة جديدة لكنيسة {ch.churchName}</span>
+                            </button>
+                            <span className="text-[11px] text-gray-500 font-sans">
+                              {formatNumber((ch.servantsGroups || []).reduce((s, g) => s + (g.cases || []).length, 0))} حالة مسجلة
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       )}
@@ -3317,7 +3413,160 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             })()}
             </div>
 
-            {executingCaseInfo && (
+            {addingCaseToChurch && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+              <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden animate-scale-in">
+                {/* Header */}
+                <div className="bg-[#002f6c] text-white p-4 flex justify-between items-center shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">➕</span>
+                    <div>
+                      <h3 className="font-bold text-base">إضافة حالة جديدة</h3>
+                      <p className="text-blue-200 text-xs">كنيسة: {addingCaseToChurch.churchName}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAddingCaseToChurch(null)}
+                    className="text-white/70 hover:text-white p-1 rounded-lg text-lg"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Form Body */}
+                <form onSubmit={handleSaveNewCase} className="flex flex-col flex-1 overflow-hidden min-h-0">
+                  <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">
+                          اسم المستفيد / الحالة *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={newCaseForm.name}
+                          onChange={(e) => setNewCaseForm(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="اسم الحالة بالكامل"
+                          className="w-full rounded-xl border border-gray-300 p-2.5 text-xs font-bold text-gray-900 outline-none focus:border-[#002f6c]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">
+                          الرقم القومي (اختياري)
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={14}
+                          value={newCaseForm.nationalId}
+                          onChange={(e) => setNewCaseForm(prev => ({ ...prev, nationalId: e.target.value }))}
+                          placeholder="14 رقم"
+                          className="w-full rounded-xl border border-gray-300 p-2.5 text-xs font-sans outline-none focus:border-[#002f6c]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">
+                          اسم الخادم / المجموعة
+                        </label>
+                        <input
+                          type="text"
+                          value={newCaseForm.servantsNames || addingCaseToChurch.servantName || ''}
+                          onChange={(e) => setNewCaseForm(prev => ({ ...prev, servantsNames: e.target.value }))}
+                          placeholder="الخدام المسؤولين"
+                          className="w-full rounded-xl border border-gray-300 p-2.5 text-xs outline-none focus:border-[#002f6c]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">
+                          نوع المشروع المقترح *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={newCaseForm.projectType}
+                          onChange={(e) => setNewCaseForm(prev => ({ ...prev, projectType: e.target.value }))}
+                          placeholder="مثال: ترزية، بقالة، مواشي..."
+                          className="w-full rounded-xl border border-gray-300 p-2.5 text-xs font-bold text-[#002f6c] outline-none focus:border-[#002f6c]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">
+                          القيمة التقديرية (ج.م) *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          required
+                          value={newCaseForm.projectValue}
+                          onChange={(e) => setNewCaseForm(prev => ({ ...prev, projectValue: e.target.value }))}
+                          placeholder="مثال: 15000"
+                          className="w-full rounded-xl border border-gray-300 p-2 text-xs font-sans font-bold text-blue-900 outline-none focus:border-[#002f6c]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">
+                          القسط الشهري (ج.م) *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          required
+                          value={newCaseForm.installmentAmount}
+                          onChange={(e) => setNewCaseForm(prev => ({ ...prev, installmentAmount: e.target.value }))}
+                          placeholder="مثال: 500"
+                          className="w-full rounded-xl border border-gray-300 p-2 text-xs font-sans font-bold text-amber-900 outline-none focus:border-[#002f6c]"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        ملاحظات
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={newCaseForm.notes}
+                        onChange={(e) => setNewCaseForm(prev => ({ ...prev, notes: e.target.value }))}
+                        placeholder="أي تفاصيل أو ملاحظات..."
+                        className="w-full rounded-xl border border-gray-300 p-2 text-xs outline-none focus:border-[#002f6c]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setAddingCaseToChurch(null)}
+                      className="px-4 py-2.5 rounded-xl text-gray-600 bg-gray-100 hover:bg-gray-200 font-bold transition-colors text-xs"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 font-bold shadow-md transition-all flex items-center gap-1.5 text-xs"
+                    >
+                      <span>➕</span>
+                      <span>إضافة الحالة</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {executingCaseInfo && (
               <ExecutionModal 
                 caseData={executingCaseInfo.caseObj} 
                 churchName={executingCaseInfo.churchName} 
@@ -16031,7 +16280,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1791195555165";
+      const CLIENT_BUILD_ID = "1791196339089";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
