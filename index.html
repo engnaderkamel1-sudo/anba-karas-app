@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1791203287609" />
+  <meta name="app-build-id" content="1791203485583" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -11078,7 +11078,7 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
                       </div>
                       
                       {/* Scope Type Tabs */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center">
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-center">
                         <button
                           type="button"
                           onClick={() => setEditingVisitInfo(prev => ({ ...prev, scopeType: 'all' }))}
@@ -11104,6 +11104,17 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
                           }`}
                         >
                           📍 منطقة محددة
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingVisitInfo(prev => ({ ...prev, scopeType: 'custom_regions' }))}
+                          className={`py-1.5 px-2 rounded-lg font-bold text-xs transition-all border ${
+                            editingVisitInfo.scopeType === 'custom_regions'
+                              ? 'bg-amber-700 text-white border-amber-700 shadow-xs'
+                              : 'bg-white text-amber-900 border-amber-200 hover:bg-amber-50'
+                          }`}
+                        >
+                          📑 تاريخ لكل منطقة
                         </button>
                         <button
                           type="button"
@@ -11154,6 +11165,67 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
                                 <option key={r} value={r}>{r}</option>
                               ))}
                             </select>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Comprehensive Multi-Region Table if scope is custom_regions */}
+                      {editingVisitInfo.scopeType === 'custom_regions' && (() => {
+                        const targetV = allVisits.find(v => v.id === editingVisitInfo.visitId);
+                        const regList = Array.from(new Set((targetV?.churches || []).map(ch => ch.regionName).filter(Boolean)));
+                        return (
+                          <div className="mt-3 pt-2.5 border-t border-blue-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-bold text-gray-800 text-xs">
+                                📍 حدد موعد استحقاق أول قسط لكل منطقة / مركز ({regList.length} منطقة):
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const fillDate = editingVisitInfo.firstInstallmentDate;
+                                  if (!fillDate) return;
+                                  const newMap = {};
+                                  regList.forEach(r => { newMap[r] = fillDate; });
+                                  setEditingVisitInfo(prev => ({ ...prev, regionDatesMap: newMap }));
+                                }}
+                                className="text-[11px] font-bold text-amber-800 hover:text-amber-900 bg-white px-2 py-0.5 rounded-lg border border-amber-300"
+                              >
+                                تعميم تاريخ النزلة على الكل
+                              </button>
+                            </div>
+                            <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                              {regList.map(regName => {
+                                const churchesCountInReg = (targetV?.churches || []).filter(c => c.regionName === regName).length;
+                                return (
+                                  <div key={regName} className="flex items-center justify-between gap-2 p-1.5 bg-white rounded-xl border border-gray-200">
+                                    <div className="min-w-0 flex-1">
+                                      <span className="font-bold text-gray-900 block truncate text-xs">
+                                        مركز / منطقة: {regName}
+                                      </span>
+                                      <span className="text-[10px] text-gray-500 block truncate">
+                                        يضم {churchesCountInReg} كنيسة
+                                      </span>
+                                    </div>
+                                    <input
+                                      type="date"
+                                      required
+                                      value={(editingVisitInfo.regionDatesMap && editingVisitInfo.regionDatesMap[regName]) || editingVisitInfo.firstInstallmentDate || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setEditingVisitInfo(prev => ({
+                                          ...prev,
+                                          regionDatesMap: {
+                                            ...(prev.regionDatesMap || {}),
+                                            [regName]: val
+                                          }
+                                        }));
+                                      }}
+                                      className="rounded-lg border border-gray-300 p-1 text-xs font-sans font-bold text-gray-800 outline-none focus:border-[#002f6c]"
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         );
                       })()}
@@ -11262,9 +11334,11 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
                             ? `تحديث وتوحيد تاريخ أول قسط لجميع حالات منطقة (${editingVisitInfo.selectedRegion || 'المحددة'})`
                             : editingVisitInfo.scopeType === 'church'
                               ? `تحديث وتوحيد تاريخ أول قسط لجميع حالات كنيسة (${editingVisitInfo.selectedChurchName || 'المحددة'})`
-                              : editingVisitInfo.scopeType === 'custom_churches'
-                                ? 'تحديث وتطبيق التواريخ المحددة لكل كنيسة على حالاتها في خطوة واحدة'
-                                : 'تحديث وتوحيد تاريخ أول قسط لجميع حالات هذه النزلة بالكامل'}
+                              : editingVisitInfo.scopeType === 'custom_regions'
+                                ? 'تحديث وتطبيق التواريخ المحددة لكل منطقة على كنائسها وحالاتها في خطوة واحدة'
+                                : editingVisitInfo.scopeType === 'custom_churches'
+                                  ? 'تحديث وتطبيق التواريخ المحددة لكل كنيسة على حالاتها في خطوة واحدة'
+                                  : 'تحديث وتوحيد تاريخ أول قسط لجميع حالات هذه النزلة بالكامل'}
                         </span>
                         <span className="text-[11px] text-emerald-700 block mt-0.5">
                           سيتم تحديث موعد استحقاق أول قسط لكافة مشاريع هذا النطاق وإعادة حساب المتأخرات بدقة.
@@ -16586,7 +16660,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1791203287609";
+      const CLIENT_BUILD_ID = "1791203485583";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
