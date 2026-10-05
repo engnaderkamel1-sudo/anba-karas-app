@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1791194120166" />
+  <meta name="app-build-id" content="1791194604757" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -8595,7 +8595,7 @@ function InstallmentsTableView({
 // ================================================================
 // MODULE: pages/InstallmentsPage.js
 // ================================================================
-    function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
+function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
       const activeVisits = (allVisits || []).filter(v => !v.isDeleted);
 
       // Selected visit for hierarchical breakdown view ('null' means viewing the list of visits or flat table)
@@ -9139,6 +9139,8 @@ function InstallmentsTableView({
 
       // State for editing a case
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
+
+      // State for editing visit details (name, date, first installment date, etc.)
       const [editingVisitInfo, setEditingVisitInfo] = useState(null);
 
       // Handle updating payments from InstallmentModal
@@ -9323,7 +9325,7 @@ function InstallmentsTableView({
 
         onUpdateVisit(updatedVisit);
         setEditingVisitInfo(null);
-        window.notifySuccess('تم تحديث بيانات النزلة وتاريخ أول قسط بنجاح.');
+        window.notifySuccess('تم تحديث وتعديل بيانات النزلة بنجاح.');
       };
 
       // Open edit case modal
@@ -10513,7 +10515,144 @@ function InstallmentsTableView({
 
                               <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                 {!isFullyCollected && (
-                                  
+                                  <button
+                                    type="button"
+                                    onClick={() => triggerBatchPayment(`سداد قسط للنزلة كلها (${v.location || 'زيارة'} - ${v.date})`, item.cases, v.id)}
+                                    className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+                                    title="سداد قسط للنزلة كلها"
+                                  >
+                                    <CreditCard size={13} />
+                                    <span>سداد النزلة</span>
+                                  </button>
+                                )}
+                                {isFullyCollected ? (
+                                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                                    ✅ مكتمل بالكامل
+                                  </span>
+                                ) : (
+                                  <span className="bg-gray-100 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                    {formatNumber(item.count - item.compCount)} متبقي
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ---------------------------------------------------- */}
+              {/* ---------------------------------------------------- */}
+              {/* SUBVIEW: REGIONS & CHURCHES HIERARCHICAL VIEW        */}
+              {/* ---------------------------------------------------- */}
+              {viewMode === 'regions' && (
+                <InstallmentsGeoView
+                  geoRegionsData={geoRegionsData}
+                  filteredGeoRegions={filteredGeoRegions}
+                  expandedGeoRegions={expandedGeoRegions}
+                  toggleGeoRegion={toggleGeoRegion}
+                  expandedGeoChurches={expandedGeoChurches}
+                  toggleGeoChurch={toggleGeoChurch}
+                  triggerBatchPayment={triggerBatchPayment}
+                  setActiveModalCaseInfo={setActiveModalCaseInfo}
+                  setEditingCaseInfo={setEditingCaseInfo}
+                  handleDeleteCase={handleDeleteCase}
+                />
+              )}
+
+              {/* ---------------------------------------------------- */}
+              {/* SUBVIEW B: ALL CASES (TABLE + MOBILE CARDS VIEW)     */}
+              {/* ---------------------------------------------------- */}
+              {viewMode === 'allCases' && (
+                <InstallmentsTableView
+                  allExecutedCases={allExecutedCases}
+                  filteredCases={filteredCases}
+                  filterStatus={filterStatus}
+                  setFilterStatus={setFilterStatus}
+                  filterChurch={filterChurch}
+                  setFilterChurch={setFilterChurch}
+                  uniqueChurches={uniqueChurches}
+                  activeCount={activeCount}
+                  completedCount={completedCount}
+                  unpaidCount={unpaidCount}
+                  overdueCasesCount={overdueCasesCount}
+                  exemptedCasesCount={exemptedCasesCount}
+                  projectAnalyticsData={projectAnalyticsData}
+                  selectedAnalyticsCategory={selectedAnalyticsCategory}
+                  setSelectedAnalyticsCategory={setSelectedAnalyticsCategory}
+                  setShowProjectDictModal={setShowProjectDictModal}
+                  setActiveModalCaseInfo={setActiveModalCaseInfo}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Installment Detail Modal */}
+          {activeModalCaseInfo && (
+            <InstallmentModal
+              caseObj={activeModalCaseInfo.caseObj}
+              churchName={activeModalCaseInfo.churchName}
+              regionName={activeModalCaseInfo.regionName}
+              onSavePayments={handleSavePayments}
+              onClose={() => setActiveModalCaseInfo(null)}
+            />
+          )}
+
+          {/* Add Legacy Project Modal (Manual) */}
+          {showAddLegacyModal && (
+            <AddLegacyProjectModal
+              allVisits={allVisits}
+              onUpdateVisit={onUpdateVisit}
+              onOpenImportExcel={() => {
+                setShowAddLegacyModal(false);
+                setShowImportLegacyModal(true);
+              }}
+              onClose={() => setShowAddLegacyModal(false)}
+            />
+          )}
+
+          {/* Import Legacy Projects from Excel Modal */}
+          {showImportLegacyModal && (
+            <ImportLegacyExcelModal
+              allVisits={allVisits}
+              onUpdateVisit={onUpdateVisit}
+              onClose={() => setShowImportLegacyModal(false)}
+            />
+          )}
+
+          {/* Batch Payment Modal (سداد مجمع للنزلة / المنطقة / الكنيسة) */}
+          {batchPaymentConfig && (
+            <BatchPaymentModal
+              title={batchPaymentConfig.title}
+              targetCases={batchPaymentConfig.targetCases}
+              onConfirm={handleExecuteBatchPayment}
+              onClose={() => setBatchPaymentConfig(null)}
+            />
+          )}
+
+          {/* Edit Visit Modal (تعديل بيانات النزلة وتاريخ أول قسط) */}
+          {editingVisitInfo && (
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-lg w-full overflow-hidden animate-scale-in">
+                {/* Header */}
+                <div className="bg-[#002f6c] text-white p-4 flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">✏️</span>
+                    <div>
+                      <h3 className="font-bold text-base">تعديل بيانات النزلة وتاريخ الأقساط</h3>
+                      <p className="text-blue-200 text-xs">تعديل اسم الزيارة، تاريخ التنفيذ، وموعد بدء أول قسط</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingVisitInfo(null)}
+                    className="text-white/70 hover:text-white p-1 rounded-lg text-lg"
+                  >
+                    ✕
+                  </button>
                 </div>
 
                 {/* Form Body */}
@@ -10808,6 +10947,7 @@ function InstallmentsTableView({
     }
 
 
+// ================================================================
 // ================================================================
 // MODULE: pages/AnalyticsPage.js
 // ================================================================
@@ -15887,7 +16027,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1791194120166";
+      const CLIENT_BUILD_ID = "1791194604757";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
