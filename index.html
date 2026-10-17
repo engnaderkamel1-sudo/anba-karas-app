@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1792229836311" />
+  <meta name="app-build-id" content="1792230214681" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -134,7 +134,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 
     const formatNumber = (num) => {
       if (num === null || num === undefined || num === '') return '';
-      const str = String(num).replace(/[Ù -Ù©]/g, d => 'Ù Ù¡Ù¢Ù£Ù¤Ù¥Ù¦Ù§Ù¨Ù©'.indexOf(d));
+      const str = String(num).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
       const cleanStr = str.replace(/,/g, '');
       if (!isNaN(cleanStr) && cleanStr.trim() !== '') {
         return Number(cleanStr).toLocaleString('en-US');
@@ -144,16 +144,16 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 
     const parseArabicNumeric = (str) => {
       if (!str && str !== 0) return '';
-      const englishStr = String(str).replace(/[Ù -Ù©]/g, d => 'Ù Ù¡Ù¢Ù£Ù¤Ù¥Ù¦Ù§Ù¨Ù©'.indexOf(d)).replace(/,/g, '');
+      const englishStr = String(str).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/,/g, '');
       const parsed = parseFloat(englishStr);
       return isNaN(parsed) ? '' : parsed;
     };
 
     // --- STATUS CONFIG & HELPERS ---
     const STATUS_CONFIG = {
-      initial: { label: 'Ù…ÙˆØ§ÙÙ‚Ø© Ù…Ø¨Ø¯Ø¦ÙŠØ©', badgeClass: 'bg-amber-100 text-amber-800 border-amber-300', dotColor: 'bg-amber-500', icon: 'â³' },
-      executed: { label: 'Ù…Ø´Ø±ÙˆØ¹ Ù…Ù†ÙØ°', badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300', dotColor: 'bg-emerald-500', icon: 'âœ…' },
-      cancelled: { label: 'Ù…Ù„ØºÙ‰ / Ù„Ù… ÙŠÙ†ÙØ°', badgeClass: 'bg-rose-100 text-rose-800 border-rose-300', dotColor: 'bg-rose-500', icon: 'âŒ' }
+      initial: { label: 'موافقة مبدئية', badgeClass: 'bg-amber-100 text-amber-800 border-amber-300', dotColor: 'bg-amber-500', icon: '⏳' },
+      executed: { label: 'مشروع منفذ', badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300', dotColor: 'bg-emerald-500', icon: '✅' },
+      cancelled: { label: 'ملغى / لم ينفذ', badgeClass: 'bg-rose-100 text-rose-800 border-rose-300', dotColor: 'bg-rose-500', icon: '❌' }
     };
 
     const normalizeArabicText = (text) => {
@@ -161,9 +161,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       return String(text)
         .trim()
         .toLowerCase()
-        .replace(/[Ø£Ø¥Ø¢]/g, 'Ø§')
-        .replace(/Ø©/g, 'Ù‡')
-        .replace(/Ù‰/g, 'ÙŠ')
+        .replace(/[أإآ]/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/ى/g, 'ي')
         .replace(/[\u064B-\u065F]/g, '')
         .replace(/\s+/g, ' ');
     };
@@ -174,7 +174,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         <span 
           onClick={onClick}
           className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border transition-all ${cfg.badgeClass} ${onClick ? 'cursor-pointer hover:shadow-sm' : ''} ${className}`}
-          title={onClick ? 'Ø§Ù†Ù‚Ø± Ù„ØªØºÙŠÙŠØ± Ø§Ù„Ø­Ø§Ù„Ø©' : undefined}
+          title={onClick ? 'انقر لتغيير الحالة' : undefined}
         >
           <span className={`w-2 h-2 rounded-full ${cfg.dotColor}`}></span>
           <span>{cfg.label}</span>
@@ -246,7 +246,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 
       const startListening = () => {
         if (!SpeechRecognition) {
-          alert('Ù…ØªØµÙØ­Ùƒ Ù„Ø§ ÙŠØ¯Ø¹Ù… Ø§Ù„Ø¥Ø¯Ø®Ø§Ù„ Ø§Ù„ØµÙˆØªÙŠ.');
+          alert('متصفحك لا يدعم الإدخال الصوتي.');
           return;
         }
         const recognition = new SpeechRecognition();
@@ -284,7 +284,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             type="button"
             onClick={startListening}
             className={`absolute left-2 p-1.5 rounded-full transition-colors ${isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'text-gray-400 hover:text-[#002f6c] hover:bg-gray-100'}`}
-            title="Ø¥Ø¯Ø®Ø§Ù„ ØµÙˆØªÙŠ"
+            title="إدخال صوتي"
           >
             <Mic size={18} />
           </button>}
@@ -368,9 +368,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       return dict;
     };
 
-    // Given any raw project name (e.g. 'ØºÙ†Ù…' or 'Ù…Ø§Ø¹Ø²'), returns the canonical project category name
+    // Given any raw project name (e.g. 'غنم' or 'ماعز'), returns the canonical project category name
     const resolveCanonicalProject = (rawName, dictionary = []) => {
-      if (!rawName || !String(rawName).trim()) return 'ØºÙŠØ± Ù…Ø­Ø¯Ø¯';
+      if (!rawName || !String(rawName).trim()) return 'غير محدد';
       const clean = String(rawName).trim();
       const norm = normalizeArabicText(clean);
 
@@ -512,7 +512,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 tabIndex={-1}
                 onClick={() => setIsOpen(!isOpen)}
                 className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-                title="عرض القائمة"
+                title="??? ???????"
               >
                 <ChevronDown size={15} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -521,12 +521,12 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 
           {fuzzySuggestion && (
             <div className="mt-1 flex items-center gap-1.5 p-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 animate-fade-in shadow-xs">
-              <span>💡 هل تقصد:</span>
+              <span>?? ?? ????:</span>
               <button
                 type="button"
                 onClick={() => handleSelect(fuzzySuggestion.suggested)}
                 className="font-bold underline decoration-amber-500 hover:text-amber-950 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded transition-colors"
-                title="اضغط للتصحيح التلقائي"
+                title="???? ??????? ????????"
               >
                 {fuzzySuggestion.suggested}
               </button>
@@ -538,7 +538,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             <div className="absolute z-50 mt-1 w-full bg-white rounded-xl shadow-2xl border border-gray-200 py-1 max-h-52 overflow-y-auto divide-y divide-gray-50 text-xs sm:text-sm animate-fade-in">
               {filteredOptions.length === 0 ? (
                 <div className="px-3 py-2 text-center text-gray-400 text-xs">
-                  لا توجد نتائج سابقة مطابقة (يمكنك الاستمرار في كتابة اسم جديد)
+                  ?? ???? ????? ????? ?????? (????? ????????? ?? ????? ??? ????)
                 </div>
               ) : (
                 filteredOptions.map((opt, idx) => (
@@ -1093,16 +1093,16 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
               <div>
                 <h3 className="font-bold text-lg flex items-center gap-2">
                   <Zap size={20} className="text-[#d4af37]" />
-                  ØªØ­Ø¯ÙŠØ« ÙˆØªØ£ÙƒÙŠØ¯ ØªÙ†ÙÙŠØ° Ø§Ù„Ù…Ø´Ø±ÙˆØ¹
+                  تحديث وتأكيد تنفيذ المشروع
                 </h3>
-                <p className="text-xs text-blue-200 mt-0.5">Ø§Ù„Ø­Ø§Ù„Ø©: {caseData?.name} {churchName ? `(${churchName})` : ''}</p>
+                <p className="text-xs text-blue-200 mt-0.5">الحالة: {caseData?.name} {churchName ? `(${churchName})` : ''}</p>
               </div>
               <button onClick={onClose} className="text-white/80 hover:text-white p-1"><X size={20} /></button>
             </div>
 
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Ø­Ø§Ù„Ø© Ø§Ù„Ù…Ø´Ø±ÙˆØ¹</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">حالة المشروع</label>
                 <div className="grid grid-cols-3 gap-2">
                   {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
                     <button
@@ -1125,36 +1125,36 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
               {status === 'executed' && (
                 <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4 space-y-4 animate-fade-in">
                   <div className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
-                    <CheckCircle size={16} /> Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„ØªÙ†ÙÙŠØ° Ø§Ù„ÙØ¹Ù„ÙŠ Ø¹Ù„Ù‰ Ø§Ù„Ø£Ø±Ø¶
+                    <CheckCircle size={16} /> بيانات التنفيذ الفعلي على الأرض
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Ù†ÙˆØ¹ Ø§Ù„Ù…Ø´Ø±ÙˆØ¹ Ø§Ù„ÙØ¹Ù„ÙŠ</label>
-                    <MicInput value={executedProjectType} onValueChange={setExecutedProjectType} placeholder="Ù†ÙˆØ¹ Ø§Ù„Ù…Ø´Ø±ÙˆØ¹ Ø¨Ø¹Ø¯ Ø§Ù„ØªÙ†ÙÙŠØ°" />
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">نوع المشروع الفعلي</label>
+                    <MicInput value={executedProjectType} onValueChange={setExecutedProjectType} placeholder="نوع المشروع بعد التنفيذ" />
                     {caseData?.projectType && caseData?.projectType !== executedProjectType && (
-                      <p className="text-[11px] text-gray-500 mt-1">Ø§Ù„Ù†ÙˆØ¹ Ø§Ù„Ù…Ø¨Ø¯Ø¦ÙŠ: {caseData.projectType}</p>
+                      <p className="text-[11px] text-gray-500 mt-1">النوع المبدئي: {caseData.projectType}</p>
                     )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">Ù‚ÙŠÙ…Ø© Ø§Ù„Ù…Ø´Ø±ÙˆØ¹ Ø§Ù„ÙØ¹Ù„ÙŠØ© (Ø¬.Ù…)</label>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">قيمة المشروع الفعلية (ج.م)</label>
                       <MicInput isNumeric value={executedProjectValue} onValueChange={setExecutedProjectValue} placeholder="0" />
                       {caseData?.projectValue && (
-                        <p className="text-[11px] text-gray-500 mt-1">Ø§Ù„Ù…Ø¨Ø¯Ø¦ÙŠ: {formatNumber(caseData.projectValue)} Ø¬.Ù…</p>
+                        <p className="text-[11px] text-gray-500 mt-1">المبدئي: {formatNumber(caseData.projectValue)} ج.م</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">Ù‚ÙŠÙ…Ø© Ø§Ù„Ù‚Ø³Ø· Ø§Ù„ÙØ¹Ù„ÙŠ (Ø¬.Ù…)</label>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">قيمة القسط الفعلي (ج.م)</label>
                       <MicInput isNumeric value={executedInstallmentAmount} onValueChange={setExecutedInstallmentAmount} placeholder="0" />
                       {caseData?.installmentAmount && (
-                        <p className="text-[11px] text-gray-500 mt-1">Ø§Ù„Ù…Ø¨Ø¯Ø¦ÙŠ: {formatNumber(caseData.installmentAmount)} Ø¬.Ù…</p>
+                        <p className="text-[11px] text-gray-500 mt-1">المبدئي: {formatNumber(caseData.installmentAmount)} ج.م</p>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">ØªØ§Ø±ÙŠØ® Ø§Ù„ØªÙ†ÙÙŠØ° Ø§Ù„ÙØ¹Ù„ÙŠ</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">تاريخ التنفيذ الفعلي</label>
                     <input 
                       type="date" 
                       value={executionDate} 
@@ -1164,24 +1164,24 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ù‚Ø±ÙŠØ© Ø¨Ø¹Ø¯ Ø§Ù„ØªÙ†ÙÙŠØ°</label>
-                    <MicInput value={executionNotes} onValueChange={setExecutionNotes} placeholder="Ø£ÙŠ Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ø¥Ø¶Ø§ÙÙŠØ© Ø­ÙˆÙ„ Ø§Ù„ØªÙ†ÙÙŠØ°..." />
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">ملاحظات مسؤول القرية بعد التنفيذ</label>
+                    <MicInput value={executionNotes} onValueChange={setExecutionNotes} placeholder="أي ملاحظات إضافية حول التنفيذ..." />
                   </div>
                 </div>
               )}
 
               {status === 'cancelled' && (
                 <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 space-y-3 animate-fade-in">
-                  <label className="block text-xs font-semibold text-rose-800 mb-1">Ø³Ø¨Ø¨ Ø¥Ù„ØºØ§Ø¡ Ø£Ùˆ Ø¹Ø¯Ù… ØªÙ†ÙÙŠØ° Ø§Ù„Ù…Ø´Ø±ÙˆØ¹</label>
-                  <MicInput value={executionNotes} onValueChange={setExecutionNotes} placeholder="Ø§ÙƒØªØ¨ Ø³Ø¨Ø¨ Ø¹Ø¯Ù… Ø§Ù„ØªÙ†ÙÙŠØ°..." />
+                  <label className="block text-xs font-semibold text-rose-800 mb-1">سبب إلغاء أو عدم تنفيذ المشروع</label>
+                  <MicInput value={executionNotes} onValueChange={setExecutionNotes} placeholder="اكتب سبب عدم التنفيذ..." />
                 </div>
               )}
             </div>
 
             <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-2 shrink-0">
-              <button onClick={onClose} className="px-5 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">Ø¥Ù„ØºØ§Ø¡</button>
+              <button onClick={onClose} className="px-5 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">إلغاء</button>
               <button onClick={handleSave} className="px-6 py-2 rounded-md text-sm font-medium text-white bg-[#002f6c] hover:bg-[#001f4c] transition-colors shadow-sm">
-                Ø­ÙØ¸ ÙˆØªØ­Ø¯ÙŠØ« Ø§Ù„Ø­Ø§Ù„Ø©
+                حفظ وتحديث الحالة
               </button>
             </div>
           </div>
@@ -1235,17 +1235,17 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             const initialSelected = {};
 
             rows.forEach((row, idx) => {
-              const rowName = row['Ø§Ø³Ù… Ø§Ù„Ø­Ø§Ù„Ø©'] || row['Ø§Ù„Ø­Ø§Ù„Ø©'] || row['Ø§Ù„Ø§Ø³Ù…'] || row['Ø§Ø³Ù…_Ø§Ù„Ø­Ø§Ù„Ø©'] || '';
-              if (!rowName || String(rowName).includes('Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ') || String(rowName).includes('Ø§Ø¬Ù…Ø§Ù„ÙŠ')) {
+              const rowName = row['اسم الحالة'] || row['الحالة'] || row['الاسم'] || row['اسم_الحالة'] || '';
+              if (!rowName || String(rowName).includes('الإجمالي') || String(rowName).includes('اجمالي')) {
                 return;
               }
 
               const normRowName = normalizeArabicText(rowName);
-              const rowChurch = normalizeArabicText(row['Ø§Ø³Ù… Ø§Ù„ÙƒÙ†ÙŠØ³Ø©'] || row['Ø§Ù„ÙƒÙ†ÙŠØ³Ø©'] || '');
-              const newProjectType = String(row['Ù†ÙˆØ¹ Ø§Ù„Ù…Ø´Ø±ÙˆØ¹ Ø§Ù„Ù…Ù†ÙØ°'] || row['Ù†ÙˆØ¹ Ø§Ù„Ù…Ø´Ø±ÙˆØ¹'] || row['Ø§Ù„Ù…Ø´Ø±ÙˆØ¹'] || '').trim();
-              const newProjectVal = parseArabicNumeric(row['Ø§Ù„Ù‚ÙŠÙ…Ø© Ø§Ù„Ù…Ù†ÙØ°Ø©'] || row['Ø§Ù„Ù‚ÙŠÙ…Ø© Ø§Ù„ÙØ¹Ù„ÙŠØ©'] || row['Ù‚ÙŠÙ…Ø© Ø§Ù„Ù…Ø´Ø±ÙˆØ¹ Ø§Ù„Ù…Ù†ÙØ°'] || row['Ù‚ÙŠÙ…Ø© Ø§Ù„Ù…Ø´Ø±ÙˆØ¹'] || row['Ø§Ù„Ù‚ÙŠÙ…Ø©'] || row['Ø§Ù„Ù…Ø¨Ù„Øº']) || 0;
-              const newInstallmentVal = parseArabicNumeric(row['Ø§Ù„Ù‚Ø³Ø· Ø§Ù„Ù…Ù†ÙØ°'] || row['Ø§Ù„Ù‚Ø³Ø· Ø§Ù„ÙØ¹Ù„ÙŠ'] || row['Ù‚ÙŠÙ…Ø© Ø§Ù„Ù‚Ø³Ø· Ø§Ù„Ù…Ù†ÙØ°'] || row['Ù‚ÙŠÙ…Ø© Ø§Ù„Ù‚Ø³Ø·'] || row['Ø§Ù„Ù‚Ø³Ø·']) || 0;
-              const newNotes = String(row['Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ø§Ù„ØªÙ†ÙÙŠØ°'] || row['Ù…Ù„Ø§Ø­Ø¸Ø§Øª'] || '').trim();
+              const rowChurch = normalizeArabicText(row['اسم الكنيسة'] || row['الكنيسة'] || '');
+              const newProjectType = String(row['نوع المشروع المنفذ'] || row['نوع المشروع'] || row['المشروع'] || '').trim();
+              const newProjectVal = parseArabicNumeric(row['القيمة المنفذة'] || row['القيمة الفعلية'] || row['قيمة المشروع المنفذ'] || row['قيمة المشروع'] || row['القيمة'] || row['المبلغ']) || 0;
+              const newInstallmentVal = parseArabicNumeric(row['القسط المنفذ'] || row['القسط الفعلي'] || row['قيمة القسط المنفذ'] || row['قيمة القسط'] || row['القسط']) || 0;
+              const newNotes = String(row['ملاحظات التنفيذ'] || row['ملاحظات'] || '').trim();
 
               let found = existingCases.find(ec => {
                 const ecName = normalizeArabicText(ec.caseObj.name);
@@ -1293,7 +1293,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 unmatched.push({
                   rowIdx: idx,
                   name: rowName,
-                  church: row['Ø§Ø³Ù… Ø§Ù„ÙƒÙ†ÙŠØ³Ø©'] || '',
+                  church: row['اسم الكنيسة'] || '',
                   projectType: newProjectType,
                   projectValue: newProjectVal,
                   installmentAmount: newInstallmentVal,
@@ -1307,7 +1307,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             setSelectedIds(initialSelected);
           } catch (err) {
             console.error("Excel parse error:", err);
-            alert('Ø­Ø¯Ø« Ø®Ø·Ø£ Ø£Ø«Ù†Ø§Ø¡ Ù‚Ø±Ø§Ø¡Ø© Ù…Ù„Ù Ø§Ù„Ø¥ÙƒØ³ÙŠÙ„. ÙŠØ±Ø¬Ù‰ Ø§Ù„ØªØ£ÙƒØ¯ Ù…Ù† ØµÙŠØºØ© Ø§Ù„Ù…Ù„Ù.');
+            alert('حدث خطأ أثناء قراءة ملف الإكسيل. يرجى التأكد من صيغة الملف.');
           } finally {
             setIsProcessing(false);
           }
@@ -1327,7 +1327,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       const handleApply = () => {
         const selectedMatches = matchedItems.filter(m => selectedIds[m.existing.caseObj.id]);
         if (selectedMatches.length === 0) {
-          alert('Ø¨Ø±Ø¬Ø§Ø¡ ØªØ­Ø¯ÙŠØ¯ Ø­Ø§Ù„Ø© ÙˆØ§Ø­Ø¯Ø© Ø¹Ù„Ù‰ Ø§Ù„Ø£Ù‚Ù„ Ù„ØªØ­Ø¯ÙŠØ«Ù‡Ø§.');
+          alert('برجاء تحديد حالة واحدة على الأقل لتحديثها.');
           return;
         }
 
@@ -1342,9 +1342,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
               <div>
                 <h3 className="font-bold text-lg flex items-center gap-2">
                   <Upload size={20} className="text-[#d4af37]" />
-                  Ø§Ø³ØªÙŠØ±Ø§Ø¯ ÙˆÙ…Ø·Ø§Ø¨Ù‚Ø© ÙƒØ´Ù Ø§Ù„ØªÙ†ÙÙŠØ° Ø§Ù„ÙØ¹Ù„ÙŠ Ù…Ù† Ø§Ù„Ø¥ÙƒØ³ÙŠÙ„
+                  استيراد ومطابقة كشف التنفيذ الفعلي من الإكسيل
                 </h3>
-                <p className="text-xs text-blue-200 mt-0.5">Ù…Ø·Ø§Ø¨Ù‚Ø© Ø§Ù„Ø­Ø§Ù„Ø§Øª Ø¢Ù„ÙŠØ§Ù‹ ÙˆØªØ­Ø¯ÙŠØ« Ø§Ù„Ù‚ÙŠÙ… ÙˆØªØ­ÙˆÙŠÙ„Ù‡Ø§ Ø¥Ù„Ù‰ Ù…Ø´Ø§Ø±ÙŠØ¹ Ù…Ù†ÙØ°Ø©</p>
+                <p className="text-xs text-blue-200 mt-0.5">مطابقة الحالات آلياً وتحديث القيم وتحويلها إلى مشاريع منفذة</p>
               </div>
               <button onClick={onClose} className="text-white/80 hover:text-white p-1"><X size={20} /></button>
             </div>
@@ -1353,11 +1353,11 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
               {!matchedItems.length && !unmatchedRows.length && (
                 <div className="border-2 border-dashed border-[#002f6c]/30 hover:border-[#002f6c] rounded-xl p-8 text-center bg-blue-50/30 transition-colors">
                   <FileSpreadsheet size={48} className="mx-auto text-[#002f6c] mb-3 opacity-80" />
-                  <p className="text-gray-700 font-bold mb-1">Ø§Ø®ØªØ± Ù…Ù„Ù Ø§Ù„Ø¥ÙƒØ³ÙŠÙ„ Ø§Ù„Ù…ÙØ¹Ø¯Ù„ Ù…Ù† Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ù‚Ø±ÙŠØ©</p>
-                  <p className="text-gray-500 text-xs mb-4">ÙŠØ¯Ø¹Ù… Ù…Ù„ÙØ§Øª (.xlsx, .xls) Ø§Ù„ØªÙŠ ØªÙ… ØªØµØ¯ÙŠØ±Ù‡Ø§ Ù…Ù† Ø§Ù„ØªØ·Ø¨ÙŠÙ‚ Ø³Ø§Ø¨Ù‚Ø§Ù‹ Ø¨Ø¹Ø¯ ØªØ¹Ø¯ÙŠÙ„Ù‡Ø§</p>
+                  <p className="text-gray-700 font-bold mb-1">اختر ملف الإكسيل المُعدل من مسؤول القرية</p>
+                  <p className="text-gray-500 text-xs mb-4">يدعم ملفات (.xlsx, .xls) التي تم تصديرها من التطبيق سابقاً بعد تعديلها</p>
                   <label className="inline-flex items-center gap-2 bg-[#002f6c] hover:bg-[#001f4c] text-white px-5 py-2.5 rounded-lg cursor-pointer font-medium text-sm transition-colors shadow-sm">
                     <Upload size={18} />
-                    <span>Ø§Ø®ØªÙŠØ§Ø± Ù…Ù„Ù Ø§Ù„Ø¥ÙƒØ³ÙŠÙ„</span>
+                    <span>اختيار ملف الإكسيل</span>
                     <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} className="hidden" />
                   </label>
                 </div>
@@ -1366,7 +1366,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
               {isProcessing && (
                 <div className="text-center py-10">
                   <div className="w-8 h-8 border-4 border-[#002f6c] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                  <p className="text-gray-600 font-medium text-sm">Ø¬Ø§Ø±ÙŠ Ù‚Ø±Ø§Ø¡Ø© ÙˆÙ…Ø·Ø§Ø¨Ù‚Ø© Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¥ÙƒØ³ÙŠÙ„...</p>
+                  <p className="text-gray-600 font-medium text-sm">جاري قراءة ومطابقة بيانات الإكسيل...</p>
                 </div>
               )}
 
@@ -1377,18 +1377,18 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                       <FileSpreadsheet size={20} className="text-[#002f6c]" />
                       <span className="font-bold text-gray-800 text-sm">{fileName}</span>
                       <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
-                        ØªÙ… Ù…Ø·Ø§Ø¨Ù‚Ø© {matchedItems.length} Ø­Ø§Ù„Ø©
+                        تم مطابقة {matchedItems.length} حالة
                       </span>
                       {unmatchedRows.length > 0 && (
                         <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
-                          {unmatchedRows.length} ØºÙŠØ± Ù…ØªØ·Ø§Ø¨Ù‚Ø©
+                          {unmatchedRows.length} غير متطابقة
                         </span>
                       )}
                     </div>
 
                     <div className="flex items-center gap-3 w-full sm:w-auto">
                       <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                        <span>ØªØ§Ø±ÙŠØ® Ø§Ù„ØªÙ†ÙÙŠØ°:</span>
+                        <span>تاريخ التنفيذ:</span>
                         <input 
                           type="date" 
                           value={executionDate} 
@@ -1398,7 +1398,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                       </div>
                       <label className="text-xs text-[#002f6c] hover:underline cursor-pointer flex items-center gap-1">
                         <input type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" />
-                        ØªØºÙŠÙŠØ± Ø§Ù„Ù…Ù„Ù
+                        تغيير الملف
                       </label>
                     </div>
                   </div>
@@ -1414,11 +1414,11 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                           className="w-4 h-4 text-[#002f6c] rounded"
                         />
                         <label htmlFor="selectAllMatches" className="text-xs font-bold text-gray-700 cursor-pointer">
-                          ØªØ­Ø¯ÙŠØ¯ ÙƒÙ„ Ø§Ù„Ø­Ø§Ù„Ø§Øª Ø§Ù„Ù…ØªØ·Ø§Ø¨Ù‚Ø© ({matchedItems.length})
+                          تحديد كل الحالات المتطابقة ({matchedItems.length})
                         </label>
                       </div>
                       <span className="text-xs text-gray-500">
-                        Ø§Ù„Ù…Ø­Ø¯Ø¯ Ù„Ù„ØªØ­Ø¯ÙŠØ«: {Object.values(selectedIds).filter(Boolean).length}
+                        المحدد للتحديث: {Object.values(selectedIds).filter(Boolean).length}
                       </span>
                     </div>
 
@@ -1426,13 +1426,13 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                       <table className="w-full text-xs text-right">
                         <thead className="bg-gray-50 text-gray-600 border-b border-gray-200 uppercase sticky top-0">
                           <tr>
-                            <th className="p-2.5 w-10 text-center">Ø§Ø®ØªÙŠØ§Ø±</th>
-                            <th className="p-2.5">Ø§Ø³Ù… Ø§Ù„Ø­Ø§Ù„Ø©</th>
-                            <th className="p-2.5">Ø§Ù„ÙƒÙ†ÙŠØ³Ø©</th>
-                            <th className="p-2.5">Ù†ÙˆØ¹ Ø§Ù„Ù…Ø´Ø±ÙˆØ¹</th>
-                            <th className="p-2.5 text-center">Ø§Ù„Ù‚ÙŠÙ…Ø© (Ø§Ù„Ù…Ø¨Ø¯Ø¦ÙŠ â¬…ï¸ Ø§Ù„ÙØ¹Ù„ÙŠ)</th>
-                            <th className="p-2.5 text-center">Ø§Ù„Ù‚Ø³Ø· (Ø§Ù„Ù…Ø¨Ø¯Ø¦ÙŠ â¬…ï¸ Ø§Ù„ÙØ¹Ù„ÙŠ)</th>
-                            <th className="p-2.5 text-center">Ø§Ù„Ø­Ø§Ù„Ø© Ø§Ù„Ù†Ø§ØªØ¬Ø©</th>
+                            <th className="p-2.5 w-10 text-center">اختيار</th>
+                            <th className="p-2.5">اسم الحالة</th>
+                            <th className="p-2.5">الكنيسة</th>
+                            <th className="p-2.5">نوع المشروع</th>
+                            <th className="p-2.5 text-center">القيمة (المبدئي ⬅️ الفعلي)</th>
+                            <th className="p-2.5 text-center">القسط (المبدئي ⬅️ الفعلي)</th>
+                            <th className="p-2.5 text-center">الحالة الناتجة</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -1476,22 +1476,22 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                   {valChanged ? (
                                     <div className="flex items-center justify-center gap-1 font-bold text-emerald-700">
                                       <span className="line-through text-gray-400 text-[10px]">{formatNumber(oldVal)}</span>
-                                      <span>â¬…ï¸</span>
-                                      <span>{formatNumber(newVal)} Ø¬.Ù…</span>
+                                      <span>⬅️</span>
+                                      <span>{formatNumber(newVal)} ج.م</span>
                                     </div>
                                   ) : (
-                                    <span className="text-gray-700">{formatNumber(oldVal)} Ø¬.Ù…</span>
+                                    <span className="text-gray-700">{formatNumber(oldVal)} ج.م</span>
                                   )}
                                 </td>
                                 <td className="p-2.5 text-center font-sans">
                                   {instChanged ? (
                                     <div className="flex items-center justify-center gap-1 font-bold text-emerald-700">
                                       <span className="line-through text-gray-400 text-[10px]">{formatNumber(oldInst)}</span>
-                                      <span>â¬…ï¸</span>
-                                      <span>{formatNumber(newInst)} Ø¬.Ù…</span>
+                                      <span>⬅️</span>
+                                      <span>{formatNumber(newInst)} ج.م</span>
                                     </div>
                                   ) : (
-                                    <span className="text-gray-700">{formatNumber(oldInst)} Ø¬.Ù…</span>
+                                    <span className="text-gray-700">{formatNumber(oldInst)} ج.م</span>
                                   )}
                                 </td>
                                 <td className="p-2.5 text-center">
@@ -1508,7 +1508,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   {unmatchedRows.length > 0 && (
                     <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
                       <div className="font-bold flex items-center gap-1 mb-1">
-                        <AlertTriangle size={14} /> ØªÙ†Ø¨ÙŠÙ‡: ÙŠÙˆØ¬Ø¯ {unmatchedRows.length} ØµÙÙˆÙ ÙÙŠ Ø§Ù„Ø¥ÙƒØ³ÙŠÙ„ Ù„Ù… ÙŠØªÙ… Ø§Ù„Ø¹Ø«ÙˆØ± Ø¹Ù„Ù‰ Ø§Ø³Ù… Ù…Ø·Ø§Ø¨Ù‚ Ù„Ù‡Ø§ ÙÙŠ Ù‡Ø°Ù‡ Ø§Ù„Ø²ÙŠØ§Ø±Ø© (Ø³ÙŠØªÙ… ØªØ¬Ø§Ù‡Ù„Ù‡Ø§):
+                        <AlertTriangle size={14} /> تنبيه: يوجد {unmatchedRows.length} صفوف في الإكسيل لم يتم العثور على اسم مطابق لها في هذه الزيارة (سيتم تجاهلها):
                       </div>
                       <div className="text-gray-600 max-h-20 overflow-y-auto">
                         {unmatchedRows.map((u, i) => (
@@ -1524,7 +1524,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             </div>
 
             <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center shrink-0">
-              <button onClick={onClose} className="px-5 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">Ø¥Ù„ØºØ§Ø¡</button>
+              <button onClick={onClose} className="px-5 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">إلغاء</button>
               
               {(matchedItems.length > 0) && (
                 <button 
@@ -1533,7 +1533,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   className="px-6 py-2.5 rounded-md text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-md flex items-center gap-2"
                 >
                   <CheckCircle size={18} />
-                  <span>ØªØ·Ø¨ÙŠÙ‚ Ø§Ù„ØªØ­Ø¯ÙŠØ«Ø§Øª ÙˆØªØ­ÙˆÙŠÙ„ ({Object.values(selectedIds).filter(Boolean).length}) Ø­Ø§Ù„Ø© Ø¥Ù„Ù‰ "Ù…Ø´Ø±ÙˆØ¹ Ù…Ù†ÙØ°"</span>
+                  <span>تطبيق التحديثات وتحويل ({Object.values(selectedIds).filter(Boolean).length}) حالة إلى "مشروع منفذ"</span>
                 </button>
               )}
             </div>
@@ -1551,7 +1551,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       });
 
       const handleSave = () => {
-        if (!formData.name) { alert('Ø¨Ø±Ø¬Ø§Ø¡ Ø¥Ø¯Ø®Ø§Ù„ Ø§Ø³Ù… Ø§Ù„Ø­Ø§Ù„Ø©'); return; }
+        if (!formData.name) { alert('برجاء إدخال اسم الحالة'); return; }
         onSave({
           ...formData,
           status: formData.status || 'initial',
@@ -1568,13 +1568,13 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
             <div className="p-4 border-b border-gray-100 bg-[#002f6c] text-white flex justify-between items-center shrink-0">
-              <h3 className="font-bold text-lg">{caseData ? 'ØªØ¹Ø¯ÙŠÙ„ Ø§Ù„Ø­Ø§Ù„Ø©' : 'Ø¥Ø¶Ø§ÙØ© Ø­Ø§Ù„Ø© Ø¬Ø¯ÙŠØ¯Ø©'}</h3>
+              <h3 className="font-bold text-lg">{caseData ? 'تعديل الحالة' : 'إضافة حالة جديدة'}</h3>
               <button onClick={onClose} className="text-white/80 hover:text-white p-1"><X size={20} /></button>
             </div>
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
               {/* Status Selector */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">Ø­Ø§Ù„Ø© Ø§Ù„Ù…Ø´Ø±ÙˆØ¹</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">حالة المشروع</label>
                 <div className="grid grid-cols-3 gap-2">
                   {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
                     <button
@@ -1595,20 +1595,20 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ø§Ø³Ù… Ø§Ù„Ø­Ø§Ù„Ø© *</label>
-                <MicInput value={formData.name} onValueChange={(v) => setFormData({...formData, name: v})} placeholder="Ø§Ù„Ø§Ø³Ù… Ø«Ù„Ø§Ø«ÙŠ" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">اسم الحالة *</label>
+                <MicInput value={formData.name} onValueChange={(v) => setFormData({...formData, name: v})} placeholder="الاسم ثلاثي" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ù†ÙˆØ¹ Ø§Ù„Ù…Ø´Ø±ÙˆØ¹ Ø§Ù„Ù…Ø¨Ø¯Ø¦ÙŠ</label>
-                <MicInput value={formData.projectType} onValueChange={(v) => setFormData({...formData, projectType: v})} placeholder="Ù…Ø«Ù„: Ø¨Ù‚Ø§Ù„Ø©ØŒ Ù…Ù„Ø§Ø¨Ø³..." />
+                <label className="block text-sm font-medium text-gray-700 mb-1">نوع المشروع المبدئي</label>
+                <MicInput value={formData.projectType} onValueChange={(v) => setFormData({...formData, projectType: v})} placeholder="مثل: بقالة، ملابس..." />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ù‚ÙŠÙ…Ø© Ø§Ù„Ù…Ø´Ø±ÙˆØ¹ (Ø¬.Ù…)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">قيمة المشروع (ج.م)</label>
                   <MicInput isNumeric value={formData.projectValue} onValueChange={(v) => setFormData({...formData, projectValue: v})} placeholder="0" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ù‚ÙŠÙ…Ø© Ø§Ù„Ù‚Ø³Ø· (Ø¬.Ù…)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">قيمة القسط (ج.م)</label>
                   <MicInput isNumeric value={formData.installmentAmount} onValueChange={(v) => setFormData({...formData, installmentAmount: v})} placeholder="0" />
                 </div>
               </div>
@@ -1617,41 +1617,41 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
               {formData.status === 'executed' && (
                 <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3.5 space-y-3 animate-fade-in">
                   <div className="text-xs font-bold text-emerald-800 flex items-center gap-1">
-                    <CheckCircle size={14} /> Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„ØªÙ†ÙÙŠØ° Ø§Ù„ÙØ¹Ù„ÙŠ (Ø¥Ø°Ø§ Ø§Ø®ØªÙ„ÙØª Ø¹Ù† Ø§Ù„Ù…Ø¨Ø¯Ø¦ÙŠ)
+                    <CheckCircle size={14} /> بيانات التنفيذ الفعلي (إذا اختلفت عن المبدئي)
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Ù†ÙˆØ¹ Ø§Ù„Ù…Ø´Ø±ÙˆØ¹ Ø§Ù„ÙØ¹Ù„ÙŠ</label>
-                    <MicInput value={formData.executedProjectType || formData.projectType} onValueChange={(v) => setFormData({...formData, executedProjectType: v})} placeholder="Ø§Ù„Ù†ÙˆØ¹ Ø§Ù„ÙØ¹Ù„ÙŠ Ø§Ù„Ù…Ù†ÙØ°" />
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">نوع المشروع الفعلي</label>
+                    <MicInput value={formData.executedProjectType || formData.projectType} onValueChange={(v) => setFormData({...formData, executedProjectType: v})} placeholder="النوع الفعلي المنفذ" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">Ø§Ù„Ù‚ÙŠÙ…Ø© Ø§Ù„ÙØ¹Ù„ÙŠØ© (Ø¬.Ù…)</label>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">القيمة الفعلية (ج.م)</label>
                       <MicInput isNumeric value={formData.executedProjectValue ?? formData.projectValue} onValueChange={(v) => setFormData({...formData, executedProjectValue: v})} placeholder="0" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">Ø§Ù„Ù‚Ø³Ø· Ø§Ù„ÙØ¹Ù„ÙŠ (Ø¬.Ù…)</label>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">القسط الفعلي (ج.م)</label>
                       <MicInput isNumeric value={formData.executedInstallmentAmount ?? formData.installmentAmount} onValueChange={(v) => setFormData({...formData, executedInstallmentAmount: v})} placeholder="0" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">ØªØ§Ø±ÙŠØ® Ø§Ù„ØªÙ†ÙÙŠØ°</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">تاريخ التنفيذ</label>
                     <input type="date" value={formData.executionDate || new Date().toISOString().split('T')[0]} onChange={e => setFormData({...formData, executionDate: e.target.value})} className="w-full border border-gray-300 rounded p-1.5 text-xs font-sans outline-none" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ø§Ù„ØªÙ†ÙÙŠØ°</label>
-                    <MicInput value={formData.executionNotes} onValueChange={(v) => setFormData({...formData, executionNotes: v})} placeholder="Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ø¨Ø¹Ø¯ Ø§Ù„ØªÙ†ÙÙŠØ°..." />
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">ملاحظات التنفيذ</label>
+                    <MicInput value={formData.executionNotes} onValueChange={(v) => setFormData({...formData, executionNotes: v})} placeholder="ملاحظات بعد التنفيذ..." />
                   </div>
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ø¹Ø§Ù…Ø© (Ø§Ø®ØªÙŠØ§Ø±ÙŠ)</label>
-                <MicInput value={formData.notes} onValueChange={(v) => setFormData({...formData, notes: v})} placeholder="Ø£ÙŠ Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ø¥Ø¶Ø§ÙÙŠØ©" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">ملاحظات عامة (اختياري)</label>
+                <MicInput value={formData.notes} onValueChange={(v) => setFormData({...formData, notes: v})} placeholder="أي ملاحظات إضافية" />
               </div>
             </div>
             <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-2 shrink-0">
-              <button onClick={onClose} className="px-5 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">Ø¥Ù„ØºØ§Ø¡</button>
-              <button onClick={handleSave} className="px-5 py-2 rounded-md text-sm font-medium text-white bg-[#002f6c] hover:bg-[#001f4c] transition-colors shadow-sm">Ø­ÙØ¸ Ø§Ù„Ø­Ø§Ù„Ø©</button>
+              <button onClick={onClose} className="px-5 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">إلغاء</button>
+              <button onClick={handleSave} className="px-5 py-2 rounded-md text-sm font-medium text-white bg-[#002f6c] hover:bg-[#001f4c] transition-colors shadow-sm">حفظ الحالة</button>
             </div>
           </div>
         </div>
@@ -1665,7 +1665,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       const [village, setVillage] = useState(churchInfo.villageName || '');
 
       const handleSave = () => {
-        if (!name.trim()) { alert('برجاء إدخال اسم الكنيسة'); return; }
+        if (!name.trim()) { alert('\u0628\u0631\u062c\u0627\u0621 \u0625\u062f\u062e\u0627\u0644 \u0627\u0633\u0645 \u0627\u0644\u0643\u0646\u064a\u0633\u0629'); return; }
         onSave(churchInfo.churchId, name.trim(), region.trim(), village.trim());
       };
 
@@ -1674,8 +1674,8 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100" onClick={e => e.stopPropagation()}>
             <div className="p-4 border-b border-gray-100 bg-[#002f6c] text-white flex justify-between items-center">
               <h3 className="font-bold text-base flex items-center gap-2">
-                <span>{'⛪'}</span>
-                <span>{'تعديل بيانات الكنيسة'}</span>
+                <span>{'\u26ea'}</span>
+                <span>{'\u062a\u0639\u062f\u064a\u0644 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0643\u0646\u064a\u0633\u0629'}</span>
               </h3>
               <button type="button" onClick={onClose} className="text-white/80 hover:text-white p-1">
                 <X size={18} />
@@ -1683,32 +1683,32 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             </div>
             <div className="p-5 space-y-4 text-right">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">اسم الكنيسة *</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{'\u0627\u0633\u0645 \u0627\u0644\u0643\u0646\u064a\u0633\u0629 *'}</label>
                 <input
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="مثلاً: كنيسة الملاك ميخائيل"
+                  placeholder={'\u0645\u062b\u0644\u0627\u064b: \u0643\u0646\u064a\u0633\u0629 \u0627\u0644\u0645\u0644\u0627\u0643 \u0645\u064a\u062e\u0627\u0626\u064a\u0644'}
                   className="w-full text-sm border border-gray-200 rounded-lg p-2.5 outline-none focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c]"
                   autoFocus
                 />
               </div>
               <div>
                 <SmartAutocompleteInput
-                  label="المنطقة (المركز)"
+                  label={'\u0627\u0644\u0645\u0646\u0637\u0642\u0629 (\u0627\u0644\u0645\u0631\u0643\u0632)'}
                   value={region}
                   onChange={setRegion}
                   options={existingRegions}
-                  placeholder="اختر أو اكتب المركز (مثلاً: أبو قرقاص، مطاي...)"
+                  placeholder={'\u0627\u062e\u062a\u0631 \u0623\u0648 \u0627\u0643\u062a\u0628 \u0627\u0644\u0645\u0631\u0643\u0632 (\u0645\u062b\u0644\u0627\u064b: \u0623\u0628\u0648 \u0642\u0631\u0642\u0627\u0635\u060c \u0645\u0637\u0627\u064a...)'}
                 />
               </div>
               <div>
                 <SmartAutocompleteInput
-                  label="القرية / العنوان"
+                  label={'\u0627\u0644\u0642\u0631\u064a\u0629 / \u0627\u0644\u0639\u0646\u0648\u0627\u0646'}
                   value={village}
                   onChange={setVillage}
                   options={existingVillages}
-                  placeholder="اختر أو اكتب القرية (مثلاً: أبو قرقاص البلد، خرفان...)"
+                  placeholder={'\u0627\u062e\u062a\u0631 \u0623\u0648 \u0627\u0643\u062a\u0628 \u0627\u0644\u0642\u0631\u064a\u0629 (\u0645\u062b\u0644\u0627\u064b: \u0623\u0628\u0648 \u0642\u0631\u0642\u0627\u0635 \u0627\u0644\u0628\u0644\u062f\u060c \u062e\u0631\u0641\u0627\u0646...)'}
                 />
               </div>
             </div>
@@ -1746,11 +1746,11 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
           <div className="p-4 border-b border-gray-200 bg-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="flex-1 w-full max-w-md">
-              <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Ø£Ø³Ù…Ø§Ø¡ Ø§Ù„Ø®Ø¯Ø§Ù… Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„ÙŠÙ†</label>
-              <MicInput value={group.servantsNames || ''} onValueChange={(v) => onUpdateGroup(churchId, {...group, servantsNames: v})} placeholder="Ø£Ø¯Ø®Ù„ Ø£Ø³Ù…Ø§Ø¡ Ø§Ù„Ø®Ø¯Ø§Ù…" className="bg-white" disabled={isReadOnly} />
+              <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">أسماء الخدام المسؤولين</label>
+              <MicInput value={group.servantsNames || ''} onValueChange={(v) => onUpdateGroup(churchId, {...group, servantsNames: v})} placeholder="أدخل أسماء الخدام" className="bg-white" disabled={isReadOnly} />
             </div>
-            {!isReadOnly && <button onClick={() => { if(confirm('Ù‡Ù„ ØªØ±ÙŠØ¯ Ø­Ø°Ù Ù…Ø¬Ù…ÙˆØ¹Ø© Ø§Ù„Ø®Ø¯Ø§Ù… ÙˆØ­Ø§Ù„Ø§ØªÙ‡Ù…ØŸ')) onDeleteGroup(churchId, group.id); }} className="text-red-500 hover:text-red-700 text-sm font-medium p-2">
-              Ø­Ø°Ù Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹Ø©
+            {!isReadOnly && <button onClick={() => { if(confirm('هل تريد حذف مجموعة الخدام وحالاتهم؟')) onDeleteGroup(churchId, group.id); }} className="text-red-500 hover:text-red-700 text-sm font-medium p-2">
+              حذف المجموعة
             </button>}
           </div>
           
@@ -1758,19 +1758,19 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             <table className="w-full text-sm text-right">
               <thead className="bg-[#002f6c] text-white">
                 <tr>
-                  <th className="px-3 py-3 font-medium w-14 text-center"># (ÙƒÙ†ÙŠØ³Ø©)</th>
-                  <th className="px-4 py-3 font-medium min-w-[140px]">Ø§Ø³Ù… Ø§Ù„Ø­Ø§Ù„Ø©</th>
-                  <th className="px-3 py-3 font-medium text-center w-28">Ø­Ø§Ù„Ø© Ø§Ù„Ù…Ø´Ø±ÙˆØ¹</th>
-                  <th className="px-3 py-3 font-medium">Ù†ÙˆØ¹ Ø§Ù„Ù…Ø´Ø±ÙˆØ¹</th>
-                  <th className="px-3 py-3 font-medium text-center">Ø§Ù„Ù‚ÙŠÙ…Ø© (Ø¬.Ù…)</th>
-                  <th className="px-3 py-3 font-medium text-center">Ø§Ù„Ù‚Ø³Ø· (Ø¬.Ù…)</th>
-                  <th className="px-4 py-3 font-medium">Ù…Ù„Ø§Ø­Ø¸Ø§Øª</th>
-                  <th className="px-3 py-3 font-medium text-center w-32">Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª</th>
+                  <th className="px-3 py-3 font-medium w-14 text-center"># (كنيسة)</th>
+                  <th className="px-4 py-3 font-medium min-w-[140px]">اسم الحالة</th>
+                  <th className="px-3 py-3 font-medium text-center w-28">حالة المشروع</th>
+                  <th className="px-3 py-3 font-medium">نوع المشروع</th>
+                  <th className="px-3 py-3 font-medium text-center">القيمة (ج.م)</th>
+                  <th className="px-3 py-3 font-medium text-center">القسط (ج.م)</th>
+                  <th className="px-4 py-3 font-medium">ملاحظات</th>
+                  <th className="px-3 py-3 font-medium text-center w-32">إجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {(group.cases || []).length === 0 && (
-                  <tr><td colSpan="8" className="px-4 py-8 text-center text-gray-500">Ù„Ø§ ØªÙˆØ¬Ø¯ Ø­Ø§Ù„Ø§Øª Ù…Ø³Ø¬Ù„Ø© Ù„Ù‡Ø°Ù‡ Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹Ø©.</td></tr>
+                  <tr><td colSpan="8" className="px-4 py-8 text-center text-gray-500">لا توجد حالات مسجلة لهذه المجموعة.</td></tr>
                 )}
                 {(group.cases || []).map((c) => {
                   const isExec = c.status === 'executed';
@@ -1784,7 +1784,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                       <td className="px-4 py-3 font-medium text-gray-900">
                         <div>{c.name}</div>
                         {isExec && c.executionDate && (
-                          <div className="text-[10px] text-emerald-700 font-sans mt-0.5">Ù…Ù†ÙØ° ÙÙŠ: {c.executionDate}</div>
+                          <div className="text-[10px] text-emerald-700 font-sans mt-0.5">منفذ في: {c.executionDate}</div>
                         )}
                       </td>
                       <td className="px-3 py-3 text-center">
@@ -1824,7 +1824,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                         <div>{c.notes || '-'}</div>
                         {c.executionNotes && (
                           <div className="text-[11px] text-emerald-800 bg-emerald-50 rounded p-1 mt-1 border border-emerald-100">
-                            <strong>Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ø§Ù„ØªÙ†ÙÙŠØ°:</strong> {c.executionNotes}
+                            <strong>ملاحظات التنفيذ:</strong> {c.executionNotes}
                           </div>
                         )}
                       </td>
@@ -1838,14 +1838,14 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                   ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200' 
                                   : 'text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300'
                               }`} 
-                              title={isExec ? "ØªØ¹Ø¯ÙŠÙ„ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„ØªÙ†ÙÙŠØ°" : "ØªØ£ÙƒÙŠØ¯ Ø§Ù„ØªÙ†ÙÙŠØ°"}
+                              title={isExec ? "تعديل بيانات التنفيذ" : "تأكيد التنفيذ"}
                             >
                               <Zap size={14} />
-                              <span className="hidden sm:inline">{isExec ? 'Ø§Ù„Ù…Ù†ÙØ°' : 'ØªØ£ÙƒÙŠØ¯'}</span>
+                              <span className="hidden sm:inline">{isExec ? 'المنفذ' : 'تأكيد'}</span>
                             </button>
                           )}
-                          {!isReadOnly && <button onClick={() => onEditCase(c, churchId, group.id)} className="text-blue-600 hover:text-blue-800 p-1" title="ØªØ¹Ø¯ÙŠÙ„"><Edit2 size={16}/></button>}
-                          {!isReadOnly && <button onClick={() => onDeleteCase(c.id, churchId, group.id)} className="text-red-500 hover:text-red-700 p-1" title="Ø­Ø°Ù"><Trash2 size={16}/></button>}
+                          {!isReadOnly && <button onClick={() => onEditCase(c, churchId, group.id)} className="text-blue-600 hover:text-blue-800 p-1" title="تعديل"><Edit2 size={16}/></button>}
+                          {!isReadOnly && <button onClick={() => onDeleteCase(c.id, churchId, group.id)} className="text-red-500 hover:text-red-700 p-1" title="حذف"><Trash2 size={16}/></button>}
                         </div>
                       </td>
                     </tr>
@@ -1857,7 +1857,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           
           <div className="p-3 border-t border-gray-200 bg-white">
             {!isReadOnly && <button onClick={() => setIsAddingCase(true)} className="flex items-center gap-1.5 text-sm font-medium text-[#002f6c] hover:text-[#004a8f] px-2 py-1 rounded">
-              <Plus size={16} /> Ø¥Ø¶Ø§ÙØ© Ø­Ø§Ù„Ø© Ø¬Ø¯ÙŠØ¯Ø©
+              <Plus size={16} /> إضافة حالة جديدة
             </button>}
           </div>
           
@@ -1924,7 +1924,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         if (!visitDraftInfo) return;
         updateData(visitDraftInfo);
         if (typeof window.notifySuccess === 'function') {
-          window.notifySuccess('ØªÙ… Ø§Ø³ØªØ±Ø¬Ø§Ø¹ Ù…Ø³ÙˆØ¯Ø© Ø§Ù„Ø²ÙŠØ§Ø±Ø© Ø§Ù„Ù…Ø­ÙÙˆØ¸Ø© Ø¨Ù†Ø¬Ø§Ø­!');
+          window.notifySuccess('تم استرجاع مسودة الزيارة المحفوظة بنجاح!');
         }
         setVisitDraftInfo(null);
       };
@@ -1935,13 +1935,13 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         } catch(e) {}
         setVisitDraftInfo(null);
         if (typeof window.notifyInfo === 'function') {
-          window.notifyInfo('ØªÙ… Ù…Ø³Ø­ Ù…Ø³ÙˆØ¯Ø© Ø§Ù„Ø²ÙŠØ§Ø±Ø©.');
+          window.notifyInfo('تم مسح مسودة الزيارة.');
         }
       };
 
       const handleSaveVisitDraftManually = () => {
         if (!data || !data.churches || data.churches.length === 0) {
-          if (typeof window.notifyWarning === 'function') window.notifyWarning('Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª Ù„Ø­ÙØ¸Ù‡Ø§ ÙƒÙ…Ø³ÙˆØ¯Ø© Ø­Ø§Ù„ÙŠØ§Ù‹.');
+          if (typeof window.notifyWarning === 'function') window.notifyWarning('لا توجد بيانات لحفظها كمسودة حالياً.');
           return;
         }
         try {
@@ -1950,7 +1950,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             savedAt: Date.now()
           }));
           if (typeof window.notifySuccess === 'function') {
-            window.notifySuccess('ØªÙ… Ø­ÙØ¸ Ù…Ø³ÙˆØ¯Ø© Ø§Ù„Ø²ÙŠØ§Ø±Ø© Ø¨Ù†Ø¬Ø§Ø­! ÙŠÙ…ÙƒÙ†Ùƒ Ø§Ù„Ø®Ø±ÙˆØ¬ ÙˆØ§Ù„Ø¹ÙˆØ¯Ø© Ù„Ù‡Ø§ ÙÙŠ Ø£ÙŠ ÙˆÙ‚Øª.');
+            window.notifySuccess('تم حفظ مسودة الزيارة بنجاح! يمكنك الخروج والعودة لها في أي وقت.');
           }
         } catch(e) {
           console.warn('Draft save err:', e);
@@ -2069,7 +2069,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         const vNumStr = visitNumber !== undefined && visitNumber !== null ? String(visitNumber).trim() : '';
         updateData(prev => {
           const updatedChurches = (prev.churches || []).map(ch => {
-            if ((ch.regionName || 'Ù…Ù†Ø·Ù‚Ø© ØºÙŠØ± Ù…Ø­Ø¯Ø¯Ø©') === oldName) {
+            if ((ch.regionName || 'منطقة غير محددة') === oldName) {
               return { 
                 ...ch, 
                 regionName: trimmed,
@@ -2093,12 +2093,12 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         });
         setRenamingRegion(null);
         if (typeof window.notifySuccess === 'function') {
-          window.notifySuccess(`ØªÙ… Ø­ÙØ¸ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø±ÙƒØ² Ø¨Ù†Ø¬Ø§Ø­!`);
+          window.notifySuccess(`تم حفظ بيانات المركز بنجاح!`);
         }
       };
 
       const handleDeleteChurch = (id) => {
-        if(confirm('Ù‡Ù„ Ø£Ù†Øª Ù…ØªØ£ÙƒØ¯ Ù…Ù† Ø­Ø°Ù Ø¨ÙŠØ§Ù†Ø§Øª Ù‡Ø°Ù‡ Ø§Ù„ÙƒÙ†ÙŠØ³Ø© Ø¨Ø§Ù„ÙƒØ§Ù…Ù„ØŸ')) {
+        if(confirm('هل أنت متأكد من حذف بيانات هذه الكنيسة بالكامل؟')) {
           updateData(prev => ({ ...prev, churches: prev.churches.filter(ch => ch.id !== id) }));
         }
       };
@@ -2180,11 +2180,11 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           }));
           return { ...prev, churches: updatedChurches };
         });
-        alert(`ØªÙ… Ø¨Ù†Ø¬Ø§Ø­ ØªØ­Ø¯ÙŠØ« ÙˆØªØ£ÙƒÙŠØ¯ ØªÙ†ÙÙŠØ° ${selectedMatches.length} Ø­Ø§Ù„Ø©!`);
+        alert(`تم بنجاح تحديث وتأكيد تنفيذ ${selectedMatches.length} حالة!`);
       };
 
       const handleDeleteCase = (caseId, churchId, groupId) => {
-        if (!confirm('Ù‡Ù„ Ø£Ù†Øª Ù…ØªØ£ÙƒØ¯ Ù…Ù† Ø­Ø°Ù Ù‡Ø°Ù‡ Ø§Ù„Ø­Ø§Ù„Ø©ØŸ')) return;
+        if (!confirm('هل أنت متأكد من حذف هذه الحالة؟')) return;
         updateData(prev => ({
           ...prev, churches: prev.churches.map(ch => ch.id === churchId ? {
             ...ch, servantsGroups: ch.servantsGroups.map(sg => sg.id === groupId ? {
@@ -2204,11 +2204,11 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 </div>
                 <div>
                   <div className="text-sm font-bold text-emerald-950 flex items-center gap-2">
-                    <span>ÙŠÙˆØ¬Ø¯ Ù…Ø³ÙˆØ¯Ø© Ø²ÙŠØ§Ø±Ø© Ù…Ø­ÙÙˆØ¸Ø© ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹ ÙˆØºÙŠØ± Ù…ÙƒØªÙ…Ù„Ø©</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-bold">Ù…Ø³ÙˆØ¯Ø© Ù…ØªØ§Ø­Ø©</span>
+                    <span>يوجد مسودة زيارة محفوظة تلقائياً وغير مكتملة</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-bold">مسودة متاحة</span>
                   </div>
                   <div className="text-xs text-emerald-800 mt-0.5">
-                    ØªØ§Ø±ÙŠØ® Ø§Ù„Ø­ÙØ¸: <span className="font-semibold">{visitDraftInfo.time}</span> | Ø§Ù„Ù…ÙƒØ§Ù†: <span className="font-semibold">{visitDraftInfo.location}</span> | Ø¹Ø¯Ø¯ Ø§Ù„ÙƒÙ†Ø§Ø¦Ø³: <span className="font-semibold">{visitDraftInfo.churchesCount}</span>
+                    تاريخ الحفظ: <span className="font-semibold">{visitDraftInfo.time}</span> | المكان: <span className="font-semibold">{visitDraftInfo.location}</span> | عدد الكنائس: <span className="font-semibold">{visitDraftInfo.churchesCount}</span>
                   </div>
                 </div>
               </div>
@@ -2218,21 +2218,21 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   onClick={handleRestoreVisitDraft}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  <RotateCcw size={14} /> Ø§Ø³ØªØ¹Ø§Ø¯Ø© Ø§Ù„Ù…Ø³ÙˆØ¯Ø© ÙˆØ¥ÙƒÙ…Ø§Ù„ Ø§Ù„Ø²ÙŠØ§Ø±Ø©
+                  <RotateCcw size={14} /> استعادة المسودة وإكمال الزيارة
                 </button>
                 <button
                   type="button"
                   onClick={handleDiscardVisitDraft}
                   className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
                 >
-                  <Trash2 size={14} /> Ù…Ø³Ø­ ÙˆØ§Ù„Ø¨Ø¯Ø¡ Ù…Ù† Ø¬Ø¯ÙŠØ¯
+                  <Trash2 size={14} /> مسح والبدء من جديد
                 </button>
               </div>
             </div>
           )}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
              <h2 className="text-2xl font-bold text-[#002f6c] flex items-center gap-2">
-               <Edit2 size={24} className="text-[#d4af37]" /> ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø²ÙŠØ§Ø±Ø© ÙˆØ§Ù„Ù…Ø´Ø§Ø±ÙŠØ¹
+               <Edit2 size={24} className="text-[#d4af37]" /> تسجيل الزيارة والمشاريع
              </h2>
              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                 {!isReadOnly && (
@@ -2240,10 +2240,10 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                     type="button" 
                     onClick={handleSaveVisitDraftManually} 
                     className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-emerald-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 px-3.5 py-2 rounded-md font-bold shadow-xs transition-colors text-sm"
-                    title="Ø­ÙØ¸ Ø§Ù„Ù…Ø³ÙˆØ¯Ø© Ø§Ù„Ø­Ø§Ù„ÙŠØ© ÙÙŠ Ø§Ù„Ù…ØªØµÙØ­ Ù„Ù„Ø±Ø¬ÙˆØ¹ Ø¥Ù„ÙŠÙ‡Ø§ ÙÙŠ Ø£ÙŠ ÙˆÙ‚Øª"
+                    title="حفظ المسودة الحالية في المتصفح للرجوع إليها في أي وقت"
                   >
                     <Save size={16} className="text-emerald-600" />
-                    <span>Ø­ÙØ¸ ÙƒÙ…Ø³ÙˆØ¯Ø©</span>
+                    <span>حفظ كمسودة</span>
                   </button>
                 )}
                 {!isReadOnly && typeof onOpenImportLegacy === 'function' && (
@@ -2251,23 +2251,23 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                      type="button" 
                      onClick={onOpenImportLegacy} 
                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-700 text-white hover:bg-blue-800 px-4 py-2 rounded-md font-bold shadow-sm transition-colors text-sm"
-                     title="Ø§Ø³ØªÙŠØ±Ø§Ø¯ Ø²ÙŠØ§Ø±Ø© Ù‚Ø¯ÙŠÙ…Ø© ÙƒØ§Ù…Ù„Ø© Ø£Ùˆ Ø´ÙŠØª Ù…Ø´Ø§Ø±ÙŠØ¹ Ø³Ø§Ø¨Ù‚Ø© Ù…Ù† Excel"
+                     title="استيراد زيارة قديمة كاملة أو شيت مشاريع سابقة من Excel"
                    >
                      <FileSpreadsheet size={18} className="text-amber-300" />
-                     <span>Ø§Ø³ØªÙŠØ±Ø§Ø¯ Ø²ÙŠØ§Ø±Ø© Ù‚Ø¯ÙŠÙ…Ø© (Excel)</span>
+                     <span>استيراد زيارة قديمة (Excel)</span>
                    </button>
                  )}
                  {!isReadOnly && (
                   <button onClick={() => setShowImportModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700 px-4 py-2 rounded-md font-medium shadow-sm transition-colors text-sm">
-                    <Upload size={18} /> Ø§Ø³ØªÙŠØ±Ø§Ø¯ ÙƒØ´Ù Ø§Ù„ØªÙ†ÙÙŠØ°
+                    <Upload size={18} /> استيراد كشف التنفيذ
                   </button>
                 )}
                 <button onClick={() => onExport && onExport(data)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white border border-[#d4af37] text-[#8a7222] hover:bg-[#fff9e6] px-4 py-2 rounded-md font-medium transition-colors text-sm">
-                  <Download size={18} /> ØªØµØ¯ÙŠØ±
+                  <Download size={18} /> تصدير
                 </button>
                 {!isReadOnly && (
                   <button onClick={() => { try { localStorage.removeItem('active_visit_draft'); } catch(e) {} onEndVisit && onEndVisit(); }} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-[#002f6c] text-white hover:bg-[#001f4c] px-4 py-2 rounded-md font-medium shadow-md transition-colors text-sm">
-                    <CheckCircle size={18} /> Ø­ÙØ¸ ÙˆØ¥Ù†Ù‡Ø§Ø¡
+                    <CheckCircle size={18} /> حفظ وإنهاء
                   </button>
                 )}
              </div>
@@ -2276,17 +2276,17 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ù…ÙƒØ§Ù† Ø§Ù„Ø²ÙŠØ§Ø±Ø© / Ø§Ù„Ù†Ø²Ù„Ø©</label>
-                <MicInput value={localLocation} onValueChange={(v) => setLocalLocation(v)} placeholder="Ø£Ø¯Ø®Ù„ Ù…ÙƒØ§Ù† Ø§Ù„Ø²ÙŠØ§Ø±Ø© (Ù…Ø«Ø§Ù„: Ø£Ø¨Ùˆ Ù‚Ø±Ù‚Ø§Øµ + Ù…Ø·Ø§ÙŠ)" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">مكان الزيارة / النزلة</label>
+                <MicInput value={localLocation} onValueChange={(v) => setLocalLocation(v)} placeholder="أدخل مكان الزيارة (مثال: أبو قرقاص + مطاي)" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ØªØ§Ø±ÙŠØ® Ø§Ù„Ø²ÙŠØ§Ø±Ø©</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">تاريخ الزيارة</label>
                 <input type="date" value={data.date || ''} onChange={(e) => updateData(p => ({...p, date: e.target.value}))} className="w-full rounded-md border border-gray-300 p-2.5 text-sm focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c] focus:outline-none transition-shadow text-gray-900 font-sans" />
               </div>
               <div>
                 <label className="block text-sm font-bold text-emerald-800 mb-1 flex items-center gap-1">
-                  <span>ðŸ—“ï¸ ØªØ§Ø±ÙŠØ® Ø¨Ø¯Ø§ÙŠØ© Ø§Ù„Ø³Ø¯Ø§Ø¯ Ù„Ù„Ø£Ù‚Ø³Ø§Ø·</span>
-                  <span className="text-[11px] font-normal text-gray-500">(Ø£ÙˆÙ„ Ù‚Ø³Ø·)</span>
+                  <span>🗓️ تاريخ بداية السداد للأقساط</span>
+                  <span className="text-[11px] font-normal text-gray-500">(أول قسط)</span>
                 </label>
                 <input
                   type="date"
@@ -2353,46 +2353,46 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                  <div className="bg-[#002f6c]/5 rounded-xl border border-[#002f6c]/20 p-4 mb-6 flex flex-wrap gap-4 items-center justify-between">
                      <div className="flex flex-wrap gap-3 items-center">
                         <div className="bg-white px-3.5 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
-                           <span className="text-lg">ðŸ‘¥</span>
+                           <span className="text-lg">👥</span>
                            <div className="flex flex-col">
-                              <span className="text-[11px] text-gray-500 font-medium">Ù…Ø¬Ù…ÙˆØ¹Ø§Øª Ø§Ù„Ø®Ø¯Ø§Ù…</span>
-                              <span className="font-bold text-blue-600 text-sm"><span className="font-sans">{formatNumber(totalGroups)}</span> Ù…Ø¬Ù…ÙˆØ¹Ø©</span>
+                              <span className="text-[11px] text-gray-500 font-medium">مجموعات الخدام</span>
+                              <span className="font-bold text-blue-600 text-sm"><span className="font-sans">{formatNumber(totalGroups)}</span> مجموعة</span>
                            </div>
                         </div>
                         <div className="bg-white px-3.5 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
-                           <span className="text-lg">ðŸ“Š</span>
+                           <span className="text-lg">📊</span>
                            <div className="flex flex-col">
-                              <span className="text-[11px] text-gray-500 font-medium">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø­Ø§Ù„Ø§Øª</span>
-                              <span className="font-bold text-[#002f6c] text-sm"><span className="font-sans">{formatNumber(totalProjects)}</span> Ù…Ø´Ø±ÙˆØ¹</span>
+                              <span className="text-[11px] text-gray-500 font-medium">إجمالي الحالات</span>
+                              <span className="font-bold text-[#002f6c] text-sm"><span className="font-sans">{formatNumber(totalProjects)}</span> مشروع</span>
                            </div>
                         </div>
                         <div className="bg-white px-3.5 py-2 rounded-lg shadow-sm border border-amber-200 bg-amber-50/40 flex items-center gap-2">
-                           <span className="text-lg">â³</span>
+                           <span className="text-lg">⏳</span>
                            <div className="flex flex-col">
-                              <span className="text-[11px] text-amber-800 font-medium">Ù…ÙˆØ§ÙÙ‚Ø© Ù…Ø¨Ø¯Ø¦ÙŠØ©</span>
-                              <span className="font-bold text-amber-700 text-sm"><span className="font-sans">{formatNumber(totalApprovedValue)}</span> Ø¬.Ù…</span>
+                              <span className="text-[11px] text-amber-800 font-medium">موافقة مبدئية</span>
+                              <span className="font-bold text-amber-700 text-sm"><span className="font-sans">{formatNumber(totalApprovedValue)}</span> ج.م</span>
                            </div>
                         </div>
                         <div className="bg-white px-3.5 py-2 rounded-lg shadow-sm border border-emerald-200 bg-emerald-50/40 flex items-center gap-2">
-                           <span className="text-lg">âœ…</span>
+                           <span className="text-lg">✅</span>
                            <div className="flex flex-col">
-                              <span className="text-[11px] text-emerald-800 font-medium">Ø§Ù„Ù…Ù†ÙØ° ÙØ¹Ù„ÙŠØ§Ù‹ ({formatNumber(executedProjectsCount)})</span>
-                              <span className="font-bold text-emerald-700 text-sm"><span className="font-sans">{formatNumber(totalExecutedValue)}</span> Ø¬.Ù…</span>
+                              <span className="text-[11px] text-emerald-800 font-medium">المنفذ فعلياً ({formatNumber(executedProjectsCount)})</span>
+                              <span className="font-bold text-emerald-700 text-sm"><span className="font-sans">{formatNumber(totalExecutedValue)}</span> ج.م</span>
                            </div>
                         </div>
                         <div className="bg-white px-3.5 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
-                           <span className="text-lg">ðŸ’¸</span>
+                           <span className="text-lg">💸</span>
                            <div className="flex flex-col">
-                              <span className="text-[11px] text-gray-500 font-medium">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø£Ù‚Ø³Ø§Ø·</span>
-                              <span className="font-bold text-[#8a7222] text-sm"><span className="font-sans">{formatNumber(totalInstallments)}</span> Ø¬.Ù…</span>
+                              <span className="text-[11px] text-gray-500 font-medium">إجمالي الأقساط</span>
+                              <span className="font-bold text-[#8a7222] text-sm"><span className="font-sans">{formatNumber(totalInstallments)}</span> ج.م</span>
                            </div>
                         </div>
                      </div>
                      <div className="bg-[#002f6c] text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2">
-                        <span className="text-xl">â›ª</span>
+                        <span className="text-xl">⛪</span>
                         <div className="flex flex-col">
-                           <span className="text-xs text-blue-200 font-medium">Ø¹Ø¯Ø¯ Ø§Ù„ÙƒÙ†Ø§Ø¦Ø³</span>
-                           <span className="font-bold"><span className="font-sans">{formatNumber(totalChurches)}</span> ÙƒÙ†ÙŠØ³Ø©</span>
+                           <span className="text-xs text-blue-200 font-medium">عدد الكنائس</span>
+                           <span className="font-bold"><span className="font-sans">{formatNumber(totalChurches)}</span> كنيسة</span>
                         </div>
                      </div>
                  </div>
@@ -2425,7 +2425,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
-                    <span>ðŸŒ ÙƒÙ„ Ø§Ù„Ù…Ø´Ø§Ø±ÙŠØ¹</span>
+                    <span>🌐 كل المشاريع</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-sans ${filterStatus === 'all' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'}`}>
                       {formatNumber(all)}
                     </span>
@@ -2440,7 +2440,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                         : 'text-amber-800 hover:bg-amber-50'
                     }`}
                   >
-                    <span>â³ Ù…ÙˆØ§ÙÙ‚Ø© Ù…Ø¨Ø¯Ø¦ÙŠØ©</span>
+                    <span>⏳ موافقة مبدئية</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-sans ${filterStatus === 'initial' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-900'}`}>
                       {formatNumber(initial)}
                     </span>
@@ -2455,7 +2455,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                         : 'text-emerald-800 hover:bg-emerald-50'
                     }`}
                   >
-                    <span>âœ… Ù…Ø´Ø§Ø±ÙŠØ¹ Ù…Ù†ÙØ°Ø©</span>
+                    <span>✅ مشاريع منفذة</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-sans ${filterStatus === 'executed' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-900'}`}>
                       {formatNumber(executed)}
                     </span>
@@ -2470,7 +2470,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                         : 'text-red-700 hover:bg-red-50'
                     }`}
                   >
-                    <span>âŒ Ù„Ù… ØªÙÙ†ÙÙ‘Ø° / Ù…Ù„ØºØ§Ø©</span>
+                    <span>❌ لم تُنفّذ / ملغاة</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-sans ${filterStatus === 'cancelled' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-800'}`}>
                       {formatNumber(cancelled)}
                     </span>
@@ -2482,10 +2482,10 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           {/* ADVANCED FILTERS */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
              <div className="flex justify-between items-center mb-4 border-b border-gray-50 pb-2">
-                <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2"><Search size={16} className="text-[#002f6c]"/> ØªØµÙÙŠØ© Ù…ØªÙ‚Ø¯Ù…Ø©</h4>
+                <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2"><Search size={16} className="text-[#002f6c]"/> تصفية متقدمة</h4>
                 {(searchQuery || filterRegion || filterChurch || filterServant || filterProject || filterCase) && (
                    <button onClick={() => { setSearchQuery(''); setFilterRegion(''); setFilterChurch(''); setFilterServant(''); setFilterProject(''); setFilterCase(''); }} className="text-xs flex items-center gap-1 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors font-medium">
-                       <RotateCcw size={14}/> Ø¥Ø¹Ø§Ø¯Ø© Ø¶Ø¨Ø· Ø§Ù„ÙÙ„Ø§ØªØ±
+                       <RotateCcw size={14}/> إعادة ضبط الفلاتر
                    </button>
                 )}
              </div>
@@ -2500,14 +2500,14 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                       type="text"
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
-                      placeholder="Ø¨Ø­Ø« Ø³Ø±ÙŠØ¹ Ø¨Ø£ÙŠ ÙƒÙ„Ù…Ø© (Ø§Ø³Ù… Ø§Ù„Ø­Ø§Ù„Ø©ØŒ Ø§Ù„Ø±Ù‚Ù… Ø§Ù„Ù‚ÙˆÙ…ÙŠØŒ Ø±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙØŒ Ù†ÙˆØ¹ Ø§Ù„Ù…Ø´Ø±ÙˆØ¹ØŒ Ø§Ù„ÙƒÙ†ÙŠØ³Ø©ØŒ Ø§Ù„Ù‚Ø±ÙŠØ©ØŒ Ø§Ù„Ø®Ø§Ø¯Ù…...)"
+                      placeholder="بحث سريع بأي كلمة (اسم الحالة، الرقم القومي، رقم الهاتف، نوع المشروع، الكنيسة، القرية، الخادم...)"
                       className="w-full text-sm border border-gray-200 rounded-lg pr-10 pl-10 py-2.5 outline-none focus:border-[#002f6c] focus:ring-2 focus:ring-[#002f6c]/20 bg-gray-50/50 hover:bg-white focus:bg-white transition-all text-gray-800 placeholder-gray-400"
                    />
                    {searchQuery && (
                       <button
                          onClick={() => setSearchQuery('')}
                          className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 hover:text-red-500 transition-colors"
-                         title="Ù…Ø³Ø­ Ø§Ù„Ø¨Ø­Ø«"
+                         title="مسح البحث"
                       >
                          <X size={16} />
                       </button>
@@ -2555,17 +2555,17 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           </div>
           
           <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-            <h3 className="text-lg font-bold text-gray-800">Ø§Ù„ÙƒÙ†Ø§Ø¦Ø³ ÙˆØ§Ù„Ù…Ù†Ø§Ø·Ù‚ ({formatNumber((data.churches||[]).length)})</h3>
+            <h3 className="text-lg font-bold text-gray-800">الكنائس والمناطق ({formatNumber((data.churches||[]).length)})</h3>
             {!isReadOnly && <button onClick={handleAddChurch} className="flex items-center gap-1.5 bg-[#002f6c] text-white hover:bg-[#001f4c] px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors">
-              <Plus size={16} /> Ø¥Ø¶Ø§ÙØ© ÙƒÙ†ÙŠØ³Ø©/Ù…Ù†Ø·Ù‚Ø©
+              <Plus size={16} /> إضافة كنيسة/منطقة
             </button>}
           </div>
 
           {(data.churches || []).length === 0 ? (
             <div className="text-center py-16 bg-white rounded-xl border border-dashed border-gray-300">
               <MapPin size={48} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500 font-medium text-lg">Ù„Ù… ÙŠØªÙ… Ø¥Ø¶Ø§ÙØ© Ø£ÙŠ ÙƒÙ†Ø§Ø¦Ø³ Ø¨Ø¹Ø¯</p>
-              <p className="text-gray-400 text-sm mt-1">Ø§Ø¶ØºØ· Ø¹Ù„Ù‰ Ø²Ø± Ø¥Ø¶Ø§ÙØ© ÙƒÙ†ÙŠØ³Ø© Ù„Ù„Ø¨Ø¯Ø¡ ÙÙŠ Ø§Ù„ØªØ³Ø¬ÙŠÙ„</p>
+              <p className="text-gray-500 font-medium text-lg">لم يتم إضافة أي كنائس بعد</p>
+              <p className="text-gray-400 text-sm mt-1">اضغط على زر إضافة كنيسة للبدء في التسجيل</p>
             </div>
           ) : (
             <div className="space-y-8">
@@ -2574,13 +2574,13 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                     return (
                         <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
                            <Search size={48} className="mx-auto text-gray-200 mb-3" />
-                           <p className="text-gray-500 font-medium text-lg">Ù„Ø§ ØªÙˆØ¬Ø¯ Ù†ØªØ§Ø¦Ø¬ Ù…Ø·Ø§Ø¨Ù‚Ø© Ù„Ù„Ø¨Ø­Ø«</p>
+                           <p className="text-gray-500 font-medium text-lg">لا توجد نتائج مطابقة للبحث</p>
                         </div>
                     );
                 }
 
                 const groupedByRegion = filteredChurches.reduce((acc, ch) => {
-                    const r = ch.regionName || 'Ù…Ù†Ø·Ù‚Ø© ØºÙŠØ± Ù…Ø­Ø¯Ø¯Ø©';
+                    const r = ch.regionName || 'منطقة غير محددة';
                     if(!acc[r]) acc[r] = [];
                     acc[r].push(ch);
                     return acc;
@@ -2602,7 +2602,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                         <div key={regionName} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
                             <div className="p-4 sm:p-5 border-b border-gray-200 bg-[#002f6c]/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer hover:bg-[#002f6c]/20 transition-colors" onClick={() => toggleRegion(regionName)}>
                                 <div className="flex-1 flex flex-wrap items-center gap-2 text-sm sm:text-base font-bold text-[#002f6c]">
-                                    <span className="text-lg">ðŸ›ï¸ {regionName}</span>
+                                    <span className="text-lg">🏛️ {regionName}</span>
                                     {!isReadOnly && (
                                       <button
                                         type="button"
@@ -2615,29 +2615,29 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                             ? 'bg-purple-50 text-purple-900 border-purple-300 hover:bg-purple-100'
                                             : 'bg-white/80 text-[#002f6c] border-[#002f6c]/30 hover:bg-white hover:border-[#002f6c]'
                                         }`}
-                                        title="تعديل اسم المركز ورقم الزيارة"
+                                        title="\u062a\u0639\u062f\u064a\u0644 \u0627\u0633\u0645 \u0627\u0644\u0645\u0631\u0643\u0632 \u0648\u0631\u0642\u0645 \u0627\u0644\u0627\u0632\u064a\u0627\u0631\u0629"
                                       >
                                         <Edit2 size={13} className="text-[#002f6c]" />
-                                        <span>{regionVisitNum ? `الزيارة رقم ${regionVisitNum}` : 'رقم الزيارة'}</span>
+                                        <span>{regionVisitNum ? `\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0631\u0642\u0645 ${regionVisitNum}` : '\u0631\u0642\u0645 \u0627\u0644\u0632\u064a\u0627\u0631\u0629'}</span>
                                       </button>
                                     )}
                                     {isReadOnly && regionVisitNum && (
                                       <span className="bg-purple-100 text-purple-900 border border-purple-300 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans">
-                                        الزيارة رقم {regionVisitNum}
+                                        {`\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0631\u0642\u0645 ${regionVisitNum}`}
                                       </span>
                                     )}
                                     <div className="mr-auto flex flex-wrap gap-2 items-center">
                                        <span className="bg-white text-[#002f6c] border border-[#002f6c]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
-                                          â›ª <span className="font-sans">{formatNumber(regionStats.totalChurches)}</span> ÙƒÙ†Ø§Ø¦Ø³
+                                          ⛪ <span className="font-sans">{formatNumber(regionStats.totalChurches)}</span> كنائس
                                        </span>
                                        <span className="bg-white text-blue-600 border border-blue-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
-                                          ðŸ‘¥ <span className="font-sans">{formatNumber(regionStats.totalGroups)}</span> Ù…Ø¬Ù…ÙˆØ¹Ø§Øª
+                                          👥 <span className="font-sans">{formatNumber(regionStats.totalGroups)}</span> مجموعات
                                        </span>
                                        <span className="bg-white text-[#d4af37] border border-[#d4af37]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
-                                          ðŸ“Š <span className="font-sans">{formatNumber(regionStats.totalCases)}</span> Ù…Ø´Ø§Ø±ÙŠØ¹
+                                          📊 <span className="font-sans">{formatNumber(regionStats.totalCases)}</span> مشاريع
                                        </span>
                                        <span className="bg-white text-green-700 border border-green-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
-                                          ðŸ’° <span className="font-sans">{formatNumber(regionStats.totalValue)}</span> Ø¬.Ù…
+                                          💰 <span className="font-sans">{formatNumber(regionStats.totalValue)}</span> ج.م
                                        </span>
                                     </div>
                                 </div>
@@ -2656,26 +2656,26 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                     onClick={() => toggleChurch(churchLoc.id)}
                   >
                     <div className="flex-1 flex flex-wrap items-center gap-2 text-sm sm:text-base font-bold text-[#002f6c]">
-                      <span>{churchLoc.regionName || 'Ù…Ù†Ø·Ù‚Ø© ØºÙŠØ± Ù…Ø­Ø¯Ø¯Ø©'}</span>
+                      <span>{churchLoc.regionName || 'منطقة غير محددة'}</span>
                       <span className="text-gray-400">-</span>
-                      <span>{churchLoc.villageName || 'Ù‚Ø±ÙŠØ© ØºÙŠØ± Ù…Ø­Ø¯Ø¯Ø©'}</span>
+                      <span>{churchLoc.villageName || 'قرية غير محددة'}</span>
                       <span className="text-gray-400">-</span>
-                      <span>{churchLoc.churchName || 'ÙƒÙ†ÙŠØ³Ø© ØºÙŠØ± Ù…Ø­Ø¯Ø¯Ø©'}</span>
+                      <span>{churchLoc.churchName || 'كنيسة غير محددة'}</span>
                       {(() => {
                          const stats = getChurchStats(churchLoc);
                          return (
                            <div className="mr-auto flex flex-wrap gap-2 items-center">
                               <span className="bg-white text-blue-600 border border-blue-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
-                                 ðŸ‘¥ <span className="font-sans">{formatNumber(stats.totalGroups)}</span> Ù…Ø¬Ù…ÙˆØ¹Ø©
+                                 👥 <span className="font-sans">{formatNumber(stats.totalGroups)}</span> مجموعة
                               </span>
                               <span className="bg-white text-[#d4af37] border border-[#d4af37]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
-                                 ðŸ“Š <span className="font-sans">{formatNumber(stats.totalCases)}</span> Ù…Ø´Ø§Ø±ÙŠØ¹
+                                 📊 <span className="font-sans">{formatNumber(stats.totalCases)}</span> مشاريع
                               </span>
                               <span className="bg-white text-green-700 border border-green-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
-                                 ðŸ’° <span className="font-sans">{formatNumber(stats.totalValue)}</span> Ø¬.Ù…
+                                 💰 <span className="font-sans">{formatNumber(stats.totalValue)}</span> ج.م
                               </span>
                               <span className="bg-white text-[#8a7222] border border-[#f0e0a8] px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap hidden sm:inline-block">
-                                 ðŸ’¸ <span className="font-sans">{formatNumber(stats.totalInst)}</span> Ø¬.Ù…
+                                 💸 <span className="font-sans">{formatNumber(stats.totalInst)}</span> ج.م
                               </span>
                            </div>
                          );
@@ -2688,7 +2688,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                              type="button"
                              onClick={(e) => handleEditChurch(churchLoc, e)}
                              className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-2 rounded-md transition-colors"
-                             title="تعديل بيانات الكنيسة والمركز والقرية"
+                             title="????? ?????? ??????? ??????? ???????"
                            >
                              <Edit2 size={20} />
                            </button>
@@ -2696,7 +2696,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                              type="button"
                              onClick={(e) => { e.stopPropagation(); handleDeleteChurch(churchLoc.id); }} 
                              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-md transition-colors" 
-                             title="حذف الكنيسة"
+                             title="??? ???????"
                            >
                              <Trash2 size={20} />
                            </button>
@@ -2713,9 +2713,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                     <div className="animate-fade-in border-t-2 border-[#002f6c]">
                       {/* Edit Fields */}
                       <div className="p-4 sm:p-5 bg-gray-50 border-b border-gray-200 flex-1 w-full grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div><label className="block text-xs font-medium text-[#002f6c] mb-1">Ø§Ù„Ù…Ù†Ø·Ù‚Ø©</label><MicInput value={churchLoc.regionName||''} onValueChange={(v) => handleUpdateChurch({...churchLoc, regionName: v})} placeholder="Ø§Ø³Ù… Ø§Ù„Ù…Ù†Ø·Ù‚Ø©" disabled={isReadOnly} /></div>
-                        <div><label className="block text-xs font-medium text-[#002f6c] mb-1">Ø§Ù„Ù‚Ø±ÙŠØ©</label><MicInput value={churchLoc.villageName||''} onValueChange={(v) => handleUpdateChurch({...churchLoc, villageName: v})} placeholder="Ø§Ø³Ù… Ø§Ù„Ù‚Ø±ÙŠØ©" disabled={isReadOnly} /></div>
-                        <div><label className="block text-xs font-medium text-[#002f6c] mb-1">Ø§Ù„ÙƒÙ†ÙŠØ³Ø©</label><MicInput value={churchLoc.churchName||''} onValueChange={(v) => handleUpdateChurch({...churchLoc, churchName: v})} placeholder="Ø§Ø³Ù… Ø§Ù„ÙƒÙ†ÙŠØ³Ø©" disabled={isReadOnly} /></div>
+                        <div><label className="block text-xs font-medium text-[#002f6c] mb-1">المنطقة</label><MicInput value={churchLoc.regionName||''} onValueChange={(v) => handleUpdateChurch({...churchLoc, regionName: v})} placeholder="اسم المنطقة" disabled={isReadOnly} /></div>
+                        <div><label className="block text-xs font-medium text-[#002f6c] mb-1">القرية</label><MicInput value={churchLoc.villageName||''} onValueChange={(v) => handleUpdateChurch({...churchLoc, villageName: v})} placeholder="اسم القرية" disabled={isReadOnly} /></div>
+                        <div><label className="block text-xs font-medium text-[#002f6c] mb-1">الكنيسة</label><MicInput value={churchLoc.churchName||''} onValueChange={(v) => handleUpdateChurch({...churchLoc, churchName: v})} placeholder="اسم الكنيسة" disabled={isReadOnly} /></div>
                       </div>
                       
                       <div className="p-4 sm:p-5 space-y-6">
@@ -2734,7 +2734,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                         ))}
                         <div className="flex justify-center">
                           {!isReadOnly && <button onClick={() => handleAddGroup(churchLoc.id)} className="flex items-center gap-2 bg-gray-50 hover:bg-gray-100 text-[#002f6c] text-sm font-medium py-2 px-5 rounded-md transition-colors border border-gray-300 border-dashed">
-                            <Plus size={16} /> Ø¥Ø¶Ø§ÙØ© Ø®Ø¯Ø§Ù… Ø¢Ø®Ø±ÙŠÙ† Ù„Ù†ÙØ³ Ø§Ù„ÙƒÙ†ÙŠØ³Ø©
+                            <Plus size={16} /> إضافة خدام آخرين لنفس الكنيسة
                           </button>}
                         </div>
                       </div>
@@ -2782,36 +2782,36 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
               <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-100 overflow-hidden" onClick={e => e.stopPropagation()}>
                 <div className="bg-[#002f6c] text-white p-4 flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">ðŸ›ï¸</span>
-                    <h3 className="font-bold text-sm sm:text-base">ØªØ¹Ø¯ÙŠÙ„ ÙˆØ¯Ù…Ø¬ Ø§Ø³Ù… Ø§Ù„Ù…Ø±ÙƒØ² / Ø§Ù„Ù…Ù†Ø·Ù‚Ø©</h3>
+                    <span className="text-lg">🏛️</span>
+                    <h3 className="font-bold text-sm sm:text-base">تعديل ودمج اسم المركز / المنطقة</h3>
                   </div>
-                  <button type="button" onClick={() => setRenamingRegion(null)} className="text-white/70 hover:text-white text-lg">âœ•</button>
+                  <button type="button" onClick={() => setRenamingRegion(null)} className="text-white/70 hover:text-white text-lg">✕</button>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); handleRenameRegion(renamingRegion.oldName, renamingRegion.newName, renamingRegion.visitNumber); }} className="p-5 space-y-4">
                   <p className="text-xs text-gray-600 leading-relaxed">
-                    Ø³ÙŠØªÙ… ØªØ­Ø¯ÙŠØ« Ø§Ø³Ù… Ø§Ù„Ù…Ø±ÙƒØ² ÙˆØ±Ù‚Ù… Ø§Ù„Ø²ÙŠØ§Ø±Ø© Ù„Ø¬Ù…ÙŠØ¹ Ø§Ù„ÙƒÙ†Ø§Ø¦Ø³ Ø§Ù„ØªØ§Ø¨Ø¹Ø© Ù„Ù‡ (<strong className="text-[#002f6c] font-bold font-sans">{formatNumber(renamingRegion.count)}</strong> ÙƒÙ†ÙŠØ³Ø©) ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹ØŒ ÙˆØ¥Ø°Ø§ ÙƒØ§Ù† Ø§Ù„Ø§Ø³Ù… Ø§Ù„Ø¬Ø¯ÙŠØ¯ ÙŠØ·Ø§Ø¨Ù‚ Ù…Ø±ÙƒØ²Ø§Ù‹ Ø¢Ø®Ø± Ø³ÙŠØªÙ… Ø¯Ù…Ø¬ Ø§Ù„ÙƒÙ†Ø§Ø¦Ø³ Ù…Ø¹Ø§Ù‹ ÙÙŠ Ù‚Ø§Ø¦Ù…Ø© ÙˆØ§Ø­Ø¯Ø©.
+                    سيتم تحديث اسم المركز ورقم الزيارة لجميع الكنائس التابعة له (<strong className="text-[#002f6c] font-bold font-sans">{formatNumber(renamingRegion.count)}</strong> كنيسة) تلقائياً، وإذا كان الاسم الجديد يطابق مركزاً آخر سيتم دمج الكنائس معاً في قائمة واحدة.
                   </p>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Ø§Ø³Ù… Ø§Ù„Ù…Ø±ÙƒØ²:</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">اسم المركز:</label>
                     <input
                       type="text"
                       required
                       value={renamingRegion.newName}
                       onChange={(e) => setRenamingRegion(prev => ({ ...prev, newName: e.target.value }))}
-                      placeholder="Ø£Ø¯Ø®Ù„ Ø§Ø³Ù… Ø§Ù„Ù…Ø±ÙƒØ² (Ù…Ø«Ø§Ù„: Ø£Ø¨Ùˆ Ù‚Ø±Ù‚Ø§Øµ)"
+                      placeholder="أدخل اسم المركز (مثال: أبو قرقاص)"
                       className="w-full rounded-xl border border-gray-300 p-2.5 text-sm font-bold text-[#002f6c] outline-none focus:border-[#002f6c]"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-purple-900 mb-1 flex items-center justify-between">
-                      <span>ðŸ”¢ Ø±Ù‚Ù… Ø§Ù„Ø²ÙŠØ§Ø±Ø© Ù„Ù‡Ø°Ø§ Ø§Ù„Ù…Ø±ÙƒØ²:</span>
-                      <span className="text-[11px] font-normal text-gray-500">(Ø§Ø®ØªÙŠØ§Ø±ÙŠ - Ø§ØªØ±ÙƒÙ‡ ÙØ§Ø±ØºØ§Ù‹ Ø¥Ø°Ø§ Ù„Ù… ØªØ­Ø¯Ø¯)</span>
+                      <span>🔢 رقم الزيارة لهذا المركز:</span>
+                      <span className="text-[11px] font-normal text-gray-500">(اختياري - اتركه فارغاً إذا لم تحدد)</span>
                     </label>
                     <input
                       type="text"
                       value={renamingRegion.visitNumber || ''}
                       onChange={(e) => setRenamingRegion(prev => ({ ...prev, visitNumber: e.target.value }))}
-                      placeholder="Ù…Ø«Ø§Ù„: 1 Ø£Ùˆ 2 Ø£Ùˆ 10"
+                      placeholder="مثال: 1 أو 2 أو 10"
                       className="w-full rounded-xl border-2 border-purple-300 p-2.5 text-sm font-bold text-purple-950 outline-none focus:border-purple-600"
                     />
                   </div>
@@ -2821,13 +2821,13 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                       onClick={() => setRenamingRegion(null)}
                       className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-100 text-xs font-bold"
                     >
-                      Ø¥Ù„ØºØ§Ø¡
+                      إلغاء
                     </button>
                     <button
                       type="submit"
                       className="px-5 py-2 rounded-xl bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold shadow-md"
                     >
-                      Ø­ÙØ¸ ÙˆØªØ·Ø¨ÙŠÙ‚ Ø¹Ù„Ù‰ Ø§Ù„ÙƒÙ†Ø§Ø¦Ø³
+                      حفظ وتطبيق على الكنائس
                     </button>
                   </div>
                 </form>
@@ -3073,13 +3073,13 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       const handleSaveNewCase = (e) => {
         e.preventDefault();
         if (!addingCaseToChurch || !newCaseForm.name.trim()) {
-          window.notifyWarning('ÙŠØ±Ø¬Ù‰ Ø¥Ø¯Ø®Ø§Ù„ Ø§Ø³Ù… Ø§Ù„Ù…Ø³ØªÙÙŠØ¯.');
+          window.notifyWarning('يرجى إدخال اسم المستفيد.');
           return;
         }
         const churchId = addingCaseToChurch.churchId;
         const val = parseFloat(newCaseForm.projectValue) || 0;
         const inst = parseFloat(newCaseForm.installmentAmount) || 0;
-        const servantName = (newCaseForm.servantsNames || addingCaseToChurch.servantName || '').trim() || 'Ø®Ø¯Ø§Ù… Ø§Ù„Ù‚Ø±ÙŠØ©';
+        const servantName = (newCaseForm.servantsNames || addingCaseToChurch.servantName || '').trim() || 'خدام القرية';
 
         const newCaseId = typeof uuidv4 === 'function' ? uuidv4() : Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 
@@ -3089,7 +3089,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           caseName: newCaseForm.name.trim(),
           beneficiaryName: newCaseForm.name.trim(),
           nationalId: (newCaseForm.nationalId || '').trim(),
-          projectType: (newCaseForm.projectType || 'Ù…Ø´Ø±ÙˆØ¹').trim(),
+          projectType: (newCaseForm.projectType || 'مشروع').trim(),
           projectValue: val,
           installmentAmount: inst,
           status: 'initial',
@@ -3120,7 +3120,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         onUpdateVisit({ ...visit, churches: updatedChurches });
         setAddingCaseToChurch(null);
         setNewCaseForm({ name: '', nationalId: '', servantsNames: '', projectType: '', projectValue: '', installmentAmount: '', notes: '' });
-        window.notifySuccess(`ØªÙ… Ø¥Ø¶Ø§ÙØ© Ø­Ø§Ù„Ø© "${newCaseForm.name.trim()}" Ø¨Ù†Ø¬Ø§Ø­.`);
+        window.notifySuccess(`تم إضافة حالة "${newCaseForm.name.trim()}" بنجاح.`);
       };
 
       const handleSaveEditCase = (updatedCase) => {
@@ -3180,7 +3180,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         }
         const vNumStr = visitNumber !== undefined && visitNumber !== null ? String(visitNumber).trim() : '';
         const updatedChurches = (visit.churches || []).map(ch => {
-          if ((ch.regionName || 'Ù…Ù†Ø·Ù‚Ø© ØºÙŠØ± Ù…Ø­Ø¯Ø¯Ø©') === oldName) {
+          if ((ch.regionName || 'منطقة غير محددة') === oldName) {
             return { 
               ...ch, 
               regionName: trimmed,
@@ -3205,7 +3205,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         onUpdateVisit(updatedVisit);
         setRenamingRegion(null);
         if (typeof window.notifySuccess === 'function') {
-          window.notifySuccess(`ØªÙ… Ø­ÙØ¸ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø±ÙƒØ² Ø¨Ù†Ø¬Ø§Ø­!`);
+          window.notifySuccess(`تم حفظ بيانات المركز بنجاح!`);
         }
       };
 
@@ -3258,18 +3258,18 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         const nextVisit = { ...visit, churches: updatedChurches };
         onUpdateVisit(nextVisit);
         setShowImportModal(false);
-        alert(`ØªÙ… Ø¨Ù†Ø¬Ø§Ø­ ØªØ­Ø¯ÙŠØ« ÙˆØªØ£ÙƒÙŠØ¯ ØªÙ†ÙÙŠØ° ${selectedMatches.length} Ø­Ø§Ù„Ø© ÙÙŠ Ù‡Ø°Ù‡ Ø§Ù„Ø²ÙŠØ§Ø±Ø©!`);
+        alert(`تم بنجاح تحديث وتأكيد تنفيذ ${selectedMatches.length} حالة في هذه الزيارة!`);
       };
 
       return (
          <div className="animate-fade-in pb-10">
             <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-[#002f6c] mb-6 transition-colors">
-               <ChevronRight size={18} /> Ø§Ù„Ø¹ÙˆØ¯Ø© Ù„Ù„Ø³Ø¬Ù„
+               <ChevronRight size={18} /> العودة للسجل
             </button>
             
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                <div>
-                  <h2 className="text-2xl font-bold text-[#002f6c]">{visit.location || 'Ø²ÙŠØ§Ø±Ø© Ø¨Ø¯ÙˆÙ† Ø§Ø³Ù…'}</h2>
+                  <h2 className="text-2xl font-bold text-[#002f6c]">{visit.location || 'زيارة بدون اسم'}</h2>
                   <p className="text-gray-500 text-sm mt-1 flex items-center gap-1"><Calendar size={14}/> {visit.date}</p>
                </div>
                <div className="flex flex-wrap gap-2 w-full md:w-auto">
@@ -3278,9 +3278,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                         type="button"
                         onClick={() => onEditVisitSchedule(visit)}
                         className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-amber-600 text-white hover:bg-amber-700 px-4 py-2 rounded-xl shadow-xs transition-colors font-bold text-xs"
-                        title="ØªØ¹Ø¯ÙŠÙ„ Ø§Ø³Ù… ÙˆØªØ§Ø±ÙŠØ® Ø§Ù„Ù†Ø²Ù„Ø© ÙˆÙ…ÙˆØ§Ø¹ÙŠØ¯ Ø§Ø³ØªØ­Ù‚Ø§Ù‚ Ø§Ù„Ø£Ù‚Ø³Ø§Ø·"
+                        title="تعديل اسم وتاريخ النزلة ومواعيد استحقاق الأقساط"
                      >
-                        <Calendar size={14} /> <span>ØªØ¹Ø¯ÙŠÙ„ Ø§Ù„Ø§Ø³Ù… ÙˆÙ…ÙˆØ¹Ø¯ Ø§Ù„Ø£Ù‚Ø³Ø§Ø·</span>
+                        <Calendar size={14} /> <span>تعديل الاسم وموعد الأقساط</span>
                      </button>
                   )}
                   {onEditVisit && !isReadOnly && (
@@ -3288,42 +3288,42 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                         type="button"
                         onClick={onEditVisit}
                         className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-[#002f6c] text-white hover:bg-[#001f4c] px-4 py-2 rounded-xl shadow-xs transition-colors font-bold text-xs"
-                        title="ÙØªØ­ Ø§Ù„Ø²ÙŠØ§Ø±Ø© ÙÙŠ Ø§Ø³ØªÙ…Ø§Ø±Ø© Ø§Ù„ØªØ³Ø¬ÙŠÙ„ Ø§Ù„ÙƒØ§Ù…Ù„Ø© Ù„Ø¥Ø¶Ø§ÙØ© ÙƒÙ†Ø§Ø¦Ø³ ÙˆÙ…Ø¬Ù…ÙˆØ¹Ø§Øª ÙˆÙ…Ø·Ø§Ø¨Ù‚Ø© ÙƒØ´Ù Ø§Ù„ØªÙ†ÙÙŠØ°"
+                        title="فتح الزيارة في استمارة التسجيل الكاملة لإضافة كنائس ومجموعات ومطابقة كشف التنفيذ"
                      >
-                        <Edit2 size={14} /> <span>ÙØªØ­ Ø§Ù„Ø²ÙŠØ§Ø±Ø© Ù„Ù„ØªØ¹Ø¯ÙŠÙ„ Ø§Ù„ÙƒØ§Ù…Ù„</span>
+                        <Edit2 size={14} /> <span>فتح الزيارة للتعديل الكامل</span>
                      </button>
                   )}
                   {!isReadOnly && (
                      <button onClick={() => setShowImportModal(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-emerald-600 text-white hover:bg-emerald-700 px-5 py-2 rounded-md shadow transition-colors font-medium text-sm">
-                        <Upload size={18} /> Ø§Ø³ØªÙŠØ±Ø§Ø¯ ÙƒØ´Ù Ø§Ù„ØªÙ†ÙÙŠØ°
+                        <Upload size={18} /> استيراد كشف التنفيذ
                      </button>
                   )}
                   <button onClick={() => onExport(visit)} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-[#d4af37] text-white hover:bg-[#c49b27] px-5 py-2 rounded-md shadow transition-colors font-medium text-sm">
-                     <Download size={18} /> ØªØµØ¯ÙŠØ± Ø§Ù„Ø¥ÙƒØ³ÙŠÙ„
+                     <Download size={18} /> تصدير الإكسيل
                   </button>
                </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center">
-                  <div className="text-xs text-gray-500 mb-1">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø­Ø§Ù„Ø§Øª</div>
+                  <div className="text-xs text-gray-500 mb-1">إجمالي الحالات</div>
                   <div className="text-xl font-bold text-[#002f6c] font-sans">{formatNumber(totalCases)}</div>
                </div>
                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center">
-                  <div className="text-xs text-gray-500 mb-1">Ø¹Ø¯Ø¯ Ø§Ù„ÙƒÙ†Ø§Ø¦Ø³</div>
+                  <div className="text-xs text-gray-500 mb-1">عدد الكنائس</div>
                   <div className="text-xl font-bold text-[#002f6c] font-sans">{formatNumber(churchesCount)}</div>
                </div>
                <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 shadow-sm text-center">
-                  <div className="text-xs text-amber-800 mb-1">Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø§Ù„Ù…Ø¨Ø¯Ø¦ÙŠØ©</div>
-                  <div className="text-xl font-bold text-amber-700 font-sans">{formatNumber(totalApprovedValue)} <span className="text-xs font-normal">Ø¬.Ù…</span></div>
+                  <div className="text-xs text-amber-800 mb-1">الموافقة المبدئية</div>
+                  <div className="text-xl font-bold text-amber-700 font-sans">{formatNumber(totalApprovedValue)} <span className="text-xs font-normal">ج.م</span></div>
                </div>
                <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 shadow-sm text-center">
-                  <div className="text-xs text-emerald-800 mb-1">Ø§Ù„Ù…Ù†ÙØ° ÙØ¹Ù„ÙŠØ§Ù‹ ({formatNumber(executedCasesCount)})</div>
-                  <div className="text-xl font-bold text-emerald-700 font-sans">{formatNumber(totalExecutedValue)} <span className="text-xs font-normal">Ø¬.Ù…</span></div>
+                  <div className="text-xs text-emerald-800 mb-1">المنفذ فعلياً ({formatNumber(executedCasesCount)})</div>
+                  <div className="text-xl font-bold text-emerald-700 font-sans">{formatNumber(totalExecutedValue)} <span className="text-xs font-normal">ج.م</span></div>
                </div>
                <div className="bg-[#fff9e6] p-4 rounded-xl border border-[#f0e0a8] shadow-sm text-center col-span-2 md:col-span-1">
-                  <div className="text-xs text-[#8a7222] mb-1">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø£Ù‚Ø³Ø§Ø·</div>
-                  <div className="text-xl font-bold text-[#8a7222] font-sans">{formatNumber(totalInst)} <span className="text-xs font-normal">Ø¬.Ù…</span></div>
+                  <div className="text-xs text-[#8a7222] mb-1">إجمالي الأقساط</div>
+                  <div className="text-xl font-bold text-[#8a7222] font-sans">{formatNumber(totalInst)} <span className="text-xs font-normal">ج.م</span></div>
                </div>
             </div>
 
@@ -3338,7 +3338,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                      : 'text-gray-600 hover:bg-gray-100'
                  }`}
                >
-                 <span>ðŸŒ ÙƒÙ„ Ø§Ù„Ù…Ø´Ø§Ø±ÙŠØ¹</span>
+                 <span>🌐 كل المشاريع</span>
                  <span className={`px-2 py-0.5 rounded-full text-xs font-sans ${filterStatus === 'all' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'}`}>
                    {formatNumber(statusCounts.all)}
                  </span>
@@ -3353,7 +3353,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                      : 'text-amber-800 hover:bg-amber-50'
                  }`}
                >
-                 <span>â³ Ù…ÙˆØ§ÙÙ‚Ø© Ù…Ø¨Ø¯Ø¦ÙŠØ©</span>
+                 <span>⏳ موافقة مبدئية</span>
                  <span className={`px-2 py-0.5 rounded-full text-xs font-sans ${filterStatus === 'initial' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-900'}`}>
                    {formatNumber(statusCounts.initial)}
                  </span>
@@ -3368,7 +3368,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                      : 'text-emerald-800 hover:bg-emerald-50'
                  }`}
                >
-                 <span>âœ… Ù…Ø´Ø§Ø±ÙŠØ¹ Ù…Ù†ÙØ°Ø©</span>
+                 <span>✅ مشاريع منفذة</span>
                  <span className={`px-2 py-0.5 rounded-full text-xs font-sans ${filterStatus === 'executed' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-900'}`}>
                    {formatNumber(statusCounts.executed)}
                  </span>
@@ -3383,7 +3383,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                      : 'text-red-700 hover:bg-red-50'
                  }`}
                >
-                 <span>âŒ Ù„Ù… ØªÙÙ†ÙÙ‘Ø° / Ù…Ù„ØºØ§Ø©</span>
+                 <span>❌ لم تُنفّذ / ملغاة</span>
                  <span className={`px-2 py-0.5 rounded-full text-xs font-sans ${filterStatus === 'cancelled' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-800'}`}>
                    {formatNumber(statusCounts.cancelled)}
                  </span>
@@ -3393,10 +3393,10 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             {/* ADVANCED FILTERS */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
                <div className="flex justify-between items-center mb-4 border-b border-gray-50 pb-2">
-                  <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2"><Search size={16} className="text-[#002f6c]"/> ØªØµÙÙŠØ© Ù…ØªÙ‚Ø¯Ù…Ø©</h4>
+                  <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2"><Search size={16} className="text-[#002f6c]"/> تصفية متقدمة</h4>
                   {(searchQuery || filterRegion || filterChurch || filterServant || filterProject || filterCase) && (
                      <button onClick={() => { setSearchQuery(''); setFilterRegion(''); setFilterChurch(''); setFilterServant(''); setFilterProject(''); setFilterCase(''); }} className="text-xs flex items-center gap-1 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors font-medium">
-                         <RotateCcw size={14}/> Ø¥Ø¹Ø§Ø¯Ø© Ø¶Ø¨Ø· Ø§Ù„ÙÙ„Ø§ØªØ±
+                         <RotateCcw size={14}/> إعادة ضبط الفلاتر
                      </button>
                   )}
                </div>
@@ -3410,14 +3410,14 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                       type="text"
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
-                      placeholder="Ø¨Ø­Ø« Ø³Ø±ÙŠØ¹ Ø¨Ø£ÙŠ ÙƒÙ„Ù…Ø© (Ø§Ø³Ù… Ø§Ù„Ø­Ø§Ù„Ø©ØŒ Ø§Ù„Ø±Ù‚Ù… Ø§Ù„Ù‚ÙˆÙ…ÙŠØŒ Ø±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙØŒ Ù†ÙˆØ¹ Ø§Ù„Ù…Ø´Ø±ÙˆØ¹ØŒ Ø§Ù„ÙƒÙ†ÙŠØ³Ø©ØŒ Ø§Ù„Ù‚Ø±ÙŠØ©ØŒ Ø§Ù„Ø®Ø§Ø¯Ù…...)"
+                      placeholder="بحث سريع بأي كلمة (اسم الحالة، الرقم القومي، رقم الهاتف، نوع المشروع، الكنيسة، القرية، الخادم...)"
                       className="w-full text-sm border border-gray-200 rounded-lg pr-10 pl-10 py-2.5 outline-none focus:border-[#002f6c] focus:ring-2 focus:ring-[#002f6c]/20 bg-gray-50/50 hover:bg-white focus:bg-white transition-all text-gray-800 placeholder-gray-400"
                    />
                    {searchQuery && (
                       <button
                          onClick={() => setSearchQuery('')}
                          className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 hover:text-red-500 transition-colors"
-                         title="Ù…Ø³Ø­ Ø§Ù„Ø¨Ø­Ø«"
+                         title="مسح البحث"
                       >
                          <X size={16} />
                       </button>
@@ -3465,21 +3465,21 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 </div>
              </div>
              
-             <h3 className="text-lg font-bold text-gray-800 mb-4">ØªÙØ§ØµÙŠÙ„ Ø§Ù„Ø­Ø§Ù„Ø§Øª</h3>
+             <h3 className="text-lg font-bold text-gray-800 mb-4">تفاصيل الحالات</h3>
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-               {(visit.churches||[]).length === 0 ? <div className="p-8 text-center text-gray-500">Ù„Ø§ ØªÙˆØ¬Ø¯ ØªÙØ§ØµÙŠÙ„.</div> : null}
+               {(visit.churches||[]).length === 0 ? <div className="p-8 text-center text-gray-500">لا توجد تفاصيل.</div> : null}
                {(() => {
                   if (filteredChurches.length === 0 && (filterStatus !== 'all' || filterRegion || filterChurch || filterServant || filterProject || filterCase || searchQuery)) {
                       return (
                           <div className="p-8 text-center bg-white rounded-xl">
                              <Search size={32} className="mx-auto text-gray-200 mb-2" />
-                             <p className="text-gray-500 font-medium">Ù„Ø§ ØªÙˆØ¬Ø¯ Ù†ØªØ§Ø¦Ø¬ Ù…Ø·Ø§Ø¨Ù‚Ø© Ù„Ù„Ø¨Ø­Ø«</p>
+                             <p className="text-gray-500 font-medium">لا توجد نتائج مطابقة للبحث</p>
                           </div>
                       );
                   }
                   
                   const groupedByRegion = filteredChurches.reduce((acc, ch) => {
-                    const r = ch.regionName || 'Ù…Ù†Ø·Ù‚Ø© ØºÙŠØ± Ù…Ø­Ø¯Ø¯Ø©';
+                    const r = ch.regionName || 'منطقة غير محددة';
                     if(!acc[r]) acc[r] = [];
                     acc[r].push(ch);
                     return acc;
@@ -3501,7 +3501,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                         <div key={regionName} className="bg-white border-b-4 border-gray-200 last:border-0">
                             <div className="p-4 sm:p-5 border-b border-gray-200 bg-[#002f6c]/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer hover:bg-[#002f6c]/20 transition-colors" onClick={() => toggleRegion(regionName)}>
                                 <div className="flex-1 flex flex-wrap items-center gap-2 text-sm sm:text-base font-bold text-[#002f6c]">
-                                    <span className="text-lg">ðŸ›ï¸ {regionName}</span>
+                                    <span className="text-lg">🏛️ {regionName}</span>
                                     {!isReadOnly && (
                                       <button
                                         type="button"
@@ -3514,29 +3514,29 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                             ? 'bg-purple-50 text-purple-900 border-purple-300 hover:bg-purple-100'
                                             : 'bg-white/80 text-[#002f6c] border-[#002f6c]/30 hover:bg-white hover:border-[#002f6c]'
                                         }`}
-                                        title="تعديل اسم المركز ورقم الزيارة"
+                                        title="\u062a\u0639\u062f\u064a\u0644 \u0627\u0633\u0645 \u0627\u0644\u0645\u0631\u0643\u0632 \u0648\u0631\u0642\u0645 \u0627\u0644\u0627\u0632\u064a\u0627\u0631\u0629"
                                       >
                                         <Edit2 size={13} className="text-[#002f6c]" />
-                                        <span>{regionVisitNum ? `الزيارة رقم ${regionVisitNum}` : 'رقم الزيارة'}</span>
+                                        <span>{regionVisitNum ? `\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0631\u0642\u0645 ${regionVisitNum}` : '\u0631\u0642\u0645 \u0627\u0644\u0632\u064a\u0627\u0631\u0629'}</span>
                                       </button>
                                     )}
                                     {isReadOnly && regionVisitNum && (
                                       <span className="bg-purple-100 text-purple-900 border border-purple-300 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans">
-                                        الزيارة رقم {regionVisitNum}
+                                        {`\u0627\u0644\u0632\u064a\u0627\u0631\u0629 \u0631\u0642\u0645 ${regionVisitNum}`}
                                       </span>
                                     )}
                                     <div className="mr-auto flex flex-wrap gap-2 items-center">
                                        <span className="bg-white text-[#002f6c] border border-[#002f6c]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
-                                          â›ª <span className="font-sans">{formatNumber(regionStats.totalChurches)}</span> ÙƒÙ†Ø§Ø¦Ø³
+                                          ⛪ <span className="font-sans">{formatNumber(regionStats.totalChurches)}</span> كنائس
                                        </span>
                                        <span className="bg-white text-blue-600 border border-blue-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
-                                          ðŸ‘¥ <span className="font-sans">{formatNumber(regionStats.totalGroups)}</span> Ù…Ø¬Ù…ÙˆØ¹Ø§Øª
+                                          👥 <span className="font-sans">{formatNumber(regionStats.totalGroups)}</span> مجموعات
                                        </span>
                                        <span className="bg-white text-[#d4af37] border border-[#d4af37]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
-                                          ðŸ“Š <span className="font-sans">{formatNumber(regionStats.totalCases)}</span> Ù…Ø´Ø§Ø±ÙŠØ¹
+                                          📊 <span className="font-sans">{formatNumber(regionStats.totalCases)}</span> مشاريع
                                        </span>
                                        <span className="bg-white text-green-700 border border-green-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
-                                          ðŸ’° <span className="font-sans">{formatNumber(regionStats.totalValue)}</span> Ø¬.Ù…
+                                          💰 <span className="font-sans">{formatNumber(regionStats.totalValue)}</span> ج.م
                                        </span>
                                     </div>
                                 </div>
@@ -3582,16 +3582,16 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                               return (
                                 <div className="flex flex-wrap gap-2 items-center">
                                    <span className="bg-white text-blue-600 border border-blue-200 px-2 py-0.5 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
-                                      ðŸ‘¥ <span className="font-sans">{formatNumber(stats.totalGroups)}</span> Ù…Ø¬Ù…ÙˆØ¹Ø©
+                                      👥 <span className="font-sans">{formatNumber(stats.totalGroups)}</span> مجموعة
                                    </span>
                                    <span className="bg-white text-[#d4af37] border border-[#d4af37]/30 px-2 py-0.5 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
-                                      ðŸ“Š <span className="font-sans">{formatNumber(stats.totalCases)}</span> Ù…Ø´Ø§Ø±ÙŠØ¹
+                                      📊 <span className="font-sans">{formatNumber(stats.totalCases)}</span> مشاريع
                                    </span>
                                    <span className="bg-white text-green-700 border border-green-200 px-2 py-0.5 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
-                                      ðŸ’° <span className="font-sans">{formatNumber(stats.totalValue)}</span> Ø¬.Ù…
+                                      💰 <span className="font-sans">{formatNumber(stats.totalValue)}</span> ج.م
                                    </span>
                                    <span className="bg-white text-[#8a7222] border border-[#f0e0a8] px-2 py-0.5 rounded-full text-xs font-bold shadow-sm whitespace-nowrap hidden sm:inline-block">
-                                      ðŸ’¸ <span className="font-sans">{formatNumber(stats.totalInst)}</span> Ø¬.Ù…
+                                      💸 <span className="font-sans">{formatNumber(stats.totalInst)}</span> ج.م
                                    </span>
                                 </div>
                               );
@@ -3606,14 +3606,14 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                             <thead className="bg-[#002f6c] text-white text-xs uppercase">
                                <tr>
                                   <th className="px-3 py-2.5 text-center w-12">#</th>
-                                  <th className="px-3 py-2.5 min-w-[120px]">Ø§Ù„Ø®Ø¯Ø§Ù…</th>
-                                  <th className="px-3 py-2.5 min-w-[130px]">Ø§Ø³Ù… Ø§Ù„Ø­Ø§Ù„Ø©</th>
-                                  <th className="px-3 py-2.5 text-center min-w-[110px]">Ø­Ø§Ù„Ø© Ø§Ù„Ù…Ø´Ø±ÙˆØ¹</th>
-                                  <th className="px-3 py-2.5 min-w-[110px]">Ù†ÙˆØ¹ Ø§Ù„Ù…Ø´Ø±ÙˆØ¹</th>
-                                  <th className="px-3 py-2.5 text-center min-w-[100px]">Ø§Ù„Ù‚ÙŠÙ…Ø© (Ø¬.Ù…)</th>
-                                  <th className="px-3 py-2.5 text-center min-w-[100px]">Ø§Ù„Ù‚Ø³Ø· (Ø¬.Ù…)</th>
-                                  <th className="px-3 py-2.5 min-w-[130px]">Ù…Ù„Ø§Ø­Ø¸Ø§Øª</th>
-                                  <th className="px-3 py-2.5 text-center w-24">Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª</th>
+                                  <th className="px-3 py-2.5 min-w-[120px]">الخدام</th>
+                                  <th className="px-3 py-2.5 min-w-[130px]">اسم الحالة</th>
+                                  <th className="px-3 py-2.5 text-center min-w-[110px]">حالة المشروع</th>
+                                  <th className="px-3 py-2.5 min-w-[110px]">نوع المشروع</th>
+                                  <th className="px-3 py-2.5 text-center min-w-[100px]">القيمة (ج.م)</th>
+                                  <th className="px-3 py-2.5 text-center min-w-[100px]">القسط (ج.م)</th>
+                                  <th className="px-3 py-2.5 min-w-[130px]">ملاحظات</th>
+                                  <th className="px-3 py-2.5 text-center w-24">إجراءات</th>
                                </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200 bg-white">
@@ -3631,7 +3631,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                         <td className="px-3 py-3 font-medium text-gray-900">
                                           <div>{c.name}</div>
                                           {isExec && c.executionDate && (
-                                            <div className="text-[10px] text-emerald-700 font-sans mt-0.5">Ù…Ù†ÙØ° ÙÙŠ: {c.executionDate}</div>
+                                            <div className="text-[10px] text-emerald-700 font-sans mt-0.5">منفذ في: {c.executionDate}</div>
                                           )}
                                         </td>
                                         <td className="px-3 py-3 text-center">
@@ -3671,7 +3671,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                           <div>{c.notes || '-'}</div>
                                           {c.executionNotes && (
                                             <div className="text-[11px] text-emerald-800 bg-emerald-50 rounded p-1 mt-1 border border-emerald-100">
-                                              ØªÙ†ÙÙŠØ°: {c.executionNotes}
+                                              تنفيذ: {c.executionNotes}
                                             </div>
                                           )}
                                         </td>
@@ -3734,40 +3734,40 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                       <span className="text-[10px] font-bold font-sans bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">#{formatNumber(serialMap[c.id])}</span>
                                       <span className="font-bold text-sm text-gray-900">{c.name}</span>
                                     </div>
-                                    <div className="text-[11px] text-gray-500 mt-1">Ø§Ù„Ø®Ø¯Ø§Ù…: {sg.servantsNames || '-'}</div>
+                                    <div className="text-[11px] text-gray-500 mt-1">الخدام: {sg.servantsNames || '-'}</div>
                                   </div>
                                   <StatusBadge status={c.status || 'initial'} onClick={!isReadOnly ? () => setExecutingCaseInfo({ caseObj: c, churchId: ch.id, groupId: sg.id, churchName: ch.churchName }) : null} />
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-2 text-xs">
                                   <span className="bg-blue-50 text-[#002f6c] border border-blue-200 px-2 py-0.5 rounded-md font-medium text-[11px]">
-                                    ðŸ·ï¸ {hasTypeDiff ? `${c.executedProjectType} (${c.projectType})` : (c.executedProjectType || c.projectType)}
+                                    🏷️ {hasTypeDiff ? `${c.executedProjectType} (${c.projectType})` : (c.executedProjectType || c.projectType)}
                                   </span>
                                   {isExec && c.executionDate && (
                                     <span className="text-[10px] text-emerald-700 font-sans bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                                      Ù…Ù†ÙØ°: {c.executionDate}
+                                      منفذ: {c.executionDate}
                                     </span>
                                   )}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2 text-center bg-gray-50 p-2.5 rounded-xl border border-gray-100 text-xs">
                                   <div>
-                                    <div className="text-[10px] text-gray-500">Ø§Ù„Ù‚ÙŠÙ…Ø© Ø§Ù„Ù…Ù†ÙØ°Ø©</div>
+                                    <div className="text-[10px] text-gray-500">القيمة المنفذة</div>
                                     <div className="font-bold font-sans text-emerald-700 mt-0.5">
-                                      {formatNumber(c.executedProjectValue || c.projectValue)} Ø¬.Ù…
+                                      {formatNumber(c.executedProjectValue || c.projectValue)} ج.م
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-[10px] text-gray-500">Ø§Ù„Ù‚Ø³Ø· Ø§Ù„Ø´Ù‡Ø±ÙŠ</div>
+                                    <div className="text-[10px] text-gray-500">القسط الشهري</div>
                                     <div className="font-bold font-sans text-amber-800 mt-0.5">
-                                      {formatNumber(c.executedInstallmentAmount || c.installmentAmount)} Ø¬.Ù…
+                                      {formatNumber(c.executedInstallmentAmount || c.installmentAmount)} ج.م
                                     </div>
                                   </div>
                                 </div>
 
                                 {c.executionNotes && (
                                   <div className="text-[11px] text-emerald-800 bg-emerald-50 rounded-lg p-2 border border-emerald-100">
-                                    Ù…Ù„Ø§Ø­Ø¸Ø§Øª: {c.executionNotes}
+                                    ملاحظات: {c.executionNotes}
                                   </div>
                                 )}
 
@@ -3824,10 +3824,10 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                               className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-3.5 py-2 rounded-xl transition-all shadow-xs"
                             >
                               <Plus size={14} className="text-emerald-700" />
-                              <span>+ Ø¥Ø¶Ø§ÙØ© Ø­Ø§Ù„Ø© Ø¬Ø¯ÙŠØ¯Ø© Ù„ÙƒÙ†ÙŠØ³Ø© {ch.churchName}</span>
+                              <span>+ إضافة حالة جديدة لكنيسة {ch.churchName}</span>
                             </button>
                             <span className="text-[11px] text-gray-500 font-sans">
-                              {formatNumber((ch.servantsGroups || []).reduce((s, g) => s + (g.cases || []).length, 0))} Ø­Ø§Ù„Ø© Ù…Ø³Ø¬Ù„Ø©
+                              {formatNumber((ch.servantsGroups || []).reduce((s, g) => s + (g.cases || []).length, 0))} حالة مسجلة
                             </span>
                           </div>
                         )}
@@ -3850,10 +3850,10 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 {/* Header */}
                 <div className="bg-[#002f6c] text-white p-4 flex justify-between items-center shrink-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">âž•</span>
+                    <span className="text-xl">➕</span>
                     <div>
-                      <h3 className="font-bold text-base">Ø¥Ø¶Ø§ÙØ© Ø­Ø§Ù„Ø© Ø¬Ø¯ÙŠØ¯Ø©</h3>
-                      <p className="text-blue-200 text-xs">ÙƒÙ†ÙŠØ³Ø©: {addingCaseToChurch.churchName}</p>
+                      <h3 className="font-bold text-base">إضافة حالة جديدة</h3>
+                      <p className="text-blue-200 text-xs">كنيسة: {addingCaseToChurch.churchName}</p>
                     </div>
                   </div>
                   <button
@@ -3861,7 +3861,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                     onClick={() => setAddingCaseToChurch(null)}
                     className="text-white/70 hover:text-white p-1 rounded-lg text-lg"
                   >
-                    âœ•
+                    ✕
                   </button>
                 </div>
 
@@ -3871,28 +3871,28 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block font-bold text-gray-700 mb-1">
-                          Ø§Ø³Ù… Ø§Ù„Ù…Ø³ØªÙÙŠØ¯ / Ø§Ù„Ø­Ø§Ù„Ø© *
+                          اسم المستفيد / الحالة *
                         </label>
                         <input
                           type="text"
                           required
                           value={newCaseForm.name}
                           onChange={(e) => setNewCaseForm(prev => ({ ...prev, name: e.target.value }))}
-                          placeholder="Ø§Ø³Ù… Ø§Ù„Ø­Ø§Ù„Ø© Ø¨Ø§Ù„ÙƒØ§Ù…Ù„"
+                          placeholder="اسم الحالة بالكامل"
                           className="w-full rounded-xl border border-gray-300 p-2.5 text-xs font-bold text-gray-900 outline-none focus:border-[#002f6c]"
                         />
                       </div>
 
                       <div>
                         <label className="block font-bold text-gray-700 mb-1">
-                          Ø§Ù„Ø±Ù‚Ù… Ø§Ù„Ù‚ÙˆÙ…ÙŠ (Ø§Ø®ØªÙŠØ§Ø±ÙŠ)
+                          الرقم القومي (اختياري)
                         </label>
                         <input
                           type="text"
                           maxLength={14}
                           value={newCaseForm.nationalId}
                           onChange={(e) => setNewCaseForm(prev => ({ ...prev, nationalId: e.target.value }))}
-                          placeholder="14 Ø±Ù‚Ù…"
+                          placeholder="14 رقم"
                           className="w-full rounded-xl border border-gray-300 p-2.5 text-xs font-sans outline-none focus:border-[#002f6c]"
                         />
                       </div>
@@ -3901,27 +3901,27 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block font-bold text-gray-700 mb-1">
-                          Ø§Ø³Ù… Ø§Ù„Ø®Ø§Ø¯Ù… / Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹Ø©
+                          اسم الخادم / المجموعة
                         </label>
                         <input
                           type="text"
                           value={newCaseForm.servantsNames || addingCaseToChurch.servantName || ''}
                           onChange={(e) => setNewCaseForm(prev => ({ ...prev, servantsNames: e.target.value }))}
-                          placeholder="Ø§Ù„Ø®Ø¯Ø§Ù… Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„ÙŠÙ†"
+                          placeholder="الخدام المسؤولين"
                           className="w-full rounded-xl border border-gray-300 p-2.5 text-xs outline-none focus:border-[#002f6c]"
                         />
                       </div>
 
                       <div>
                         <label className="block font-bold text-gray-700 mb-1">
-                          Ù†ÙˆØ¹ Ø§Ù„Ù…Ø´Ø±ÙˆØ¹ Ø§Ù„Ù…Ù‚ØªØ±Ø­ *
+                          نوع المشروع المقترح *
                         </label>
                         <input
                           type="text"
                           required
                           value={newCaseForm.projectType}
                           onChange={(e) => setNewCaseForm(prev => ({ ...prev, projectType: e.target.value }))}
-                          placeholder="Ù…Ø«Ø§Ù„: ØªØ±Ø²ÙŠØ©ØŒ Ø¨Ù‚Ø§Ù„Ø©ØŒ Ù…ÙˆØ§Ø´ÙŠ..."
+                          placeholder="مثال: ترزية، بقالة، مواشي..."
                           className="w-full rounded-xl border border-gray-300 p-2.5 text-xs font-bold text-[#002f6c] outline-none focus:border-[#002f6c]"
                         />
                       </div>
@@ -3930,7 +3930,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block font-bold text-gray-700 mb-1">
-                          Ø§Ù„Ù‚ÙŠÙ…Ø© Ø§Ù„ØªÙ‚Ø¯ÙŠØ±ÙŠØ© (Ø¬.Ù…) *
+                          القيمة التقديرية (ج.م) *
                         </label>
                         <input
                           type="number"
@@ -3939,14 +3939,14 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                           required
                           value={newCaseForm.projectValue}
                           onChange={(e) => setNewCaseForm(prev => ({ ...prev, projectValue: e.target.value }))}
-                          placeholder="Ù…Ø«Ø§Ù„: 15000"
+                          placeholder="مثال: 15000"
                           className="w-full rounded-xl border border-gray-300 p-2 text-xs font-sans font-bold text-blue-900 outline-none focus:border-[#002f6c]"
                         />
                       </div>
 
                       <div>
                         <label className="block font-bold text-gray-700 mb-1">
-                          Ø§Ù„Ù‚Ø³Ø· Ø§Ù„Ø´Ù‡Ø±ÙŠ (Ø¬.Ù…) *
+                          القسط الشهري (ج.م) *
                         </label>
                         <input
                           type="number"
@@ -3955,7 +3955,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                           required
                           value={newCaseForm.installmentAmount}
                           onChange={(e) => setNewCaseForm(prev => ({ ...prev, installmentAmount: e.target.value }))}
-                          placeholder="Ù…Ø«Ø§Ù„: 500"
+                          placeholder="مثال: 500"
                           className="w-full rounded-xl border border-gray-300 p-2 text-xs font-sans font-bold text-amber-900 outline-none focus:border-[#002f6c]"
                         />
                       </div>
@@ -3963,13 +3963,13 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 
                     <div>
                       <label className="block font-bold text-gray-700 mb-1">
-                        Ù…Ù„Ø§Ø­Ø¸Ø§Øª
+                        ملاحظات
                       </label>
                       <textarea
                         rows={2}
                         value={newCaseForm.notes}
                         onChange={(e) => setNewCaseForm(prev => ({ ...prev, notes: e.target.value }))}
-                        placeholder="Ø£ÙŠ ØªÙØ§ØµÙŠÙ„ Ø£Ùˆ Ù…Ù„Ø§Ø­Ø¸Ø§Øª..."
+                        placeholder="أي تفاصيل أو ملاحظات..."
                         className="w-full rounded-xl border border-gray-300 p-2 text-xs outline-none focus:border-[#002f6c]"
                       />
                     </div>
@@ -3982,14 +3982,14 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                       onClick={() => setAddingCaseToChurch(null)}
                       className="px-4 py-2.5 rounded-xl text-gray-600 bg-gray-100 hover:bg-gray-200 font-bold transition-colors text-xs"
                     >
-                      Ø¥Ù„ØºØ§Ø¡
+                      إلغاء
                     </button>
                     <button
                       type="submit"
                       className="px-6 py-2.5 rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 font-bold shadow-md transition-all flex items-center gap-1.5 text-xs"
                     >
-                      <span>âž•</span>
-                      <span>Ø¥Ø¶Ø§ÙØ© Ø§Ù„Ø­Ø§Ù„Ø©</span>
+                      <span>➕</span>
+                      <span>إضافة الحالة</span>
                     </button>
                   </div>
                 </form>
@@ -4034,36 +4034,36 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-100 overflow-hidden" onClick={e => e.stopPropagation()}>
                   <div className="bg-[#002f6c] text-white p-4 flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">ðŸ›ï¸</span>
-                      <h3 className="font-bold text-sm sm:text-base">ØªØ¹Ø¯ÙŠÙ„ ÙˆØ¯Ù…Ø¬ Ø§Ø³Ù… Ø§Ù„Ù…Ø±ÙƒØ² / Ø§Ù„Ù…Ù†Ø·Ù‚Ø©</h3>
+                      <span className="text-lg">🏛️</span>
+                      <h3 className="font-bold text-sm sm:text-base">تعديل ودمج اسم المركز / المنطقة</h3>
                     </div>
-                    <button type="button" onClick={() => setRenamingRegion(null)} className="text-white/70 hover:text-white text-lg">âœ•</button>
+                    <button type="button" onClick={() => setRenamingRegion(null)} className="text-white/70 hover:text-white text-lg">✕</button>
                   </div>
                   <form onSubmit={(e) => { e.preventDefault(); handleRenameRegion(renamingRegion.oldName, renamingRegion.newName, renamingRegion.visitNumber); }} className="p-5 space-y-4">
                     <p className="text-xs text-gray-600 leading-relaxed">
-                      Ø³ÙŠØªÙ… ØªØ­Ø¯ÙŠØ« Ø§Ø³Ù… Ø§Ù„Ù…Ø±ÙƒØ² ÙˆØ±Ù‚Ù… Ø§Ù„Ø²ÙŠØ§Ø±Ø© Ù„Ø¬Ù…ÙŠØ¹ Ø§Ù„ÙƒÙ†Ø§Ø¦Ø³ Ø§Ù„ØªØ§Ø¨Ø¹Ø© Ù„Ù‡ (<strong className="text-[#002f6c] font-bold font-sans">{formatNumber(renamingRegion.count)}</strong> ÙƒÙ†ÙŠØ³Ø©) ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹ØŒ ÙˆØ¥Ø°Ø§ ÙƒØ§Ù† Ø§Ù„Ø§Ø³Ù… Ø§Ù„Ø¬Ø¯ÙŠØ¯ ÙŠØ·Ø§Ø¨Ù‚ Ù…Ø±ÙƒØ²Ø§Ù‹ Ø¢Ø®Ø± Ø³ÙŠØªÙ… Ø¯Ù…Ø¬ Ø§Ù„ÙƒÙ†Ø§Ø¦Ø³ Ù…Ø¹Ø§Ù‹ ÙÙŠ Ù‚Ø§Ø¦Ù…Ø© ÙˆØ§Ø­Ø¯Ø©.
+                      سيتم تحديث اسم المركز ورقم الزيارة لجميع الكنائس التابعة له (<strong className="text-[#002f6c] font-bold font-sans">{formatNumber(renamingRegion.count)}</strong> كنيسة) تلقائياً، وإذا كان الاسم الجديد يطابق مركزاً آخر سيتم دمج الكنائس معاً في قائمة واحدة.
                     </p>
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">Ø§Ø³Ù… Ø§Ù„Ù…Ø±ÙƒØ²:</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">اسم المركز:</label>
                       <input
                         type="text"
                         required
                         value={renamingRegion.newName}
                         onChange={(e) => setRenamingRegion(prev => ({ ...prev, newName: e.target.value }))}
-                        placeholder="Ø£Ø¯Ø®Ù„ Ø§Ø³Ù… Ø§Ù„Ù…Ø±ÙƒØ² (Ù…Ø«Ø§Ù„: Ø£Ø¨Ùˆ Ù‚Ø±Ù‚Ø§Øµ)"
+                        placeholder="أدخل اسم المركز (مثال: أبو قرقاص)"
                         className="w-full rounded-xl border border-gray-300 p-2.5 text-sm font-bold text-[#002f6c] outline-none focus:border-[#002f6c]"
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-purple-900 mb-1 flex items-center justify-between">
-                        <span>ðŸ”¢ Ø±Ù‚Ù… Ø§Ù„Ø²ÙŠØ§Ø±Ø© Ù„Ù‡Ø°Ø§ Ø§Ù„Ù…Ø±ÙƒØ²:</span>
-                        <span className="text-[11px] font-normal text-gray-500">(Ø§Ø®ØªÙŠØ§Ø±ÙŠ - Ø§ØªØ±ÙƒÙ‡ ÙØ§Ø±ØºØ§Ù‹ Ø¥Ø°Ø§ Ù„Ù… ØªØ­Ø¯Ø¯)</span>
+                        <span>🔢 رقم الزيارة لهذا المركز:</span>
+                        <span className="text-[11px] font-normal text-gray-500">(اختياري - اتركه فارغاً إذا لم تحدد)</span>
                       </label>
                       <input
                         type="text"
                         value={renamingRegion.visitNumber || ''}
                         onChange={(e) => setRenamingRegion(prev => ({ ...prev, visitNumber: e.target.value }))}
-                        placeholder="Ù…Ø«Ø§Ù„: 1 Ø£Ùˆ 2 Ø£Ùˆ 10"
+                        placeholder="مثال: 1 أو 2 أو 10"
                         className="w-full rounded-xl border-2 border-purple-300 p-2.5 text-sm font-bold text-purple-950 outline-none focus:border-purple-600"
                       />
                     </div>
@@ -4073,13 +4073,13 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                         onClick={() => setRenamingRegion(null)}
                         className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-100 text-xs font-bold"
                       >
-                        Ø¥Ù„ØºØ§Ø¡
+                        إلغاء
                       </button>
                       <button
                         type="submit"
                         className="px-5 py-2 rounded-xl bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold shadow-md"
                       >
-                        Ø­ÙØ¸ ÙˆØªØ·Ø¨ÙŠÙ‚ Ø¹Ù„Ù‰ Ø§Ù„ÙƒÙ†Ø§Ø¦Ø³
+                        حفظ وتطبيق على الكنائس
                       </button>
                     </div>
                   </form>
@@ -4102,9 +4102,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100" onClick={e => e.stopPropagation()}>
             <div className="bg-[#002f6c] p-4 sm:p-5 text-white flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <span className="text-2xl">âš¡</span>
+                <span className="text-2xl">⚡</span>
                 <div>
-                  <h3 className="font-bold text-base sm:text-lg">ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø§Ø¹ØªÙ…Ø§Ø¯ Ù„Ù„ØªÙ†ÙÙŠØ°</h3>
+                  <h3 className="font-bold text-base sm:text-lg">تأكيد الاعتماد للتنفيذ</h3>
                   <p className="text-xs text-blue-200 mt-0.5">{title}</p>
                 </div>
               </div>
@@ -4117,13 +4117,13 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   {formatNumber(pendingCases.length)}
                 </div>
                 <div>
-                  <div className="font-bold text-emerald-900 text-sm">Ø³ÙŠØªÙ… Ø§Ø¹ØªÙ…Ø§Ø¯ {formatNumber(pendingCases.length)} Ø­Ø§Ù„Ø© ÙƒÙ…Ø´Ø§Ø±ÙŠØ¹ Ù…Ù†ÙØ°Ø© ÙØ¹Ù„ÙŠØ§Ù‹</div>
-                  <div className="text-xs text-emerald-700 mt-0.5">Ø§Ù„Ø­Ø§Ù„Ø§Øª Ø§Ù„ØªÙŠ ØªÙ… ØªØ¹Ø¯ÙŠÙ„ Ù‚ÙŠÙ…ØªÙ‡Ø§ Ø³ØªØ­ØªÙØ¸ Ø¨ØªØ¹Ø¯ÙŠÙ„Ø§ØªÙ‡Ø§ØŒ ÙˆØ¨Ø§Ù‚ÙŠ Ø§Ù„Ø­Ø§Ù„Ø§Øª Ø³ØªØ¹ØªÙ…Ø¯ Ø¨Ù‚ÙŠÙ…ØªÙ‡Ø§ Ø§Ù„Ù…Ø¹ØªÙ…Ø¯Ø©.</div>
+                  <div className="font-bold text-emerald-900 text-sm">سيتم اعتماد {formatNumber(pendingCases.length)} حالة كمشاريع منفذة فعلياً</div>
+                  <div className="text-xs text-emerald-700 mt-0.5">الحالات التي تم تعديل قيمتها ستحتفظ بتعديلاتها، وباقي الحالات ستعتمد بقيمتها المعتمدة.</div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">ØªØ§Ø±ÙŠØ® Ø§Ù„ØªÙ†ÙÙŠØ° Ø§Ù„ÙØ¹Ù„ÙŠ</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">تاريخ التنفيذ الفعلي</label>
                 <input 
                   type="date" 
                   value={execDate} 
@@ -4133,25 +4133,25 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ø§Ù„Ø§Ø¹ØªÙ…Ø§Ø¯ (Ø§Ø®ØªÙŠØ§Ø±ÙŠ)</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">ملاحظات الاعتماد (اختياري)</label>
                 <MicInput 
                   value={execNotes} 
                   onValueChange={setExecNotes} 
-                  placeholder="Ù…Ù„Ø§Ø­Ø¸Ø§Øª ØªÙ†Ø·Ø¨Ù‚ Ø¹Ù„Ù‰ Ø§Ù„Ø­Ø§Ù„Ø§Øª Ø§Ù„Ù…Ø¹ØªÙ…Ø¯Ø©..." 
+                  placeholder="ملاحظات تنطبق على الحالات المعتمدة..." 
                 />
               </div>
             </div>
 
             <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-2">
               <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">
-                Ø¥Ù„ØºØ§Ø¡
+                إلغاء
               </button>
               <button 
                 onClick={() => onConfirm(pendingCases, execDate, execNotes)} 
                 className="px-6 py-2 rounded-lg text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md transition-colors flex items-center gap-1.5"
               >
                 <CheckCircle size={16} />
-                <span>ØªØ£ÙƒÙŠØ¯ Ø§Ø¹ØªÙ…Ø§Ø¯ {formatNumber(pendingCases.length)} Ø­Ø§Ù„Ø©</span>
+                <span>تأكيد اعتماد {formatNumber(pendingCases.length)} حالة</span>
               </button>
             </div>
           </div>
@@ -16642,16 +16642,16 @@ function App() {
 
       const handleDeleteVisit = async (visitId) => {
         window.showConfirm({
-          title: 'نقل إلى سلة المهملات',
-          message: 'هل أنت متأكد من نقل هذه الزيارة إلى سلة المهملات؟ يمكنك استعادتها خلال 30 يوماً.',
-          confirmText: 'نقل للسلة',
-          cancelText: 'إلغاء',
+          title: '??? ??? ??? ????????',
+          message: '?? ??? ????? ?? ??? ??? ??????? ??? ??? ????????? ????? ????????? ???? 30 ?????.',
+          confirmText: '??? ?????',
+          cancelText: '?????',
           isDangerous: true,
           onConfirm: async () => {
-            if(isReadOnly) { window.notifyWarning('عذراً، أنت في وضع المشاهدة فقط.'); return; }
+            if(isReadOnly) { window.notifyWarning('?????? ??? ?? ??? ???????? ???.'); return; }
             try {
                 await db.collection('visits').doc(visitId).update({ isDeleted: true, deletedAt: Date.now() });
-                window.notifySuccess('تم نقل الزيارة إلى سلة المهملات بنجاح.');
+                window.notifySuccess('?? ??? ??????? ??? ??? ???????? ?????.');
                 if (currentVisitId === visitId) {
                      const newId = uuidv4();
                      setData({ visitId: newId, location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() });
@@ -16659,38 +16659,38 @@ function App() {
                 }
             } catch (e) {
                 console.error(e);
-                window.notifyError('حدث خطأ أثناء النقل لسلة المهملات.');
+                window.notifyError('??? ??? ????? ????? ???? ????????.');
             }
           }
         });
       };
 
       const handleRestoreVisit = async (visitId) => {
-          if (isReadOnly) { window.notifyWarning('عذراً، أنت في وضع المشاهدة فقط.'); return; }
+          if (isReadOnly) { window.notifyWarning('?????? ??? ?? ??? ???????? ???.'); return; }
           try {
               await db.collection('visits').doc(visitId).update({ isDeleted: false, deletedAt: firebase.firestore.FieldValue.delete() });
-              window.notifySuccess('تم استعادة الزيارة من سلة المهملات بنجاح!');
+              window.notifySuccess('?? ??????? ??????? ?? ??? ???????? ?????!');
           } catch (e) {
               console.error(e);
-              window.notifyError('حدث خطأ أثناء الاستعادة.');
+              window.notifyError('??? ??? ????? ?????????.');
           }
       };
 
       const handlePermanentDelete = async (visitId) => {
           window.showConfirm({
-            title: 'حذف نهائي للأبد',
-            message: 'هل أنت متأكد من حذف هذه الزيارة نهائياً للأبد؟ لا يمكن التراجع عن هذا الإجراء إطلاقاً.',
-            confirmText: 'نعم، حذف نهائي',
-            cancelText: 'إلغاء',
+            title: '??? ????? ?????',
+            message: '?? ??? ????? ?? ??? ??? ??????? ??????? ?????? ?? ???? ??????? ?? ??? ??????? ???????.',
+            confirmText: '???? ??? ?????',
+            cancelText: '?????',
             isDangerous: true,
             onConfirm: async () => {
-              if (isReadOnly) { window.notifyWarning('عذراً، أنت في وضع المشاهدة فقط.'); return; }
+              if (isReadOnly) { window.notifyWarning('?????? ??? ?? ??? ???????? ???.'); return; }
               try {
                   await db.collection('visits').doc(visitId).delete();
-                  window.notifySuccess('تم حذف الزيارة نهائياً للأبد.');
+                  window.notifySuccess('?? ??? ??????? ??????? ?????.');
               } catch (e) {
                   console.error(e);
-                  window.notifyError('حدث خطأ أثناء الحذف النهائي.');
+                  window.notifyError('??? ??? ????? ????? ???????.');
               }
             }
           });
@@ -16700,23 +16700,23 @@ function App() {
           const deletedVisits = allVisits.filter(v => v.isDeleted);
           if (deletedVisits.length === 0) return;
           window.showConfirm({
-            title: 'تفريغ سلة المهملات',
-            message: 'هل أنت متأكد من إفراغ سلة المهملات بالكامل؟ سيتم حذف جميع الزيارات المحذوفة نهائياً للأبد.',
-            confirmText: 'تفريغ السلة بالكامل',
-            cancelText: 'إلغاء',
+            title: '????? ??? ????????',
+            message: '?? ??? ????? ?? ????? ??? ???????? ???????? ???? ??? ???? ???????? ???????? ??????? ?????.',
+            confirmText: '????? ????? ???????',
+            cancelText: '?????',
             isDangerous: true,
             onConfirm: async () => {
-              if (isReadOnly) { window.notifyWarning('عذراً، أنت في وضع المشاهدة فقط.'); return; }
+              if (isReadOnly) { window.notifyWarning('?????? ??? ?? ??? ???????? ???.'); return; }
               try {
                   const batch = db.batch();
                   deletedVisits.forEach(v => {
                       batch.delete(db.collection('visits').doc(v.id));
                   });
                   await batch.commit();
-                  window.notifySuccess('تم إفراغ سلة المهملات بالكامل.');
+                  window.notifySuccess('?? ????? ??? ???????? ???????.');
               } catch(e) {
                   console.error(e);
-                  window.notifyError('حدث خطأ أثناء إفراغ سلة المهملات.');
+                  window.notifyError('??? ??? ????? ????? ??? ????????.');
               }
             }
           });
@@ -16727,11 +16727,11 @@ function App() {
       useEffect(() => {
         const handleOnline = () => {
           setIsOnline(true);
-          window.notifySuccess('ðŸŒ ØªÙ… Ø§Ø³ØªØ¹Ø§Ø¯Ø© Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø¥Ù†ØªØ±Ù†Øª Ø¨Ù†Ø¬Ø§Ø­!');
+          window.notifySuccess('🌐 تم استعادة الاتصال بالإنترنت بنجاح!');
         };
         const handleOffline = () => {
           setIsOnline(false);
-          window.notifyWarning('ðŸ“´ Ø£Ù†Øª ØªØ¹Ù…Ù„ ÙÙŠ ÙˆØ¶Ø¹ Ø¹Ø¯Ù… Ø§Ù„Ø§ØªØµØ§Ù„ - ØªÙ… Ø­ÙØ¸ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ù…Ø­Ù„ÙŠØ§Ù‹ Ø¹Ù„Ù‰ Ø¬Ù‡Ø§Ø²Ùƒ.');
+          window.notifyWarning('📴 أنت تعمل في وضع عدم الاتصال - تم حفظ البيانات محلياً على جهازك.');
         };
         const handleKeyDown = (e) => {
           if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
@@ -16851,17 +16851,17 @@ function App() {
       const handleEndVisit = () => {
         if(isReadOnly) return;
         window.showConfirm({
-          title: 'إنهاء وبدء زيارة جديدة',
-          message: 'هل أنت متأكد من حفظ وإنهاء هذه الزيارة والبدء في تسجيل زيارة جديدة؟',
-          confirmText: 'نعم، بدء زيارة جديدة',
-          cancelText: 'إلغاء',
+          title: '????? ???? ????? ?????',
+          message: '?? ??? ????? ?? ??? ?????? ??? ??????? ?????? ?? ????? ????? ??????',
+          confirmText: '???? ??? ????? ?????',
+          cancelText: '?????',
           onConfirm: () => {
             const newId = uuidv4();
             const emptyData = { visitId: newId, location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() };
             setCurrentVisitId(newId);
             setData(emptyData);
             if (db && !isReadOnly) db.collection('visits').doc(newId).set(emptyData);
-            window.notifySuccess('تم بدء زيارة جديدة بنجاح.');
+            window.notifySuccess('?? ??? ????? ????? ?????.');
           }
         });
       };
@@ -16878,13 +16878,13 @@ function App() {
                   <button onClick={() => setIsSidebarOpen(true)} className="p-1.5 sm:p-2 hover:bg-[#001f4c] rounded-md transition-colors">
                     <Menu size={24} />
                   </button>
-                  <img src="anba_karas_splash.jpg" alt="أنبا كاراس" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-amber-400 shadow-md ring-1 sm:ring-2 ring-amber-400/30" />
+                  <img src="anba_karas_splash.jpg" alt="???? ?????" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-amber-400 shadow-md ring-1 sm:ring-2 ring-amber-400/30" />
                   <div className="flex flex-col justify-center mr-1">
                      <span className="text-sm sm:text-base font-bold text-amber-300 tracking-tight leading-tight">
-                        خدمة الأنبا كاراس
+                        ???? ?????? ?????
                      </span>
                      <span className="text-[11px] sm:text-xs text-blue-200 font-medium">
-                        متابعة المشاريع
+                        ?????? ????????
                      </span>
                   </div>
                </div>
@@ -16895,21 +16895,21 @@ function App() {
                      <div
                         onClick={() => setShowProfileModal(true)}
                         className="flex items-center gap-2 bg-white/10 border border-amber-400/30 px-2.5 py-1 rounded-lg text-xs cursor-pointer hover:bg-white/20 transition-colors"
-                        title="Ø§Ø¶ØºØ· Ù„ØªØ¹Ø¯ÙŠÙ„ Ø§Ø³Ù…Ùƒ ÙˆØ¨ÙŠØ§Ù†Ø§Øª Ø­Ø³Ø§Ø¨Ùƒ"
+                        title="اضغط لتعديل اسمك وبيانات حسابك"
                      >
                        <div className="w-6 h-6 rounded-full bg-amber-400 text-blue-950 font-bold flex items-center justify-center text-xs shadow-inner">
-                         {(currentUser.name || currentUser.email || 'خ')[0].toUpperCase()}
+                         {(currentUser.name || currentUser.email || '?')[0].toUpperCase()}
                        </div>
                        <div className="hidden sm:flex flex-col text-right">
                           <span className="font-bold text-amber-200 leading-tight truncate max-w-[120px]">{currentUser.name || currentUser.email}</span>
                          <span className="text-[10px] text-blue-200/80 leading-none">
-                           {currentUser.role === 'admin' ? 'مشرف عام 👑' : 'خادم معتمد'}
+                           {currentUser.role === 'admin' ? '???? ??? ??' : '???? ?????'}
                          </span>
                        </div>
                      </div>
                    )}
-                                                       {/* Ø´Ø§Ø±Ø© Ø§Ù„Ø®Ø¯Ø§Ù… Ø§Ù„Ù…ØªÙˆØ§Ø¬Ø¯ÙˆÙ† Ø§Ù„Ø¢Ù† ÙˆÙ…Ø´Ø§Ø±ÙƒØ© Ø§Ù„Ø´Ø§Ø´Ø© */}
-                                    {/* شارة الخدام المتواجدون الآن ومشاركة الشاشة */}
+                                                       {/* شارة الخدام المتواجدون الآن ومشاركة الشاشة */}
+                                    {/* ???? ?????? ?????????? ???? ??????? ?????? */}
                   <div className="relative">
                     <button
                       type="button"
@@ -16919,7 +16919,7 @@ function App() {
                           ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400/50 shadow-emerald-900/20' 
                           : 'bg-white/10 hover:bg-white/20 text-blue-200 border-white/20'
                       }`}
-                      title="الخدام المتواجدون أونلاين الآن ومشاركة الشاشة الفورية"
+                      title="?????? ?????????? ??????? ???? ??????? ?????? ???????"
                     >
                       <span className="relative flex h-2 w-2">
                         {onlineCollaborators.length > 0 && (
@@ -16927,7 +16927,7 @@ function App() {
                         )}
                         <span className={`relative inline-flex rounded-full h-2 w-2 ${onlineCollaborators.length > 0 ? 'bg-emerald-300' : 'bg-gray-400'}`}></span>
                       </span>
-                      <span>🟢 {onlineCollaborators.length} متصل</span>
+                      <span>?? {onlineCollaborators.length} ????</span>
                     </button>
 
                     {showOnlinePopover && (
@@ -16935,20 +16935,20 @@ function App() {
                         <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-2">
                           <span className="text-xs font-bold text-[#002f6c] flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            <span>الخدام المتواجدون الآن ({onlineCollaborators.length})</span>
+                            <span>?????? ?????????? ???? ({onlineCollaborators.length})</span>
                           </span>
                           <button 
                             type="button" 
                             onClick={() => setShowOnlinePopover(false)}
                             className="text-gray-400 hover:text-gray-600 text-xs px-1 font-bold"
                           >
-                            ✕
+                            ?
                           </button>
                         </div>
 
                         {onlineCollaborators.length === 0 ? (
                           <div className="py-4 text-center text-xs text-gray-500">
-                            لا يوجد خدام متصلون حالياً
+                            ?? ???? ???? ?????? ??????
                           </div>
                         ) : (
                           <div className="space-y-2 max-h-56 overflow-y-auto">
@@ -16957,10 +16957,10 @@ function App() {
                                 <div>
                                   <div className="font-bold text-gray-900 leading-tight">{c.name || c.email}</div>
                                   <div className="text-[10px] text-gray-500 mt-0.5">
-                                    {c.currentTab === 'installments' ? 'متابعة الأقساط' : c.currentTab === 'entry' ? 'تسجيل زيارة' : c.currentTab === 'analytics' ? 'التحليلات' : 'متابعة التنفيذ'}
+                                    {c.currentTab === 'installments' ? '?????? ???????' : c.currentTab === 'entry' ? '????? ?????' : c.currentTab === 'analytics' ? '?????????' : '?????? ???????'}
                                   </div>
                                 </div>
-                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" title="Ù…ØªØµÙ„ Ø§Ù„Ø¢Ù†"></span>
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" title="متصل الآن"></span>
                               </div>
                             ))}
                           </div>
@@ -16973,27 +16973,27 @@ function App() {
                     type="button"
                     onClick={() => setShowGlobalSearch(true)}
                     className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-white/10 text-amber-200 hover:bg-white/20 border border-amber-400/30 shadow-sm"
-                    title="بحث سريع شامل"
+                    title="??? ???? ????"
                   >
                     <Search size={15} />
-                    <span className="hidden sm:inline font-bold">بحث شامل</span>
+                    <span className="hidden sm:inline font-bold">??? ????</span>
                   </button>
                   
                   <div className="flex items-center gap-2 mt-0.5">
                       {!isOnline && (
                         <div className="bg-amber-500/20 text-amber-200 border border-amber-400/50 px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold flex items-center gap-1 shadow-sm animate-pulse">
-                           <span>📴</span> غير متصل (محلياً)
+                           <span>??</span> ??? ???? (??????)
                         </div>
                       )}
                       {isReadOnly && (
                         <div className="bg-red-500/20 text-red-100 border border-red-400/50 px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold flex items-center gap-1 shadow-sm">
-                           <span>👁️</span> للاطلاع فقط
+                           <span>???</span> ??????? ???
                         </div>
                      )}
                      <div className="hidden sm:flex items-center text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded bg-[#001f4c] text-blue-200">
-                       {!isReadOnly && syncStatus === 'syncing' && <><CloudUpload size={12} className="ml-1 animate-pulse" /><span>جاري الحفظ...</span></>}
-                       {!isReadOnly && syncStatus === 'synced' && <><Cloud size={12} className="ml-1 text-green-400" /><span>تم الحفظ</span></>}
-                       {!isReadOnly && syncStatus === 'error' && <><CloudOff size={12} className="ml-1 text-red-400" /><span>غير متصل</span></>}
+                       {!isReadOnly && syncStatus === 'syncing' && <><CloudUpload size={12} className="ml-1 animate-pulse" /><span>???? ?????...</span></>}
+                       {!isReadOnly && syncStatus === 'synced' && <><Cloud size={12} className="ml-1 text-green-400" /><span>?? ?????</span></>}
+                       {!isReadOnly && syncStatus === 'error' && <><CloudOff size={12} className="ml-1 text-red-400" /><span>??? ????</span></>}
                      </div>
                   </div>
                </div>
@@ -17010,21 +17010,21 @@ function App() {
                   <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
                 </span>
                 <div className="text-xs sm:text-sm">
-                  <span>🔔 الخادم </span>
+                  <span>?? ?????? </span>
                   <strong className="text-amber-300 font-bold">{collaboratorToast.name || collaboratorToast.email}</strong>
-                  <span> دخل التطبيق الآن متواجداً في </span>
-                  <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-bold text-amber-200">{collaboratorToast.currentTab === 'installments' ? 'متابعة الأقساط' : collaboratorToast.currentTab === 'entry' ? 'تسجيل زيارة' : collaboratorToast.currentTab === 'analytics' ? 'التحليلات' : 'متابعة التنفيذ'}</span>
+                  <span> ??? ??????? ???? ???????? ?? </span>
+                  <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-bold text-amber-200">{collaboratorToast.currentTab === 'installments' ? '?????? ???????' : collaboratorToast.currentTab === 'entry' ? '????? ?????' : collaboratorToast.currentTab === 'analytics' ? '?????????' : '?????? ???????'}</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" title="Ù…ØªØµÙ„ Ø§Ù„Ø¢Ù†"></span>
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" title="متصل الآن"></span>
                 <button
                   type="button"
                   onClick={() => setCollaboratorToast(null)}
                   className="text-white/80 hover:text-white text-xs px-2 py-1 rounded hover:bg-white/10"
                 >
-                  ✕ إغلاق
+                  ? ?????
                 </button>
               </div>
             </div>
@@ -17039,8 +17039,8 @@ function App() {
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-400"></span>
                 </span>
                 <div className="text-xs sm:text-sm">
-                  <span className="font-bold text-amber-200">{incomingLiveSession.hostName || incomingLiveSession.hostEmail}</span> يقوم حالياً برفع ومراجعة ملف إكسيل <strong>({incomingLiveSession.fileName || 'كشف مشاريع'})</strong>
-                  <span className="hidden md:inline text-blue-100 text-xs mr-2">• يمكنك الانضمام للمعاينة الحية والتنسيق معه بالهاتف!</span>
+                  <span className="font-bold text-amber-200">{incomingLiveSession.hostName || incomingLiveSession.hostEmail}</span> ???? ?????? ???? ??????? ??? ????? <strong>({incomingLiveSession.fileName || '??? ??????'})</strong>
+                  <span className="hidden md:inline text-blue-100 text-xs mr-2">� ????? ???????? ???????? ????? ???????? ??? ???????!</span>
                 </div>
               </div>
 
@@ -17052,14 +17052,14 @@ function App() {
                   }}
                   className="bg-amber-400 hover:bg-amber-300 text-blue-950 font-bold text-xs px-3.5 py-1.5 rounded-lg shadow transition-all active:scale-95 flex items-center gap-1.5"
                 >
-                  <span>👀 انضمام للمشاهدة الآن</span>
+                  <span>?? ?????? ???????? ????</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setDismissedSessionId(incomingLiveSession.updatedAt)}
                   className="text-white/80 hover:text-white text-xs px-2.5 py-1 rounded hover:bg-white/10 transition-colors"
                 >
-                  تخطي / مشغول حالياً
+                  ???? / ????? ??????
                 </button>
               </div>
             </div>
@@ -17070,12 +17070,12 @@ function App() {
           <div className={`fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
              <div className="h-16 bg-[#002f6c] px-4 flex items-center justify-between border-b border-[#001f4c]">
                 <div className="flex items-center gap-3">
-                   <img src="anba_karas_splash.jpg" alt="أنبا كاراس" className="w-9 h-9 rounded-full object-cover border-2 border-amber-400 shadow-md ring-2 ring-amber-400/30" />
+                   <img src="anba_karas_splash.jpg" alt="???? ?????" className="w-9 h-9 rounded-full object-cover border-2 border-amber-400 shadow-md ring-2 ring-amber-400/30" />
                    <div className="flex flex-col">
-                     <span className="font-bold text-[#d4af37] text-sm">خدمة الأنبا كاراس</span>
+                     <span className="font-bold text-[#d4af37] text-sm">???? ?????? ?????</span>
                      {currentUser && (
                        <span className="text-[10px] text-blue-200 leading-none mt-0.5">
-                         {currentUser.name || currentUser.email} &bull; {currentUser.role === 'admin' ? 'مشرف عام' : 'خادم'}
+                         {currentUser.name || currentUser.email} &bull; {currentUser.role === 'admin' ? '???? ???' : '????'}
                        </span>
                      )}
                    </div>
@@ -17083,54 +17083,54 @@ function App() {
                 <button onClick={() => setIsSidebarOpen(false)} className="text-white hover:text-gray-300 p-2"><X size={20}/></button>
              </div>
                           <div className="py-3 flex flex-col h-[calc(100vh-64px)] overflow-y-auto">
-                {/* 1. تسجيل زيارة جديدة */}
+                {/* 1. ????? ????? ????? */}
                 <button 
                   onClick={() => { switchTab('entry'); setIsSidebarOpen(false); }} 
                   className={`flex items-center gap-3 px-6 py-3.5 text-right transition-colors ${activeTab === 'entry' ? 'bg-blue-50 text-[#002f6c] border-r-4 border-[#002f6c] font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
                 >
                   <PlusCircle size={20} className="text-[#002f6c]" /> 
                   <div className="flex flex-col text-right">
-                    <span className="font-bold">تسجيل زيارة جديدة</span>
-                    <span className="text-[10px] text-gray-500">تسجيل الحالات ميدانياً خطوة بخطوة</span>
+                    <span className="font-bold">????? ????? ?????</span>
+                    <span className="text-[10px] text-gray-500">????? ??????? ???????? ???? ?????</span>
                   </div>
                 </button>
 
-                {/* 2. استيراد زيارة قديمة (Excel / يدوي) */}
+                {/* 2. ??????? ????? ????? (Excel / ????) */}
                 <button 
                   onClick={() => { setShowLegacyChoiceModal(true); setIsSidebarOpen(false); }} 
                   className="flex items-center gap-3 px-6 py-3.5 text-right text-gray-700 hover:bg-blue-50 transition-colors"
                 >
                   <FileSpreadsheet size={20} className="text-blue-700" /> 
                   <div className="flex flex-col text-right">
-                    <span className="font-bold text-[#002f6c]">استيراد زيارة قديمة (Excel / يدوي)</span>
-                    <span className="text-[10px] text-gray-500">رفع شيت إكسيل أو إدخال يدوي</span>
+                    <span className="font-bold text-[#002f6c]">??????? ????? ????? (Excel / ????)</span>
+                    <span className="text-[10px] text-gray-500">??? ??? ????? ?? ????? ????</span>
                   </div>
                 </button>
 
                     <button onClick={() => { switchTab('execution'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'execution' ? 'bg-amber-50 text-amber-900 border-r-4 border-amber-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                   <Zap size={20} className="text-amber-600" /> متابعة واعتماد تنفيذ المشاريع
+                   <Zap size={20} className="text-amber-600" /> ?????? ??????? ????? ????????
                 </button>
                 <button onClick={() => { switchTab('installments'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'installments' ? 'bg-emerald-50 text-emerald-900 border-r-4 border-emerald-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                   <DollarSign size={20} className="text-emerald-600" /> متابعة الأقساط والتحصيل الدوري
+                   <DollarSign size={20} className="text-emerald-600" /> ?????? ??????? ???????? ??????
                 </button>
                  <button onClick={() => { switchTab('analytics'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'analytics' ? 'bg-purple-50 text-purple-900 border-r-4 border-purple-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                    <BarChart3 size={20} className="text-purple-600" /> لوحة التحليلات ونسب المشاريع
+                    <BarChart3 size={20} className="text-purple-600" /> ???? ????????? ???? ????????
                  </button>
                 <button onClick={() => { switchTab('archive'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'archive' || activeTab === 'archiveDetails' ? 'bg-blue-50 text-[#002f6c] border-r-4 border-[#002f6c] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
-                   <ListIcon size={20} /> أرشيف الزيارات والتقارير
+                   <ListIcon size={20} /> ????? ???????? ?????????
                 </button>
 
                 <button onClick={() => { setShowBackupModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-amber-900 bg-amber-50/70 hover:bg-amber-100 border-t border-b border-amber-200/60 font-bold">
-                   <ShieldCheck size={20} className="text-amber-600" /> النسخ الاحتياطي وتاريخ الإصدارات
+                   <ShieldCheck size={20} className="text-amber-600" /> ????? ????????? ?????? ?????????
                 </button>
                  <button onClick={() => { setShowUnifyNamesModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-teal-900 bg-teal-50/70 hover:bg-teal-100 border-b border-teal-200/60 font-bold">
-                    <Link size={20} className="text-teal-600" /> توحيد المسميات في قاعدة البيانات
+                    <Link size={20} className="text-teal-600" /> ????? ???????? ?? ????? ????????
                  </button>
 
                 {currentUser && currentUser.role === 'admin' && (
                   <button onClick={() => { setShowUsersModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-purple-900 bg-purple-50/70 hover:bg-purple-100 border-b border-purple-200/60 font-bold">
                     <Users size={20} className="text-purple-600" />
-                    <span>إدارة الخدام والصلاحيات</span>
+                    <span>????? ?????? ??????????</span>
                     {pendingServantsCount > 0 && (
                       <span className="mr-auto bg-rose-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse">
                         {pendingServantsCount}
@@ -17141,21 +17141,21 @@ function App() {
                 {currentUser && (
                   <button onClick={() => { AuthService.logoutUser(currentUser).then(() => { setCurrentUser(null); setIsSidebarOpen(false); }); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-rose-700 bg-rose-50/50 hover:bg-rose-100 border-b border-rose-200/40 font-bold">
                     <LogOut size={20} className="text-rose-600" />
-                    <span>تسجيل الخروج</span>
+                    <span>????? ??????</span>
                   </button>
                 )}
                 
-                {/* المتواجدون أونلاين الآن ومشاركة الشاشة الفورية */}
+                {/* ?????????? ??????? ???? ??????? ?????? ??????? */}
                 <div className="mx-3 my-2 p-3 bg-gradient-to-br from-indigo-50 to-blue-50/60 rounded-xl border border-blue-200/80">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>الخدام المتواجدون الآن ({onlineCollaborators.length})</span>
+                      <span>?????? ?????????? ???? ({onlineCollaborators.length})</span>
                     </span>
                   </div>
 
                   {onlineCollaborators.length === 0 ? (
-                    <p className="text-[11px] text-gray-500 py-1">لا يوجد خدام آخرون متصلون حالياً</p>
+                    <p className="text-[11px] text-gray-500 py-1">?? ???? ???? ????? ?????? ??????</p>
                   ) : (
                     <div className="space-y-1.5 max-h-36 overflow-y-auto">
                       {onlineCollaborators.map(c => (
@@ -17163,11 +17163,11 @@ function App() {
                           <div>
                             <div className="font-bold text-gray-900 leading-tight">{c.name || c.email}</div>
                             <div className="text-[10px] text-gray-500 mt-0.5">
-                              {c.currentTab === 'installments' ? 'متابعة الأقساط' : c.currentTab === 'entry' ? 'تسجيل زيارة' : c.currentTab === 'analytics' ? 'التحليلات' : 'متابعة التنفيذ'}
+                              {c.currentTab === 'installments' ? '?????? ???????' : c.currentTab === 'entry' ? '????? ?????' : c.currentTab === 'analytics' ? '?????????' : '?????? ???????'}
                             </div>
                           </div>
 
-                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" title="Ù…ØªØµÙ„ Ø§Ù„Ø¢Ù†"></span>
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" title="متصل الآن"></span>
                         </div>
                       ))}
                     </div>
@@ -17175,7 +17175,7 @@ function App() {
                 </div>
 
                 <button onClick={() => { switchTab('trash'); }} className={`flex items-center justify-between mt-auto px-6 py-4 text-right transition-colors border-t border-gray-100 ${activeTab === 'trash' ? 'bg-red-50 text-red-600 border-r-4 border-red-600 font-bold' : 'text-gray-600 hover:bg-red-50 hover:text-red-600'}`}>
-                   <div className="flex items-center gap-3"><Trash2 size={20} /> سلة المهملات</div>
+                   <div className="flex items-center gap-3"><Trash2 size={20} /> ??? ????????</div>
                    {allVisits.filter(v => v.isDeleted).length > 0 && (
                        <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-bold font-sans">
                           {formatNumber(allVisits.filter(v => v.isDeleted).length)}
@@ -17297,7 +17297,7 @@ function App() {
                }}
              />
            )}
-           {/* نافذة الاختيار للزيارة القديمة (Excel أو يدوي) */}
+           {/* ????? ???????? ??????? ??????? (Excel ?? ????) */}
            {showLegacyChoiceModal && (
              <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm" onClick={() => setShowLegacyChoiceModal(false)}>
                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-fade-in" onClick={e => e.stopPropagation()}>
@@ -17305,8 +17305,8 @@ function App() {
                    <div className="flex items-center gap-2.5">
                      <History size={22} className="text-amber-400" />
                      <div>
-                       <h3 className="font-bold text-base">إضافة زيارة أو مشروع قديم</h3>
-                       <p className="text-xs text-blue-200">اختر طريقة تسجيل النزلة والمشاريع السابقة</p>
+                       <h3 className="font-bold text-base">????? ????? ?? ????? ????</h3>
+                       <p className="text-xs text-blue-200">???? ????? ????? ?????? ????????? ???????</p>
                      </div>
                    </div>
                    <button onClick={() => setShowLegacyChoiceModal(false)} className="text-white/80 hover:text-white p-1 rounded-lg">
@@ -17315,7 +17315,7 @@ function App() {
                  </div>
 
                  <div className="p-5 flex flex-col gap-3.5">
-                   {/* خيار 1: رفع من Excel */}
+                   {/* ???? 1: ??? ?? Excel */}
                    <button 
                      type="button"
                      onClick={() => {
@@ -17329,16 +17329,16 @@ function App() {
                      </div>
                      <div className="flex-1">
                        <div className="flex items-center justify-between">
-                         <span className="font-bold text-emerald-950 text-sm sm:text-base">رفع من ملف Excel</span>
-                         <span className="text-[10px] bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full font-bold">آلي وذكي</span>
+                         <span className="font-bold text-emerald-950 text-sm sm:text-base">??? ?? ??? Excel</span>
+                         <span className="text-[10px] bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full font-bold">??? ????</span>
                        </div>
                        <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                         استيراد شيت مشاريع كامل مع استخراج الكنائس والقرى وتوزيع الأقساط تلقائياً
+                         ??????? ??? ?????? ???? ?? ??????? ??????? ?????? ?????? ??????? ????????
                        </p>
                      </div>
                    </button>
 
-                   {/* خيار 2: إدخال يدوي */}
+                   {/* ???? 2: ????? ???? */}
                    <button 
                      type="button"
                      onClick={() => {
@@ -17352,11 +17352,11 @@ function App() {
                      </div>
                      <div className="flex-1">
                        <div className="flex items-center justify-between">
-                         <span className="font-bold text-[#002f6c] text-sm sm:text-base">إدخال يدوي (بدون Excel)</span>
-                         <span className="text-[10px] bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full font-bold">تسجيل مباشر</span>
+                         <span className="font-bold text-[#002f6c] text-sm sm:text-base">????? ???? (???? Excel)</span>
+                         <span className="text-[10px] bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full font-bold">????? ?????</span>
                        </div>
                        <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                         تسجيل حالة أو مشروع قديم يدوياً للبيانات التي ليس لها ملف إكسيل
+                         ????? ???? ?? ????? ???? ?????? ???????? ???? ??? ??? ??? ?????
                        </p>
                      </div>
                    </button>
@@ -17368,14 +17368,14 @@ function App() {
                      onClick={() => setShowLegacyChoiceModal(false)}
                      className="px-4 py-1.5 text-xs text-gray-600 hover:bg-gray-200 rounded-lg transition-colors font-medium"
                    >
-                     إلغاء
+                     ?????
                    </button>
                  </div>
                </div>
              </div>
            )}
 
-           {/* نافذة الإدخال اليدوي للمشاريع القديمة */}
+           {/* ????? ??????? ?????? ???????? ??????? */}
            {showAddLegacyModal && (
              <AddLegacyProjectModal
                allVisits={allVisits}
@@ -17388,7 +17388,7 @@ function App() {
              />
            )}
 
-           {/* نافذة استيراد الإكسيل الذكي */}
+           {/* ????? ??????? ??????? ????? */}
            {showImportLegacyModal && (
              <ImportLegacyExcelModal
                allVisits={allVisits}
@@ -17454,7 +17454,7 @@ function App() {
                    
                    <img 
                      src={typeof ANBA_KARAS_SPLASH_IMAGE !== "undefined" ? ANBA_KARAS_SPLASH_IMAGE : ""}
-                     alt="القديس الأنبا كاراس السائح" 
+                     alt="?????? ?????? ????? ??????" 
                      className="relative z-10 max-h-[75vh] max-w-[92vw] object-contain rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.8)] border-2 border-amber-400/40"
                    />
                  </div>
@@ -17464,7 +17464,7 @@ function App() {
                <div className="w-full max-w-md flex flex-col items-center gap-3 pb-4">
                  <div className="text-center px-4">
                    <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-100 drop-shadow">
-                    <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-100 drop-shadow flex flex-col items-center gap-1.5 leading-snug"><span>خدمة الأنبا كاراس لخدمة إخوة الرب</span><span className="text-lg sm:text-xl font-bold text-amber-300/95 tracking-wide">متابعة مشاريع</span></h1>
+                    <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-100 drop-shadow flex flex-col items-center gap-1.5 leading-snug"><span>???? ?????? ????? ????? ???? ????</span><span className="text-lg sm:text-xl font-bold text-amber-300/95 tracking-wide">?????? ??????</span></h1>
                    </h1>
                  </div>
 
@@ -17515,7 +17515,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1792229836311";
+      const CLIENT_BUILD_ID = "1792230214681";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
