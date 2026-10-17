@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1792230214681" />
+  <meta name="app-build-id" content="1792230467871" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -512,7 +512,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 tabIndex={-1}
                 onClick={() => setIsOpen(!isOpen)}
                 className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-                title="??? ???????"
+                title={'\u0639\u0631\u0636 \u0627\u0644\u0642\u0627\u0626\u0645\u0629'}
               >
                 <ChevronDown size={15} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -521,12 +521,12 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 
           {fuzzySuggestion && (
             <div className="mt-1 flex items-center gap-1.5 p-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 animate-fade-in shadow-xs">
-              <span>?? ?? ????:</span>
+              <span>{'\ud83d\udca1 \u0647\u0644 \u062a\u0642\u0635\u062f:'}</span>
               <button
                 type="button"
                 onClick={() => handleSelect(fuzzySuggestion.suggested)}
                 className="font-bold underline decoration-amber-500 hover:text-amber-950 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded transition-colors"
-                title="???? ??????? ????????"
+                title={'\u0627\u0636\u063a\u0637 \u0644\u0644\u062a\u0635\u062d\u064a\u062d \u0627\u0644\u062a\u0644\u0642\u0627\u0626\u064a'}
               >
                 {fuzzySuggestion.suggested}
               </button>
@@ -538,7 +538,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
             <div className="absolute z-50 mt-1 w-full bg-white rounded-xl shadow-2xl border border-gray-200 py-1 max-h-52 overflow-y-auto divide-y divide-gray-50 text-xs sm:text-sm animate-fade-in">
               {filteredOptions.length === 0 ? (
                 <div className="px-3 py-2 text-center text-gray-400 text-xs">
-                  ?? ???? ????? ????? ?????? (????? ????????? ?? ????? ??? ????)
+                  \u0644\u0627 \u062a\u0648\u062c\u062f \u0646\u062a\u0627\u0626\u062c \u0633\u0627\u0628\u0642\u0629 \u0645\u0637\u0627\u0628\u0642\u0629 (\u064a\u0645\u0643\u0646\u0643 \u0627\u0644\u0627\u0633\u062a\u0645\u0631\u0627\u0631 \u0641\u064a \u0643\u062a\u0627\u0628\u0629 \u0627\u0633\u0645 \u062c\u062f\u064a\u062f)
                 </div>
               ) : (
                 filteredOptions.map((opt, idx) => (
@@ -2688,7 +2688,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                              type="button"
                              onClick={(e) => handleEditChurch(churchLoc, e)}
                              className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-2 rounded-md transition-colors"
-                             title="????? ?????? ??????? ??????? ???????"
+                             title={'\u062a\u0639\u062f\u064a\u0644 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0643\u0646\u064a\u0633\u0629 \u0648\u0627\u0644\u0645\u0631\u0643\u0632 \u0648\u0627\u0644\u0642\u0631\u064a\u0629'}
                            >
                              <Edit2 size={20} />
                            </button>
@@ -2696,7 +2696,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                              type="button"
                              onClick={(e) => { e.stopPropagation(); handleDeleteChurch(churchLoc.id); }} 
                              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-md transition-colors" 
-                             title="??? ???????"
+                             title={'\u062d\u063f\u0641 \u0627\u0644\u0643\u0646\u064a\u0633\u0629'}
                            >
                              <Trash2 size={20} />
                            </button>
@@ -16642,16 +16642,16 @@ function App() {
 
       const handleDeleteVisit = async (visitId) => {
         window.showConfirm({
-          title: '??? ??? ??? ????????',
-          message: '?? ??? ????? ?? ??? ??? ??????? ??? ??? ????????? ????? ????????? ???? 30 ?????.',
-          confirmText: '??? ?????',
-          cancelText: '?????',
+          title: 'نقل إلى سلة المهملات',
+          message: 'هل أنت متأكد من نقل هذه الزيارة إلى سلة المهملات؟ يمكنك استعادتها خلال 30 يوماً.',
+          confirmText: 'نقل للسلة',
+          cancelText: 'إلغاء',
           isDangerous: true,
           onConfirm: async () => {
-            if(isReadOnly) { window.notifyWarning('?????? ??? ?? ??? ???????? ???.'); return; }
+            if(isReadOnly) { window.notifyWarning('عذراً، أنت في وضع المشاهدة فقط.'); return; }
             try {
                 await db.collection('visits').doc(visitId).update({ isDeleted: true, deletedAt: Date.now() });
-                window.notifySuccess('?? ??? ??????? ??? ??? ???????? ?????.');
+                window.notifySuccess('تم نقل الزيارة إلى سلة المهملات بنجاح.');
                 if (currentVisitId === visitId) {
                      const newId = uuidv4();
                      setData({ visitId: newId, location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() });
@@ -16659,38 +16659,38 @@ function App() {
                 }
             } catch (e) {
                 console.error(e);
-                window.notifyError('??? ??? ????? ????? ???? ????????.');
+                window.notifyError('حدث خطأ أثناء النقل لسلة المهملات.');
             }
           }
         });
       };
 
       const handleRestoreVisit = async (visitId) => {
-          if (isReadOnly) { window.notifyWarning('?????? ??? ?? ??? ???????? ???.'); return; }
+          if (isReadOnly) { window.notifyWarning('عذراً، أنت في وضع المشاهدة فقط.'); return; }
           try {
               await db.collection('visits').doc(visitId).update({ isDeleted: false, deletedAt: firebase.firestore.FieldValue.delete() });
-              window.notifySuccess('?? ??????? ??????? ?? ??? ???????? ?????!');
+              window.notifySuccess('تم استعادة الزيارة من سلة المهملات بنجاح!');
           } catch (e) {
               console.error(e);
-              window.notifyError('??? ??? ????? ?????????.');
+              window.notifyError('حدث خطأ أثناء الاستعادة.');
           }
       };
 
       const handlePermanentDelete = async (visitId) => {
           window.showConfirm({
-            title: '??? ????? ?????',
-            message: '?? ??? ????? ?? ??? ??? ??????? ??????? ?????? ?? ???? ??????? ?? ??? ??????? ???????.',
-            confirmText: '???? ??? ?????',
-            cancelText: '?????',
+            title: 'حذف نهائي للأبد',
+            message: 'هل أنت متأكد من حذف هذه الزيارة نهائياً للأبد؟ لا يمكن التراجع عن هذا الإجراء إطلاقاً.',
+            confirmText: 'نعم، حذف نهائي',
+            cancelText: 'إلغاء',
             isDangerous: true,
             onConfirm: async () => {
-              if (isReadOnly) { window.notifyWarning('?????? ??? ?? ??? ???????? ???.'); return; }
+              if (isReadOnly) { window.notifyWarning('عذراً، أنت في وضع المشاهدة فقط.'); return; }
               try {
                   await db.collection('visits').doc(visitId).delete();
-                  window.notifySuccess('?? ??? ??????? ??????? ?????.');
+                  window.notifySuccess('تم حذف الزيارة نهائياً للأبد.');
               } catch (e) {
                   console.error(e);
-                  window.notifyError('??? ??? ????? ????? ???????.');
+                  window.notifyError('حدث خطأ أثناء الحذف النهائي.');
               }
             }
           });
@@ -16700,23 +16700,23 @@ function App() {
           const deletedVisits = allVisits.filter(v => v.isDeleted);
           if (deletedVisits.length === 0) return;
           window.showConfirm({
-            title: '????? ??? ????????',
-            message: '?? ??? ????? ?? ????? ??? ???????? ???????? ???? ??? ???? ???????? ???????? ??????? ?????.',
-            confirmText: '????? ????? ???????',
-            cancelText: '?????',
+            title: 'تفريغ سلة المهملات',
+            message: 'هل أنت متأكد من إفراغ سلة المهملات بالكامل؟ سيتم حذف جميع الزيارات المحذوفة نهائياً للأبد.',
+            confirmText: 'تفريغ السلة بالكامل',
+            cancelText: 'إلغاء',
             isDangerous: true,
             onConfirm: async () => {
-              if (isReadOnly) { window.notifyWarning('?????? ??? ?? ??? ???????? ???.'); return; }
+              if (isReadOnly) { window.notifyWarning('عذراً، أنت في وضع المشاهدة فقط.'); return; }
               try {
                   const batch = db.batch();
                   deletedVisits.forEach(v => {
                       batch.delete(db.collection('visits').doc(v.id));
                   });
                   await batch.commit();
-                  window.notifySuccess('?? ????? ??? ???????? ???????.');
+                  window.notifySuccess('تم إفراغ سلة المهملات بالكامل.');
               } catch(e) {
                   console.error(e);
-                  window.notifyError('??? ??? ????? ????? ??? ????????.');
+                  window.notifyError('حدث خطأ أثناء إفراغ سلة المهملات.');
               }
             }
           });
@@ -16851,17 +16851,17 @@ function App() {
       const handleEndVisit = () => {
         if(isReadOnly) return;
         window.showConfirm({
-          title: '????? ???? ????? ?????',
-          message: '?? ??? ????? ?? ??? ?????? ??? ??????? ?????? ?? ????? ????? ??????',
-          confirmText: '???? ??? ????? ?????',
-          cancelText: '?????',
+          title: 'إنهاء وبدء زيارة جديدة',
+          message: 'هل أنت متأكد من حفظ وإنهاء هذه الزيارة والبدء في تسجيل زيارة جديدة؟',
+          confirmText: 'نعم، بدء زيارة جديدة',
+          cancelText: 'إلغاء',
           onConfirm: () => {
             const newId = uuidv4();
             const emptyData = { visitId: newId, location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() };
             setCurrentVisitId(newId);
             setData(emptyData);
             if (db && !isReadOnly) db.collection('visits').doc(newId).set(emptyData);
-            window.notifySuccess('?? ??? ????? ????? ?????.');
+            window.notifySuccess('تم بدء زيارة جديدة بنجاح.');
           }
         });
       };
@@ -16878,13 +16878,13 @@ function App() {
                   <button onClick={() => setIsSidebarOpen(true)} className="p-1.5 sm:p-2 hover:bg-[#001f4c] rounded-md transition-colors">
                     <Menu size={24} />
                   </button>
-                  <img src="anba_karas_splash.jpg" alt="???? ?????" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-amber-400 shadow-md ring-1 sm:ring-2 ring-amber-400/30" />
+                  <img src="anba_karas_splash.jpg" alt="أنبا كاراس" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-amber-400 shadow-md ring-1 sm:ring-2 ring-amber-400/30" />
                   <div className="flex flex-col justify-center mr-1">
                      <span className="text-sm sm:text-base font-bold text-amber-300 tracking-tight leading-tight">
-                        ???? ?????? ?????
+                        خدمة الأنبا كاراس
                      </span>
                      <span className="text-[11px] sm:text-xs text-blue-200 font-medium">
-                        ?????? ????????
+                        متابعة المشاريع
                      </span>
                   </div>
                </div>
@@ -16898,18 +16898,18 @@ function App() {
                         title="اضغط لتعديل اسمك وبيانات حسابك"
                      >
                        <div className="w-6 h-6 rounded-full bg-amber-400 text-blue-950 font-bold flex items-center justify-center text-xs shadow-inner">
-                         {(currentUser.name || currentUser.email || '?')[0].toUpperCase()}
+                         {(currentUser.name || currentUser.email || 'خ')[0].toUpperCase()}
                        </div>
                        <div className="hidden sm:flex flex-col text-right">
                           <span className="font-bold text-amber-200 leading-tight truncate max-w-[120px]">{currentUser.name || currentUser.email}</span>
                          <span className="text-[10px] text-blue-200/80 leading-none">
-                           {currentUser.role === 'admin' ? '???? ??? ??' : '???? ?????'}
+                           {currentUser.role === 'admin' ? 'مشرف عام 👑' : 'خادم معتمد'}
                          </span>
                        </div>
                      </div>
                    )}
                                                        {/* شارة الخدام المتواجدون الآن ومشاركة الشاشة */}
-                                    {/* ???? ?????? ?????????? ???? ??????? ?????? */}
+                                    {/* شارة الخدام المتواجدون الآن ومشاركة الشاشة */}
                   <div className="relative">
                     <button
                       type="button"
@@ -16919,7 +16919,7 @@ function App() {
                           ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400/50 shadow-emerald-900/20' 
                           : 'bg-white/10 hover:bg-white/20 text-blue-200 border-white/20'
                       }`}
-                      title="?????? ?????????? ??????? ???? ??????? ?????? ???????"
+                      title="الخدام المتواجدون أونلاين الآن ومشاركة الشاشة الفورية"
                     >
                       <span className="relative flex h-2 w-2">
                         {onlineCollaborators.length > 0 && (
@@ -16927,7 +16927,7 @@ function App() {
                         )}
                         <span className={`relative inline-flex rounded-full h-2 w-2 ${onlineCollaborators.length > 0 ? 'bg-emerald-300' : 'bg-gray-400'}`}></span>
                       </span>
-                      <span>?? {onlineCollaborators.length} ????</span>
+                      <span>🟢 {onlineCollaborators.length} متصل</span>
                     </button>
 
                     {showOnlinePopover && (
@@ -16935,20 +16935,20 @@ function App() {
                         <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-2">
                           <span className="text-xs font-bold text-[#002f6c] flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            <span>?????? ?????????? ???? ({onlineCollaborators.length})</span>
+                            <span>الخدام المتواجدون الآن ({onlineCollaborators.length})</span>
                           </span>
                           <button 
                             type="button" 
                             onClick={() => setShowOnlinePopover(false)}
                             className="text-gray-400 hover:text-gray-600 text-xs px-1 font-bold"
                           >
-                            ?
+                            ✕
                           </button>
                         </div>
 
                         {onlineCollaborators.length === 0 ? (
                           <div className="py-4 text-center text-xs text-gray-500">
-                            ?? ???? ???? ?????? ??????
+                            لا يوجد خدام متصلون حالياً
                           </div>
                         ) : (
                           <div className="space-y-2 max-h-56 overflow-y-auto">
@@ -16957,7 +16957,7 @@ function App() {
                                 <div>
                                   <div className="font-bold text-gray-900 leading-tight">{c.name || c.email}</div>
                                   <div className="text-[10px] text-gray-500 mt-0.5">
-                                    {c.currentTab === 'installments' ? '?????? ???????' : c.currentTab === 'entry' ? '????? ?????' : c.currentTab === 'analytics' ? '?????????' : '?????? ???????'}
+                                    {c.currentTab === 'installments' ? 'متابعة الأقساط' : c.currentTab === 'entry' ? 'تسجيل زيارة' : c.currentTab === 'analytics' ? 'التحليلات' : 'متابعة التنفيذ'}
                                   </div>
                                 </div>
                                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" title="متصل الآن"></span>
@@ -16973,27 +16973,27 @@ function App() {
                     type="button"
                     onClick={() => setShowGlobalSearch(true)}
                     className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-white/10 text-amber-200 hover:bg-white/20 border border-amber-400/30 shadow-sm"
-                    title="??? ???? ????"
+                    title="بحث سريع شامل"
                   >
                     <Search size={15} />
-                    <span className="hidden sm:inline font-bold">??? ????</span>
+                    <span className="hidden sm:inline font-bold">بحث شامل</span>
                   </button>
                   
                   <div className="flex items-center gap-2 mt-0.5">
                       {!isOnline && (
                         <div className="bg-amber-500/20 text-amber-200 border border-amber-400/50 px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold flex items-center gap-1 shadow-sm animate-pulse">
-                           <span>??</span> ??? ???? (??????)
+                           <span>📴</span> غير متصل (محلياً)
                         </div>
                       )}
                       {isReadOnly && (
                         <div className="bg-red-500/20 text-red-100 border border-red-400/50 px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold flex items-center gap-1 shadow-sm">
-                           <span>???</span> ??????? ???
+                           <span>👁️</span> للاطلاع فقط
                         </div>
                      )}
                      <div className="hidden sm:flex items-center text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded bg-[#001f4c] text-blue-200">
-                       {!isReadOnly && syncStatus === 'syncing' && <><CloudUpload size={12} className="ml-1 animate-pulse" /><span>???? ?????...</span></>}
-                       {!isReadOnly && syncStatus === 'synced' && <><Cloud size={12} className="ml-1 text-green-400" /><span>?? ?????</span></>}
-                       {!isReadOnly && syncStatus === 'error' && <><CloudOff size={12} className="ml-1 text-red-400" /><span>??? ????</span></>}
+                       {!isReadOnly && syncStatus === 'syncing' && <><CloudUpload size={12} className="ml-1 animate-pulse" /><span>جاري الحفظ...</span></>}
+                       {!isReadOnly && syncStatus === 'synced' && <><Cloud size={12} className="ml-1 text-green-400" /><span>تم الحفظ</span></>}
+                       {!isReadOnly && syncStatus === 'error' && <><CloudOff size={12} className="ml-1 text-red-400" /><span>غير متصل</span></>}
                      </div>
                   </div>
                </div>
@@ -17010,10 +17010,10 @@ function App() {
                   <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
                 </span>
                 <div className="text-xs sm:text-sm">
-                  <span>?? ?????? </span>
+                  <span>🔔 الخادم </span>
                   <strong className="text-amber-300 font-bold">{collaboratorToast.name || collaboratorToast.email}</strong>
-                  <span> ??? ??????? ???? ???????? ?? </span>
-                  <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-bold text-amber-200">{collaboratorToast.currentTab === 'installments' ? '?????? ???????' : collaboratorToast.currentTab === 'entry' ? '????? ?????' : collaboratorToast.currentTab === 'analytics' ? '?????????' : '?????? ???????'}</span>
+                  <span> دخل التطبيق الآن متواجداً في </span>
+                  <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-bold text-amber-200">{collaboratorToast.currentTab === 'installments' ? 'متابعة الأقساط' : collaboratorToast.currentTab === 'entry' ? 'تسجيل زيارة' : collaboratorToast.currentTab === 'analytics' ? 'التحليلات' : 'متابعة التنفيذ'}</span>
                 </div>
               </div>
 
@@ -17024,7 +17024,7 @@ function App() {
                   onClick={() => setCollaboratorToast(null)}
                   className="text-white/80 hover:text-white text-xs px-2 py-1 rounded hover:bg-white/10"
                 >
-                  ? ?????
+                  ✕ إغلاق
                 </button>
               </div>
             </div>
@@ -17039,8 +17039,8 @@ function App() {
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-400"></span>
                 </span>
                 <div className="text-xs sm:text-sm">
-                  <span className="font-bold text-amber-200">{incomingLiveSession.hostName || incomingLiveSession.hostEmail}</span> ???? ?????? ???? ??????? ??? ????? <strong>({incomingLiveSession.fileName || '??? ??????'})</strong>
-                  <span className="hidden md:inline text-blue-100 text-xs mr-2">� ????? ???????? ???????? ????? ???????? ??? ???????!</span>
+                  <span className="font-bold text-amber-200">{incomingLiveSession.hostName || incomingLiveSession.hostEmail}</span> يقوم حالياً برفع ومراجعة ملف إكسيل <strong>({incomingLiveSession.fileName || 'كشف مشاريع'})</strong>
+                  <span className="hidden md:inline text-blue-100 text-xs mr-2">• يمكنك الانضمام للمعاينة الحية والتنسيق معه بالهاتف!</span>
                 </div>
               </div>
 
@@ -17052,14 +17052,14 @@ function App() {
                   }}
                   className="bg-amber-400 hover:bg-amber-300 text-blue-950 font-bold text-xs px-3.5 py-1.5 rounded-lg shadow transition-all active:scale-95 flex items-center gap-1.5"
                 >
-                  <span>?? ?????? ???????? ????</span>
+                  <span>👀 انضمام للمشاهدة الآن</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setDismissedSessionId(incomingLiveSession.updatedAt)}
                   className="text-white/80 hover:text-white text-xs px-2.5 py-1 rounded hover:bg-white/10 transition-colors"
                 >
-                  ???? / ????? ??????
+                  تخطي / مشغول حالياً
                 </button>
               </div>
             </div>
@@ -17070,12 +17070,12 @@ function App() {
           <div className={`fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
              <div className="h-16 bg-[#002f6c] px-4 flex items-center justify-between border-b border-[#001f4c]">
                 <div className="flex items-center gap-3">
-                   <img src="anba_karas_splash.jpg" alt="???? ?????" className="w-9 h-9 rounded-full object-cover border-2 border-amber-400 shadow-md ring-2 ring-amber-400/30" />
+                   <img src="anba_karas_splash.jpg" alt="أنبا كاراس" className="w-9 h-9 rounded-full object-cover border-2 border-amber-400 shadow-md ring-2 ring-amber-400/30" />
                    <div className="flex flex-col">
-                     <span className="font-bold text-[#d4af37] text-sm">???? ?????? ?????</span>
+                     <span className="font-bold text-[#d4af37] text-sm">خدمة الأنبا كاراس</span>
                      {currentUser && (
                        <span className="text-[10px] text-blue-200 leading-none mt-0.5">
-                         {currentUser.name || currentUser.email} &bull; {currentUser.role === 'admin' ? '???? ???' : '????'}
+                         {currentUser.name || currentUser.email} &bull; {currentUser.role === 'admin' ? 'مشرف عام' : 'خادم'}
                        </span>
                      )}
                    </div>
@@ -17083,54 +17083,54 @@ function App() {
                 <button onClick={() => setIsSidebarOpen(false)} className="text-white hover:text-gray-300 p-2"><X size={20}/></button>
              </div>
                           <div className="py-3 flex flex-col h-[calc(100vh-64px)] overflow-y-auto">
-                {/* 1. ????? ????? ????? */}
+                {/* 1. تسجيل زيارة جديدة */}
                 <button 
                   onClick={() => { switchTab('entry'); setIsSidebarOpen(false); }} 
                   className={`flex items-center gap-3 px-6 py-3.5 text-right transition-colors ${activeTab === 'entry' ? 'bg-blue-50 text-[#002f6c] border-r-4 border-[#002f6c] font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
                 >
                   <PlusCircle size={20} className="text-[#002f6c]" /> 
                   <div className="flex flex-col text-right">
-                    <span className="font-bold">????? ????? ?????</span>
-                    <span className="text-[10px] text-gray-500">????? ??????? ???????? ???? ?????</span>
+                    <span className="font-bold">تسجيل زيارة جديدة</span>
+                    <span className="text-[10px] text-gray-500">تسجيل الحالات ميدانياً خطوة بخطوة</span>
                   </div>
                 </button>
 
-                {/* 2. ??????? ????? ????? (Excel / ????) */}
+                {/* 2. استيراد زيارة قديمة (Excel / يدوي) */}
                 <button 
                   onClick={() => { setShowLegacyChoiceModal(true); setIsSidebarOpen(false); }} 
                   className="flex items-center gap-3 px-6 py-3.5 text-right text-gray-700 hover:bg-blue-50 transition-colors"
                 >
                   <FileSpreadsheet size={20} className="text-blue-700" /> 
                   <div className="flex flex-col text-right">
-                    <span className="font-bold text-[#002f6c]">??????? ????? ????? (Excel / ????)</span>
-                    <span className="text-[10px] text-gray-500">??? ??? ????? ?? ????? ????</span>
+                    <span className="font-bold text-[#002f6c]">استيراد زيارة قديمة (Excel / يدوي)</span>
+                    <span className="text-[10px] text-gray-500">رفع شيت إكسيل أو إدخال يدوي</span>
                   </div>
                 </button>
 
                     <button onClick={() => { switchTab('execution'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'execution' ? 'bg-amber-50 text-amber-900 border-r-4 border-amber-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                   <Zap size={20} className="text-amber-600" /> ?????? ??????? ????? ????????
+                   <Zap size={20} className="text-amber-600" /> متابعة واعتماد تنفيذ المشاريع
                 </button>
                 <button onClick={() => { switchTab('installments'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'installments' ? 'bg-emerald-50 text-emerald-900 border-r-4 border-emerald-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                   <DollarSign size={20} className="text-emerald-600" /> ?????? ??????? ???????? ??????
+                   <DollarSign size={20} className="text-emerald-600" /> متابعة الأقساط والتحصيل الدوري
                 </button>
                  <button onClick={() => { switchTab('analytics'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'analytics' ? 'bg-purple-50 text-purple-900 border-r-4 border-purple-500 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                    <BarChart3 size={20} className="text-purple-600" /> ???? ????????? ???? ????????
+                    <BarChart3 size={20} className="text-purple-600" /> لوحة التحليلات ونسب المشاريع
                  </button>
                 <button onClick={() => { switchTab('archive'); }} className={`flex items-center gap-3 px-6 py-4 text-right transition-colors ${activeTab === 'archive' || activeTab === 'archiveDetails' ? 'bg-blue-50 text-[#002f6c] border-r-4 border-[#002f6c] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
-                   <ListIcon size={20} /> ????? ???????? ?????????
+                   <ListIcon size={20} /> أرشيف الزيارات والتقارير
                 </button>
 
                 <button onClick={() => { setShowBackupModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-amber-900 bg-amber-50/70 hover:bg-amber-100 border-t border-b border-amber-200/60 font-bold">
-                   <ShieldCheck size={20} className="text-amber-600" /> ????? ????????? ?????? ?????????
+                   <ShieldCheck size={20} className="text-amber-600" /> النسخ الاحتياطي وتاريخ الإصدارات
                 </button>
                  <button onClick={() => { setShowUnifyNamesModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-teal-900 bg-teal-50/70 hover:bg-teal-100 border-b border-teal-200/60 font-bold">
-                    <Link size={20} className="text-teal-600" /> ????? ???????? ?? ????? ????????
+                    <Link size={20} className="text-teal-600" /> توحيد المسميات في قاعدة البيانات
                  </button>
 
                 {currentUser && currentUser.role === 'admin' && (
                   <button onClick={() => { setShowUsersModal(true); setIsSidebarOpen(false); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-purple-900 bg-purple-50/70 hover:bg-purple-100 border-b border-purple-200/60 font-bold">
                     <Users size={20} className="text-purple-600" />
-                    <span>????? ?????? ??????????</span>
+                    <span>إدارة الخدام والصلاحيات</span>
                     {pendingServantsCount > 0 && (
                       <span className="mr-auto bg-rose-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse">
                         {pendingServantsCount}
@@ -17141,21 +17141,21 @@ function App() {
                 {currentUser && (
                   <button onClick={() => { AuthService.logoutUser(currentUser).then(() => { setCurrentUser(null); setIsSidebarOpen(false); }); }} className="flex items-center gap-3 px-6 py-3.5 text-right transition-colors text-rose-700 bg-rose-50/50 hover:bg-rose-100 border-b border-rose-200/40 font-bold">
                     <LogOut size={20} className="text-rose-600" />
-                    <span>????? ??????</span>
+                    <span>تسجيل الخروج</span>
                   </button>
                 )}
                 
-                {/* ?????????? ??????? ???? ??????? ?????? ??????? */}
+                {/* المتواجدون أونلاين الآن ومشاركة الشاشة الفورية */}
                 <div className="mx-3 my-2 p-3 bg-gradient-to-br from-indigo-50 to-blue-50/60 rounded-xl border border-blue-200/80">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>?????? ?????????? ???? ({onlineCollaborators.length})</span>
+                      <span>الخدام المتواجدون الآن ({onlineCollaborators.length})</span>
                     </span>
                   </div>
 
                   {onlineCollaborators.length === 0 ? (
-                    <p className="text-[11px] text-gray-500 py-1">?? ???? ???? ????? ?????? ??????</p>
+                    <p className="text-[11px] text-gray-500 py-1">لا يوجد خدام آخرون متصلون حالياً</p>
                   ) : (
                     <div className="space-y-1.5 max-h-36 overflow-y-auto">
                       {onlineCollaborators.map(c => (
@@ -17163,7 +17163,7 @@ function App() {
                           <div>
                             <div className="font-bold text-gray-900 leading-tight">{c.name || c.email}</div>
                             <div className="text-[10px] text-gray-500 mt-0.5">
-                              {c.currentTab === 'installments' ? '?????? ???????' : c.currentTab === 'entry' ? '????? ?????' : c.currentTab === 'analytics' ? '?????????' : '?????? ???????'}
+                              {c.currentTab === 'installments' ? 'متابعة الأقساط' : c.currentTab === 'entry' ? 'تسجيل زيارة' : c.currentTab === 'analytics' ? 'التحليلات' : 'متابعة التنفيذ'}
                             </div>
                           </div>
 
@@ -17175,7 +17175,7 @@ function App() {
                 </div>
 
                 <button onClick={() => { switchTab('trash'); }} className={`flex items-center justify-between mt-auto px-6 py-4 text-right transition-colors border-t border-gray-100 ${activeTab === 'trash' ? 'bg-red-50 text-red-600 border-r-4 border-red-600 font-bold' : 'text-gray-600 hover:bg-red-50 hover:text-red-600'}`}>
-                   <div className="flex items-center gap-3"><Trash2 size={20} /> ??? ????????</div>
+                   <div className="flex items-center gap-3"><Trash2 size={20} /> سلة المهملات</div>
                    {allVisits.filter(v => v.isDeleted).length > 0 && (
                        <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-bold font-sans">
                           {formatNumber(allVisits.filter(v => v.isDeleted).length)}
@@ -17297,7 +17297,7 @@ function App() {
                }}
              />
            )}
-           {/* ????? ???????? ??????? ??????? (Excel ?? ????) */}
+           {/* نافذة الاختيار للزيارة القديمة (Excel أو يدوي) */}
            {showLegacyChoiceModal && (
              <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm" onClick={() => setShowLegacyChoiceModal(false)}>
                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-fade-in" onClick={e => e.stopPropagation()}>
@@ -17305,8 +17305,8 @@ function App() {
                    <div className="flex items-center gap-2.5">
                      <History size={22} className="text-amber-400" />
                      <div>
-                       <h3 className="font-bold text-base">????? ????? ?? ????? ????</h3>
-                       <p className="text-xs text-blue-200">???? ????? ????? ?????? ????????? ???????</p>
+                       <h3 className="font-bold text-base">إضافة زيارة أو مشروع قديم</h3>
+                       <p className="text-xs text-blue-200">اختر طريقة تسجيل النزلة والمشاريع السابقة</p>
                      </div>
                    </div>
                    <button onClick={() => setShowLegacyChoiceModal(false)} className="text-white/80 hover:text-white p-1 rounded-lg">
@@ -17315,7 +17315,7 @@ function App() {
                  </div>
 
                  <div className="p-5 flex flex-col gap-3.5">
-                   {/* ???? 1: ??? ?? Excel */}
+                   {/* خيار 1: رفع من Excel */}
                    <button 
                      type="button"
                      onClick={() => {
@@ -17329,16 +17329,16 @@ function App() {
                      </div>
                      <div className="flex-1">
                        <div className="flex items-center justify-between">
-                         <span className="font-bold text-emerald-950 text-sm sm:text-base">??? ?? ??? Excel</span>
-                         <span className="text-[10px] bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full font-bold">??? ????</span>
+                         <span className="font-bold text-emerald-950 text-sm sm:text-base">رفع من ملف Excel</span>
+                         <span className="text-[10px] bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full font-bold">آلي وذكي</span>
                        </div>
                        <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                         ??????? ??? ?????? ???? ?? ??????? ??????? ?????? ?????? ??????? ????????
+                         استيراد شيت مشاريع كامل مع استخراج الكنائس والقرى وتوزيع الأقساط تلقائياً
                        </p>
                      </div>
                    </button>
 
-                   {/* ???? 2: ????? ???? */}
+                   {/* خيار 2: إدخال يدوي */}
                    <button 
                      type="button"
                      onClick={() => {
@@ -17352,11 +17352,11 @@ function App() {
                      </div>
                      <div className="flex-1">
                        <div className="flex items-center justify-between">
-                         <span className="font-bold text-[#002f6c] text-sm sm:text-base">????? ???? (???? Excel)</span>
-                         <span className="text-[10px] bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full font-bold">????? ?????</span>
+                         <span className="font-bold text-[#002f6c] text-sm sm:text-base">إدخال يدوي (بدون Excel)</span>
+                         <span className="text-[10px] bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full font-bold">تسجيل مباشر</span>
                        </div>
                        <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                         ????? ???? ?? ????? ???? ?????? ???????? ???? ??? ??? ??? ?????
+                         تسجيل حالة أو مشروع قديم يدوياً للبيانات التي ليس لها ملف إكسيل
                        </p>
                      </div>
                    </button>
@@ -17368,14 +17368,14 @@ function App() {
                      onClick={() => setShowLegacyChoiceModal(false)}
                      className="px-4 py-1.5 text-xs text-gray-600 hover:bg-gray-200 rounded-lg transition-colors font-medium"
                    >
-                     ?????
+                     إلغاء
                    </button>
                  </div>
                </div>
              </div>
            )}
 
-           {/* ????? ??????? ?????? ???????? ??????? */}
+           {/* نافذة الإدخال اليدوي للمشاريع القديمة */}
            {showAddLegacyModal && (
              <AddLegacyProjectModal
                allVisits={allVisits}
@@ -17388,7 +17388,7 @@ function App() {
              />
            )}
 
-           {/* ????? ??????? ??????? ????? */}
+           {/* نافذة استيراد الإكسيل الذكي */}
            {showImportLegacyModal && (
              <ImportLegacyExcelModal
                allVisits={allVisits}
@@ -17454,7 +17454,7 @@ function App() {
                    
                    <img 
                      src={typeof ANBA_KARAS_SPLASH_IMAGE !== "undefined" ? ANBA_KARAS_SPLASH_IMAGE : ""}
-                     alt="?????? ?????? ????? ??????" 
+                     alt="القديس الأنبا كاراس السائح" 
                      className="relative z-10 max-h-[75vh] max-w-[92vw] object-contain rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.8)] border-2 border-amber-400/40"
                    />
                  </div>
@@ -17464,7 +17464,7 @@ function App() {
                <div className="w-full max-w-md flex flex-col items-center gap-3 pb-4">
                  <div className="text-center px-4">
                    <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-100 drop-shadow">
-                    <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-100 drop-shadow flex flex-col items-center gap-1.5 leading-snug"><span>???? ?????? ????? ????? ???? ????</span><span className="text-lg sm:text-xl font-bold text-amber-300/95 tracking-wide">?????? ??????</span></h1>
+                    <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-100 drop-shadow flex flex-col items-center gap-1.5 leading-snug"><span>خدمة الأنبا كاراس لخدمة إخوة الرب</span><span className="text-lg sm:text-xl font-bold text-amber-300/95 tracking-wide">متابعة مشاريع</span></h1>
                    </h1>
                  </div>
 
@@ -17493,6 +17493,9 @@ function App() {
     }
 
 
+    const root = 
+
+
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
   </script>
@@ -17515,7 +17518,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1792230214681";
+      const CLIENT_BUILD_ID = "1792230467871";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
