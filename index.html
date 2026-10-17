@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1792229724479" />
+  <meta name="app-build-id" content="1792229836311" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -2603,11 +2603,6 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                             <div className="p-4 sm:p-5 border-b border-gray-200 bg-[#002f6c]/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer hover:bg-[#002f6c]/20 transition-colors" onClick={() => toggleRegion(regionName)}>
                                 <div className="flex-1 flex flex-wrap items-center gap-2 text-sm sm:text-base font-bold text-[#002f6c]">
                                     <span className="text-lg">ðŸ›ï¸ {regionName}</span>
-                                    {regionVisitNum ? (
-                                      <span className="bg-purple-100 text-purple-900 border border-purple-300 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans">
-                                        Ø§Ù„Ø²ÙŠØ§Ø±Ø© Ø±Ù‚Ù… {regionVisitNum}
-                                      </span>
-                                    ) : null}
                                     {!isReadOnly && (
                                       <button
                                         type="button"
@@ -2615,12 +2610,21 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                           e.stopPropagation();
                                           setRenamingRegion({ oldName: regionName, newName: regionName, visitNumber: regionVisitNum || '', count: regionStats.totalChurches });
                                         }}
-                                        className="p-1 text-[#002f6c]/70 hover:text-[#002f6c] hover:bg-white rounded-lg transition-colors inline-flex items-center gap-1 text-xs font-bold border border-[#002f6c]/20 bg-white/70 px-2.5 py-0.5 shadow-xs"
-                                        title="ØªØ¹Ø¯ÙŠÙ„ Ø§Ø³Ù… Ø§Ù„Ù…Ø±ÙƒØ² ÙˆØ±Ù‚Ù… Ø§Ù„Ø²ÙŠØ§Ø±Ø©"
+                                        className={`px-2.5 py-1 rounded-lg transition-all inline-flex items-center gap-1.5 text-xs font-bold border shadow-xs ${
+                                          regionVisitNum
+                                            ? 'bg-purple-50 text-purple-900 border-purple-300 hover:bg-purple-100'
+                                            : 'bg-white/80 text-[#002f6c] border-[#002f6c]/30 hover:bg-white hover:border-[#002f6c]'
+                                        }`}
+                                        title="تعديل اسم المركز ورقم الزيارة"
                                       >
-                                        <Edit2 size={12} />
-                                        <span>ØªØ¹Ø¯ÙŠÙ„ Ø§Ù„Ù…Ø±ÙƒØ²</span>
+                                        <Edit2 size={13} className="text-[#002f6c]" />
+                                        <span>{regionVisitNum ? `الزيارة رقم ${regionVisitNum}` : 'رقم الزيارة'}</span>
                                       </button>
+                                    )}
+                                    {isReadOnly && regionVisitNum && (
+                                      <span className="bg-purple-100 text-purple-900 border border-purple-300 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans">
+                                        الزيارة رقم {regionVisitNum}
+                                      </span>
                                     )}
                                     <div className="mr-auto flex flex-wrap gap-2 items-center">
                                        <span className="bg-white text-[#002f6c] border border-[#002f6c]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
@@ -3498,11 +3502,6 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                             <div className="p-4 sm:p-5 border-b border-gray-200 bg-[#002f6c]/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer hover:bg-[#002f6c]/20 transition-colors" onClick={() => toggleRegion(regionName)}>
                                 <div className="flex-1 flex flex-wrap items-center gap-2 text-sm sm:text-base font-bold text-[#002f6c]">
                                     <span className="text-lg">ðŸ›ï¸ {regionName}</span>
-                                    {regionVisitNum ? (
-                                      <span className="bg-purple-100 text-purple-900 border border-purple-300 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans">
-                                        Ø§Ù„Ø²ÙŠØ§Ø±Ø© Ø±Ù‚Ù… {regionVisitNum}
-                                      </span>
-                                    ) : null}
                                     {!isReadOnly && (
                                       <button
                                         type="button"
@@ -3510,12 +3509,21 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                           e.stopPropagation();
                                           setRenamingRegion({ oldName: regionName, newName: regionName, visitNumber: regionVisitNum || '', count: regionStats.totalChurches });
                                         }}
-                                        className="p-1 text-[#002f6c]/70 hover:text-[#002f6c] hover:bg-white rounded-lg transition-colors inline-flex items-center gap-1 text-xs font-bold border border-[#002f6c]/20 bg-white/70 px-2.5 py-0.5 shadow-xs"
-                                        title="ØªØ¹Ø¯ÙŠÙ„ Ø§Ø³Ù… Ø§Ù„Ù…Ø±ÙƒØ² ÙˆØ±Ù‚Ù… Ø§Ù„Ø²ÙŠØ§Ø±Ø©"
+                                        className={`px-2.5 py-1 rounded-lg transition-all inline-flex items-center gap-1.5 text-xs font-bold border shadow-xs ${
+                                          regionVisitNum
+                                            ? 'bg-purple-50 text-purple-900 border-purple-300 hover:bg-purple-100'
+                                            : 'bg-white/80 text-[#002f6c] border-[#002f6c]/30 hover:bg-white hover:border-[#002f6c]'
+                                        }`}
+                                        title="تعديل اسم المركز ورقم الزيارة"
                                       >
-                                        <Edit2 size={12} />
-                                        <span>ØªØ¹Ø¯ÙŠÙ„ Ø§Ù„Ù…Ø±ÙƒØ²</span>
+                                        <Edit2 size={13} className="text-[#002f6c]" />
+                                        <span>{regionVisitNum ? `الزيارة رقم ${regionVisitNum}` : 'رقم الزيارة'}</span>
                                       </button>
+                                    )}
+                                    {isReadOnly && regionVisitNum && (
+                                      <span className="bg-purple-100 text-purple-900 border border-purple-300 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans">
+                                        الزيارة رقم {regionVisitNum}
+                                      </span>
                                     )}
                                     <div className="mr-auto flex flex-wrap gap-2 items-center">
                                        <span className="bg-white text-[#002f6c] border border-[#002f6c]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
@@ -17507,7 +17515,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1792229724479";
+      const CLIENT_BUILD_ID = "1792229836311";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
