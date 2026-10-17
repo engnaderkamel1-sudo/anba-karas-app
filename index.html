@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1792227848067" />
+  <meta name="app-build-id" content="1792228791800" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -1705,6 +1705,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       const [showImportModal, setShowImportModal] = useState(false);
       const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'initial' | 'executed' | 'cancelled'
       const [localLocation, setLocalLocation] = useState((data && data.location) || '');
+      const [renamingRegion, setRenamingRegion] = useState(null);
 
       useEffect(() => {
         setLocalLocation((data && data.location) || '');
@@ -1884,6 +1885,30 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           } : ch)
         }));
         setEditingChurchInfo(null);
+      };
+
+      const handleRenameRegion = (oldName, newName) => {
+        const trimmed = (newName || '').trim();
+        if (!trimmed || trimmed === oldName) {
+          setRenamingRegion(null);
+          return;
+        }
+        updateData(prev => {
+          const updatedChurches = (prev.churches || []).map(ch => {
+            if ((ch.regionName || 'منطقة غير محددة') === oldName) {
+              return { ...ch, regionName: trimmed };
+            }
+            return ch;
+          });
+          return {
+            ...prev,
+            churches: updatedChurches
+          };
+        });
+        setRenamingRegion(null);
+        if (typeof window.notifySuccess === 'function') {
+          window.notifySuccess(`تم تغيير اسم المركز إلى (${trimmed}) ودمج كنائسه بنجاح!`);
+        }
       };
 
       const handleDeleteChurch = (id) => {
@@ -2391,6 +2416,20 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                             <div className="p-4 sm:p-5 border-b border-gray-200 bg-[#002f6c]/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer hover:bg-[#002f6c]/20 transition-colors" onClick={() => toggleRegion(regionName)}>
                                 <div className="flex-1 flex flex-wrap items-center gap-2 text-sm sm:text-base font-bold text-[#002f6c]">
                                     <span className="text-lg">🏛️ {regionName}</span>
+                                    {!isReadOnly && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setRenamingRegion({ oldName: regionName, newName: regionName, count: regionStats.totalChurches });
+                                        }}
+                                        className="p-1 text-[#002f6c]/70 hover:text-[#002f6c] hover:bg-white rounded-lg transition-colors inline-flex items-center gap-1 text-xs font-bold border border-[#002f6c]/20 bg-white/70 px-2.5 py-0.5 shadow-xs"
+                                        title="تعديل اسم المركز ودمج كنائسه"
+                                      >
+                                        <Edit2 size={12} />
+                                        <span>تعديل المركز</span>
+                                      </button>
+                                    )}
                                     <div className="mr-auto flex flex-wrap gap-2 items-center">
                                        <span className="bg-white text-[#002f6c] border border-[#002f6c]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
                                           ⛪ <span className="font-sans">{formatNumber(regionStats.totalChurches)}</span> كنائس
@@ -2520,6 +2559,52 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
               onClose={() => setShowImportModal(false)} 
             />
           )}
+
+          {renamingRegion && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm animate-fade-in" onClick={() => setRenamingRegion(null)}>
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-100 overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="bg-[#002f6c] text-white p-4 flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🏛️</span>
+                    <h3 className="font-bold text-sm sm:text-base">تعديل ودمج اسم المركز / المنطقة</h3>
+                  </div>
+                  <button type="button" onClick={() => setRenamingRegion(null)} className="text-white/70 hover:text-white text-lg">✕</button>
+                </div>
+                <form onSubmit={(e) => { e.preventDefault(); handleRenameRegion(renamingRegion.oldName, renamingRegion.newName); }} className="p-5 space-y-4">
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    سيتم تحديث اسم المركز لجميع الكنائس التابعة له (<strong className="text-[#002f6c] font-bold font-sans">{formatNumber(renamingRegion.count)}</strong> كنيسة) تلقائياً، وإذا كان الاسم الجديد يطابق مركزاً آخر سيتم دمج الكنائس معاً في قائمة واحدة.
+                  </p>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">اسم المركز الجديد:</label>
+                    <input
+                      type="text"
+                      required
+                      autoFocus
+                      value={renamingRegion.newName}
+                      onChange={(e) => setRenamingRegion(prev => ({ ...prev, newName: e.target.value }))}
+                      placeholder="أدخل اسم المركز (مثال: أبو قرقاص)"
+                      className="w-full rounded-xl border border-gray-300 p-2.5 text-sm font-bold text-[#002f6c] outline-none focus:border-[#002f6c]"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setRenamingRegion(null)}
+                      className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-100 text-xs font-bold"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold shadow-md"
+                    >
+                      حفظ وتطبيق على الكنائس
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
@@ -2641,6 +2726,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
       const [editingChurchInfo, setEditingChurchInfo] = useState(null);
       const [addingCaseToChurch, setAddingCaseToChurch] = useState(null);
+      const [renamingRegion, setRenamingRegion] = useState(null);
       const [newCaseForm, setNewCaseForm] = useState({
         name: '',
         nationalId: '',
@@ -2854,6 +2940,30 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         } : ch);
         onUpdateVisit({ ...visit, churches: updatedChurches });
         setEditingChurchInfo(null);
+      };
+
+      const handleRenameRegion = (oldName, newName) => {
+        const trimmed = (newName || '').trim();
+        if (!trimmed || trimmed === oldName) {
+          setRenamingRegion(null);
+          return;
+        }
+        const updatedChurches = (visit.churches || []).map(ch => {
+          if ((ch.regionName || 'منطقة غير محددة') === oldName) {
+            return { ...ch, regionName: trimmed };
+          }
+          return ch;
+        });
+        const updatedVisit = {
+          ...visit,
+          churches: updatedChurches,
+          updatedAt: Date.now()
+        };
+        onUpdateVisit(updatedVisit);
+        setRenamingRegion(null);
+        if (typeof window.notifySuccess === 'function') {
+          window.notifySuccess(`تم تغيير اسم المركز إلى (${trimmed}) ودمج كنائسه بنجاح!`);
+        }
       };
 
       const handleDeleteChurch = (churchId, churchName, e) => {
@@ -3148,6 +3258,20 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                             <div className="p-4 sm:p-5 border-b border-gray-200 bg-[#002f6c]/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer hover:bg-[#002f6c]/20 transition-colors" onClick={() => toggleRegion(regionName)}>
                                 <div className="flex-1 flex flex-wrap items-center gap-2 text-sm sm:text-base font-bold text-[#002f6c]">
                                     <span className="text-lg">🏛️ {regionName}</span>
+                                    {!isReadOnly && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setRenamingRegion({ oldName: regionName, newName: regionName, count: regionStats.totalChurches });
+                                        }}
+                                        className="p-1 text-[#002f6c]/70 hover:text-[#002f6c] hover:bg-white rounded-lg transition-colors inline-flex items-center gap-1 text-xs font-bold border border-[#002f6c]/20 bg-white/70 px-2.5 py-0.5 shadow-xs"
+                                        title="تعديل اسم المركز ودمج كنائسه"
+                                      >
+                                        <Edit2 size={12} />
+                                        <span>تعديل المركز</span>
+                                      </button>
+                                    )}
                                     <div className="mr-auto flex flex-wrap gap-2 items-center">
                                        <span className="bg-white text-[#002f6c] border border-[#002f6c]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
                                           ⛪ <span className="font-sans">{formatNumber(regionStats.totalChurches)}</span> كنائس
@@ -3648,6 +3772,52 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 onApplyUpdates={handleApplyExcelUpdates} 
                 onClose={() => setShowImportModal(false)} 
               />
+            )}
+
+            {renamingRegion && (
+              <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm animate-fade-in" onClick={() => setRenamingRegion(null)}>
+                <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-100 overflow-hidden" onClick={e => e.stopPropagation()}>
+                  <div className="bg-[#002f6c] text-white p-4 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🏛️</span>
+                      <h3 className="font-bold text-sm sm:text-base">تعديل ودمج اسم المركز / المنطقة</h3>
+                    </div>
+                    <button type="button" onClick={() => setRenamingRegion(null)} className="text-white/70 hover:text-white text-lg">✕</button>
+                  </div>
+                  <form onSubmit={(e) => { e.preventDefault(); handleRenameRegion(renamingRegion.oldName, renamingRegion.newName); }} className="p-5 space-y-4">
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      سيتم تحديث اسم المركز لجميع الكنائس التابعة له (<strong className="text-[#002f6c] font-bold font-sans">{formatNumber(renamingRegion.count)}</strong> كنيسة) تلقائياً، وإذا كان الاسم الجديد يطابق مركزاً آخر سيتم دمج الكنائس معاً في قائمة واحدة.
+                    </p>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">اسم المركز الجديد:</label>
+                      <input
+                        type="text"
+                        required
+                        autoFocus
+                        value={renamingRegion.newName}
+                        onChange={(e) => setRenamingRegion(prev => ({ ...prev, newName: e.target.value }))}
+                        placeholder="أدخل اسم المركز (مثال: أبو قرقاص)"
+                        className="w-full rounded-xl border border-gray-300 p-2.5 text-sm font-bold text-[#002f6c] outline-none focus:border-[#002f6c]"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setRenamingRegion(null)}
+                        className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-100 text-xs font-bold"
+                      >
+                        إلغاء
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-5 py-2 rounded-xl bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold shadow-md"
+                      >
+                        حفظ وتطبيق على الكنائس
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
             )}
          </div>
       );
@@ -17078,7 +17248,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1792227848067";
+      const CLIENT_BUILD_ID = "1792228791800";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
