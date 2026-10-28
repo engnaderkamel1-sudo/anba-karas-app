@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1793175590448" />
+  <meta name="app-build-id" content="1793176537424" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -166,6 +166,119 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         .replace(/ى/g, 'ي')
         .replace(/[\u064B-\u065F]/g, '')
         .replace(/\s+/g, ' ');
+    };
+
+    // Canonical Minya center/region normalizer
+    const normalizeRegionName = (raw) => {
+      if (!raw || !String(raw).trim()) return 'منطقة غير محددة';
+      const clean = String(raw).trim();
+      const norm = normalizeArabicText(clean);
+
+      // Abu Qurqas variations
+      if (norm.includes('قرقاص')) {
+        return 'أبو قرقاص';
+      }
+
+      // Matai & Qatousha variations
+      if (norm.includes('مطاي') || norm.includes('قطوش')) {
+        return 'مطاي';
+      }
+
+      // Beni Mazar
+      if (norm.includes('مزار')) {
+        return 'بني مزار';
+      }
+
+      // Samalut
+      if (norm.includes('سمالوط')) {
+        return 'سمالوط';
+      }
+
+      // Maghagha
+      if (norm.includes('مغاغ')) {
+        return 'مغاغة';
+      }
+
+      // Deir Mawas
+      if (norm.includes('مواس')) {
+        return 'دير مواس';
+      }
+
+      // Mallawi
+      if (norm.includes('ملوي')) {
+        return 'ملوي';
+      }
+
+      // El Minya
+      if (norm === 'المنيا' || norm === 'منيا') {
+        return 'المنيا';
+      }
+
+      // El Adwa
+      if (norm.includes('عدو')) {
+        return 'العدوة';
+      }
+
+      return clean;
+    };
+
+    // Smart parser for Excel village/church column: separates canonical center, village, and church
+    const parseVillageAndChurch = (rawField) => {
+      const rawStr = String(rawField || '').trim();
+      if (!rawStr) {
+        return { regionName: 'عام', villageName: '', churchName: 'كنيسة عامة' };
+      }
+
+      let regionPart = '';
+      let churchPart = '';
+      let villagePart = '';
+
+      if (rawStr.includes('-')) {
+        const parts = rawStr.split('-');
+        regionPart = parts[0].trim();
+        churchPart = parts.slice(1).join('-').trim();
+        villagePart = churchPart;
+      } else {
+        regionPart = rawStr;
+        churchPart = rawStr;
+        villagePart = rawStr;
+      }
+
+      const normRegionPart = normalizeArabicText(regionPart);
+
+      // Special case: Abu Qurqas El Balad
+      if (normRegionPart.includes('قرقاص') && normRegionPart.includes('بلد')) {
+        return {
+          regionName: 'أبو قرقاص',
+          villageName: 'أبو قرقاص البلد',
+          churchName: churchPart && churchPart !== regionPart ? churchPart : 'أبو قرقاص البلد'
+        };
+      }
+
+      // Special case: Qatousha Matai
+      if (normRegionPart.includes('قطوش')) {
+        return {
+          regionName: 'مطاي',
+          villageName: 'قطوشة',
+          churchName: churchPart && churchPart !== regionPart ? churchPart : 'رئيس الملائكة ميخائيل'
+        };
+      }
+
+      const canonicalRegion = normalizeRegionName(regionPart);
+
+      if (!churchPart || churchPart === regionPart) {
+        return {
+          regionName: canonicalRegion,
+          villageName: canonicalRegion,
+          churchName: 'كنيسة عامة'
+        };
+      }
+
+      return {
+        regionName: canonicalRegion,
+        villageName: villagePart,
+        churchName: churchPart
+      };
     };
 
     const StatusBadge = ({ status = 'initial', className = '', onClick = null }) => {
@@ -1990,9 +2103,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           setExpandedRegions(prev => ({ ...prev, [regionName]: !(prev[regionName] !== undefined ? prev[regionName] : Boolean(searchQuery)) }));
       };
 
-      const uniqueRegions = Array.from(new Set((data.churches||[]).map(ch => ch.regionName).filter(Boolean))).sort();
+      const uniqueRegions = Array.from(new Set((data.churches||[]).map(ch => typeof normalizeRegionName === 'function' ? normalizeRegionName(ch.regionName) : ch.regionName).filter(Boolean))).sort();
       const uniqueVillages = Array.from(new Set((data.churches||[]).map(ch => ch.villageName).filter(Boolean))).sort();
-      const uniqueChurches = Array.from(new Set((data.churches||[]).filter(ch => !filterRegion || ch.regionName === filterRegion).map(ch => ch.churchName).filter(Boolean))).sort();
+      const uniqueChurches = Array.from(new Set((data.churches||[]).filter(ch => !filterRegion || (typeof normalizeRegionName === 'function' ? normalizeRegionName(ch.regionName) : ch.regionName) === filterRegion).map(ch => ch.churchName).filter(Boolean))).sort();
       const uniqueServants = Array.from(new Set((data.churches||[]).flatMap(ch => (ch.servantsGroups || []).map(sg => sg.servantsNames)).filter(Boolean))).sort();
       const uniqueProjects = Array.from(new Set((data.churches||[]).flatMap(ch => (ch.servantsGroups || []).flatMap(sg => (sg.cases || []).map(c => c.projectType))).filter(Boolean))).sort();
       const uniqueCases = Array.from(new Set((data.churches||[]).flatMap(ch => (ch.servantsGroups || []).flatMap(sg => (sg.cases || []).map(c => c.name))).filter(Boolean))).sort();
@@ -2000,7 +2113,8 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       const normalizedSearchQuery = searchQuery.trim() ? (typeof normalizeArabicText === 'function' ? normalizeArabicText(searchQuery.trim()) : searchQuery.trim().toLowerCase()) : '';
 
       let filteredChurches = (data.churches || []).map(ch => {
-          if (filterRegion && ch.regionName !== filterRegion) return null;
+          const chReg = typeof normalizeRegionName === 'function' ? normalizeRegionName(ch.regionName) : ch.regionName;
+          if (filterRegion && chReg !== filterRegion) return null;
           if (filterChurch && ch.churchName !== filterChurch) return null;
           
           const filteredGroups = (ch.servantsGroups || []).map(sg => {
@@ -2069,12 +2183,13 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       };
 
       const handleSaveEditChurch = (churchId, newChurchName, newRegionName, newVillageName) => {
+        const canonicalReg = typeof normalizeRegionName === 'function' ? normalizeRegionName(newRegionName) : (newRegionName.trim() || '');
         updateData(prev => ({
           ...prev,
           churches: (prev.churches || []).map(ch => ch.id === churchId ? {
             ...ch,
             churchName: newChurchName.trim() || ch.churchName,
-            regionName: newRegionName.trim() || ch.regionName,
+            regionName: canonicalReg || ch.regionName,
             villageName: newVillageName.trim() || ch.villageName
           } : ch)
         }));
@@ -2087,13 +2202,18 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           setRenamingRegion(null);
           return;
         }
+        const canonicalNew = typeof normalizeRegionName === 'function' ? normalizeRegionName(trimmed) : trimmed;
         const vNumStr = visitNumber !== undefined && visitNumber !== null ? String(visitNumber).trim() : '';
         updateData(prev => {
           const updatedChurches = (prev.churches || []).map(ch => {
-            if ((ch.regionName || 'منطقة غير محددة') === oldName) {
+            const curCanonical = typeof normalizeRegionName === 'function' ? normalizeRegionName(ch.regionName) : ch.regionName;
+            const oldNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(oldName) : oldName;
+            const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(ch.regionName || '') : ch.regionName;
+
+            if (curCanonical === oldName || (ch.regionName || 'منطقة غير محددة') === oldName || curNorm === oldNorm) {
               return { 
                 ...ch, 
-                regionName: trimmed,
+                regionName: canonicalNew,
                 regionVisitNumber: vNumStr
               };
             }
@@ -2101,9 +2221,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           });
           const updatedRegionVisitNumbers = {
             ...(prev.regionVisitNumbers || {}),
-            [trimmed]: vNumStr
+            [canonicalNew]: vNumStr
           };
-          if (oldName !== trimmed && prev.regionVisitNumbers) {
+          if (oldName !== canonicalNew && prev.regionVisitNumbers) {
             delete updatedRegionVisitNumbers[oldName];
           }
           return {
@@ -2114,7 +2234,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         });
         setRenamingRegion(null);
         if (typeof window.notifySuccess === 'function') {
-          window.notifySuccess(`تم حفظ بيانات المركز بنجاح!`);
+          window.notifySuccess(`تم حفظ ودمج بيانات المركز بنجاح!`);
         }
       };
 
@@ -2630,7 +2750,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 }
 
                 const groupedByRegion = filteredChurches.reduce((acc, ch) => {
-                    const r = ch.regionName || 'منطقة غير محددة';
+                    const r = (typeof normalizeRegionName === 'function' ? normalizeRegionName(ch.regionName) : ch.regionName) || 'منطقة غير محددة';
                     if(!acc[r]) acc[r] = [];
                     acc[r].push(ch);
                     return acc;
@@ -3028,14 +3148,37 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       const toggleRegion = (regionName) => setExpandedRegions(prev => ({ ...prev, [regionName]: !(prev[regionName] !== undefined ? prev[regionName] : Boolean(searchQuery)) }));
       const toggleChurch = (churchId) => setExpandedChurches(prev => ({ ...prev, [churchId]: !(prev[churchId] !== undefined ? prev[churchId] : Boolean(searchQuery)) }));
 
-      const uniqueRegions = Array.from(new Set((visit.churches||[]).map(ch => ch.regionName).filter(Boolean))).sort();
+      const uniqueRegions = Array.from(new Set((visit.churches||[]).map(ch => typeof normalizeRegionName === 'function' ? normalizeRegionName(ch.regionName) : ch.regionName).filter(Boolean))).sort();
       const uniqueVillages = Array.from(new Set((visit.churches||[]).map(ch => ch.villageName).filter(Boolean))).sort();
-      const uniqueChurches = Array.from(new Set((visit.churches||[]).filter(ch => !filterRegion || ch.regionName === filterRegion).map(ch => ch.churchName).filter(Boolean))).sort();
+      const uniqueChurches = Array.from(new Set((visit.churches||[]).filter(ch => !filterRegion || (typeof normalizeRegionName === 'function' ? normalizeRegionName(ch.regionName) : ch.regionName) === filterRegion).map(ch => ch.churchName).filter(Boolean))).sort();
       const uniqueServants = Array.from(new Set((visit.churches||[]).flatMap(ch => (ch.servantsGroups || []).map(sg => sg.servantsNames)).filter(Boolean))).sort();
       const uniqueProjects = Array.from(new Set((visit.churches||[]).flatMap(ch => (ch.servantsGroups || []).flatMap(sg => (sg.cases || []).map(c => c.projectType))).filter(Boolean))).sort();
       const uniqueCases = Array.from(new Set((visit.churches||[]).flatMap(ch => (ch.servantsGroups || []).flatMap(sg => (sg.cases || []).map(c => c.name))).filter(Boolean))).sort();
 
       const normalizedSearchQuery = searchQuery.trim() ? (typeof normalizeArabicText === 'function' ? normalizeArabicText(searchQuery.trim()) : searchQuery.trim().toLowerCase()) : '';
+
+      // Auto-normalize regions (e.g. merge 'ابوقرقاص', 'ابو قرقاص البلد', 'قطوشه مطاي' into canonical centers)
+      useEffect(() => {
+        if (!visit || !Array.isArray(visit.churches) || !onUpdateVisit || isReadOnly) return;
+        let hasChanges = false;
+        const cleanedChurches = visit.churches.map(ch => {
+          const canonicalReg = typeof normalizeRegionName === 'function' ? normalizeRegionName(ch.regionName) : ch.regionName;
+          let vName = ch.villageName || '';
+          if (!vName) {
+            const rawReg = ch.regionName || '';
+            if (rawReg.includes('البلد')) vName = 'أبو قرقاص البلد';
+            else if (rawReg.includes('قطوش')) vName = 'قطوشة';
+          }
+          if ((canonicalReg && canonicalReg !== ch.regionName) || (vName && vName !== ch.villageName)) {
+            hasChanges = true;
+            return { ...ch, regionName: canonicalReg, villageName: vName || ch.villageName };
+          }
+          return ch;
+        });
+        if (hasChanges) {
+          onUpdateVisit({ ...visit, churches: cleanedChurches, updatedAt: Date.now() });
+        }
+      }, [visit && (visit.id || visit.visitId)]);
 
       const statusCounts = { all: 0, initial: 0, executed: 0, cancelled: 0 };
       (visit.churches || []).forEach(ch => {
@@ -3051,7 +3194,8 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       });
 
       let filteredChurches = (visit.churches || []).map(ch => {
-          if (filterRegion && ch.regionName !== filterRegion) return null;
+          const chReg = typeof normalizeRegionName === 'function' ? normalizeRegionName(ch.regionName) : ch.regionName;
+          if (filterRegion && chReg !== filterRegion) return null;
           if (filterChurch && ch.churchName !== filterChurch) return null;
           
           const filteredGroups = (ch.servantsGroups || []).map(sg => {
@@ -3212,10 +3356,11 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 
       const handleSaveEditChurch = (churchId, newChurchName, newRegionName, newVillageName) => {
         if (!onUpdateVisit) return;
+        const canonicalReg = typeof normalizeRegionName === 'function' ? normalizeRegionName(newRegionName) : (newRegionName.trim() || '');
         const updatedChurches = (visit.churches || []).map(ch => ch.id === churchId ? {
           ...ch,
           churchName: newChurchName.trim() || ch.churchName,
-          regionName: newRegionName.trim() || ch.regionName,
+          regionName: canonicalReg || ch.regionName,
           villageName: newVillageName.trim() || ch.villageName
         } : ch);
         onUpdateVisit({ ...visit, churches: updatedChurches });
@@ -3228,12 +3373,17 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           setRenamingRegion(null);
           return;
         }
+        const canonicalNew = typeof normalizeRegionName === 'function' ? normalizeRegionName(trimmed) : trimmed;
         const vNumStr = visitNumber !== undefined && visitNumber !== null ? String(visitNumber).trim() : '';
         const updatedChurches = (visit.churches || []).map(ch => {
-          if ((ch.regionName || 'منطقة غير محددة') === oldName) {
+          const curCanonical = typeof normalizeRegionName === 'function' ? normalizeRegionName(ch.regionName) : ch.regionName;
+          const oldNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(oldName) : oldName;
+          const curNorm = typeof normalizeArabicText === 'function' ? normalizeArabicText(ch.regionName || '') : ch.regionName;
+
+          if (curCanonical === oldName || (ch.regionName || 'منطقة غير محددة') === oldName || curNorm === oldNorm) {
             return { 
               ...ch, 
-              regionName: trimmed,
+              regionName: canonicalNew,
               regionVisitNumber: vNumStr
             };
           }
@@ -3241,9 +3391,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         });
         const updatedRegionVisitNumbers = {
           ...(visit.regionVisitNumbers || {}),
-          [trimmed]: vNumStr
+          [canonicalNew]: vNumStr
         };
-        if (oldName !== trimmed && visit.regionVisitNumbers) {
+        if (oldName !== canonicalNew && visit.regionVisitNumbers) {
           delete updatedRegionVisitNumbers[oldName];
         }
         const updatedVisit = {
@@ -3255,7 +3405,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         onUpdateVisit(updatedVisit);
         setRenamingRegion(null);
         if (typeof window.notifySuccess === 'function') {
-          window.notifySuccess(`تم حفظ بيانات المركز بنجاح!`);
+          window.notifySuccess(`تم حفظ ودمج بيانات المركز بنجاح!`);
         }
       };
 
@@ -3529,7 +3679,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   }
                   
                   const groupedByRegion = filteredChurches.reduce((acc, ch) => {
-                    const r = ch.regionName || 'منطقة غير محددة';
+                    const r = (typeof normalizeRegionName === 'function' ? normalizeRegionName(ch.regionName) : ch.regionName) || 'منطقة غير محددة';
                     if(!acc[r]) acc[r] = [];
                     acc[r].push(ch);
                     return acc;
@@ -7167,16 +7317,13 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
               let churchName = 'كنيسة عامة';
               let villageName = '';
 
-              if (rawVillageField.includes('-')) {
-                const parts = rawVillageField.split('-');
-                regionName = parts[0].trim() || 'عام';
-                churchName = parts.slice(1).join('-').trim() || 'كنيسة عامة';
-                villageName = churchName;
-              } else if (rawVillageField) {
-                regionName = rawVillageField;
-                churchName = rawVillageField;
-                villageName = rawVillageField;
-              }
+              const parsedLoc = typeof parseVillageAndChurch === 'function'
+                ? parseVillageAndChurch(rawVillageField)
+                : { regionName: 'عام', villageName: '', churchName: 'كنيسة عامة' };
+
+              regionName = parsedLoc.regionName;
+              churchName = parsedLoc.churchName;
+              villageName = parsedLoc.villageName;
 
               const projectType = projectIdx !== -1 ? String(row[projectIdx] || '').trim() || 'مشروع منفذ' : 'مشروع منفذ';
               const pVal = costIdx !== -1 ? (parseFloat(parseArabicNumeric(row[costIdx])) || 0) : 0;
@@ -9669,15 +9816,15 @@ function InstallmentsPage({ allVisits, onUpdateVisit, onExport }) {
       });
 
       // Unique Regions & Churches for Filter
-      const uniqueRegions = Array.from(new Set(allExecutedCases.map(i => i.regionName).filter(Boolean))).sort();
-      const uniqueChurches = Array.from(new Set(allExecutedCases.filter(i => !filterRegion || i.regionName === filterRegion).map(i => i.churchName).filter(Boolean))).sort();
+      const uniqueRegions = Array.from(new Set(allExecutedCases.map(i => typeof normalizeRegionName === 'function' ? normalizeRegionName(i.regionName) : i.regionName).filter(Boolean))).sort();
+      const uniqueChurches = Array.from(new Set(allExecutedCases.filter(i => !filterRegion || (typeof normalizeRegionName === 'function' ? normalizeRegionName(i.regionName) : i.regionName) === filterRegion).map(i => i.churchName).filter(Boolean))).sort();
 
       // Group all executed cases by Region -> Church -> Visit for the Geographic View
       const geoRegionsData = useMemo(() => {
         const regionsMap = {};
 
         allExecutedCases.forEach(item => {
-          const rName = item.regionName || 'منطقة غير محددة';
+          const rName = (typeof normalizeRegionName === 'function' ? normalizeRegionName(item.regionName) : item.regionName) || 'منطقة غير محددة';
           const chKey = `${rName}__${item.churchName || 'كنيسة غير محددة'}`;
           const chName = item.churchName || 'كنيسة غير محددة';
           const vId = item.visitId;
@@ -17600,7 +17747,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1793175590448";
+      const CLIENT_BUILD_ID = "1793176537424";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
