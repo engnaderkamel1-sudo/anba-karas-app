@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1793175308899" />
+  <meta name="app-build-id" content="1793175590448" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -1870,7 +1870,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 // ================================================================
 // MODULE: pages/ActiveVisitForm.js
 // ================================================================
-    function ActiveVisitForm({ data, updateData, currentUser, onEndVisit, onExport, onOpenImportLegacy }) {
+    function ActiveVisitForm({ data, updateData, currentUser, onEndVisit, onStartNewVisit, onExport, onOpenImportLegacy }) {
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
       const [editingChurchInfo, setEditingChurchInfo] = useState(null);
       const [executingCaseInfo, setExecutingCaseInfo] = useState(null);
@@ -1936,9 +1936,14 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       };
 
       const handleSkipDraftAndStartFresh = () => {
+        try {
+          localStorage.removeItem('active_visit_draft');
+        } catch(e) {}
         setVisitDraftInfo(null);
-        if (typeof window.notifyInfo === 'function') {
-          window.notifyInfo('تم تخطي المسودة والبدء بزيارة جديدة فارغة مع بقاء المسودة بأمان.');
+        if (typeof onStartNewVisit === 'function') {
+          onStartNewVisit(true);
+        } else if (typeof window.notifyInfo === 'function') {
+          window.notifyInfo('تم تخطي المسودة والبدء بزيارة جديدة فارغة.');
         }
       };
 
@@ -2269,6 +2274,17 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                <Edit2 size={24} className="text-[#d4af37]" /> تسجيل الزيارة والمشاريع
              </h2>
              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                {!isReadOnly && (
+                  <button 
+                    type="button" 
+                    onClick={() => onStartNewVisit && onStartNewVisit(false)}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-50 border border-blue-300 text-blue-900 hover:bg-blue-100 px-3.5 py-2 rounded-md font-bold shadow-xs transition-colors text-sm"
+                    title="تصفير النموذج وبدء زيارة جديدة فارغة"
+                  >
+                    <PlusCircle size={18} className="text-blue-700" />
+                    <span>زيارة جديدة فارغة +</span>
+                  </button>
+                )}
                 {!isReadOnly && (
                   <button 
                     type="button" 
@@ -16622,11 +16638,7 @@ function App() {
                      return prevId;
                  }
              }
-             if (activeList.length > 0) {
-                 setData(activeList[0]);
-                 return activeList[0].id;
-             }
-             // If nothing exists, keep whatever data is initialized
+             // Do not automatically overwrite fresh entry data with the first archived visit
              return prevId; 
           });
 
@@ -16883,6 +16895,42 @@ function App() {
         }
       };
 
+      const handleStartNewVisit = (force = false) => {
+        const doReset = () => {
+          const newId = uuidv4();
+          const emptyData = { id: newId, visitId: newId, location: '', date: new Date().toISOString().split('T')[0], churches: [], createdAt: Date.now() };
+          setCurrentVisitId(newId);
+          setData(emptyData);
+          try {
+            localStorage.removeItem('active_visit_draft');
+          } catch(e) {}
+          setActiveTab('entry');
+          setIsSidebarOpen(false);
+          if (typeof window.notifySuccess === 'function') {
+            window.notifySuccess('تم فتح استمارة زيارة جديدة فارغة بنجاح.');
+          }
+        };
+
+        if (force || !data || !Array.isArray(data.churches) || data.churches.length === 0) {
+          doReset();
+          return;
+        }
+
+        const isExistingArchived = allVisits && allVisits.some(v => v.id === (data.id || data.visitId) && !v.isDeleted);
+        if (isExistingArchived) {
+          doReset();
+          return;
+        }
+
+        window.showConfirm({
+          title: 'بدء زيارة جديدة فارغة',
+          message: 'هل أنت متأكد من تصفير الاستمارة وبدء زيارة جديدة فارغة؟',
+          confirmText: 'نعم، ابدأ من جديد',
+          cancelText: 'تراجع',
+          onConfirm: doReset
+        });
+      };
+
       const handleEndVisit = () => {
         if(isReadOnly) return;
         window.showConfirm({
@@ -17120,7 +17168,7 @@ function App() {
                           <div className="py-3 flex flex-col h-[calc(100vh-64px)] overflow-y-auto">
                 {/* 1. تسجيل زيارة جديدة */}
                 <button 
-                  onClick={() => { switchTab('entry'); setIsSidebarOpen(false); }} 
+                  onClick={() => handleStartNewVisit()} 
                   className={`flex items-center gap-3 px-6 py-3.5 text-right transition-colors ${activeTab === 'entry' ? 'bg-blue-50 text-[#002f6c] border-r-4 border-[#002f6c] font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
                 >
                   <PlusCircle size={20} className="text-[#002f6c]" /> 
@@ -17244,7 +17292,7 @@ function App() {
                 />
              )}
              {activeTab === 'entry' && (
-                <ActiveVisitForm data={data} updateData={updateData} currentUser={currentUser} onEndVisit={handleEndVisit} onExport={openExportModal} onOpenImportLegacy={() => setShowImportLegacyModal(true)} />
+                <ActiveVisitForm data={data} updateData={updateData} currentUser={currentUser} onEndVisit={handleEndVisit} onStartNewVisit={handleStartNewVisit} onExport={openExportModal} onOpenImportLegacy={() => setShowImportLegacyModal(true)} />
              )}
              {activeTab === 'archive' && (
                 <ArchivePage 
@@ -17552,7 +17600,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1793175308899";
+      const CLIENT_BUILD_ID = "1793175590448";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
