@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1792230560909" />
+  <meta name="app-build-id" content="1793175308899" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -1870,7 +1870,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
 // ================================================================
 // MODULE: pages/ActiveVisitForm.js
 // ================================================================
-    function ActiveVisitForm({ data, updateData, onEndVisit, onExport, onOpenImportLegacy }) {
+    function ActiveVisitForm({ data, updateData, currentUser, onEndVisit, onExport, onOpenImportLegacy }) {
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
       const [editingChurchInfo, setEditingChurchInfo] = useState(null);
       const [executingCaseInfo, setExecutingCaseInfo] = useState(null);
@@ -1910,23 +1910,36 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         if (data && Array.isArray(data.churches) && data.churches.length > 0) {
           const timer = setTimeout(() => {
             try {
+              const servant = (currentUser && (currentUser.name || currentUser.email)) || 'خادم غير محدد';
               localStorage.setItem('active_visit_draft', JSON.stringify({
                 ...data,
-                savedAt: Date.now()
+                servantName: servant,
+                savedAt: Date.now(),
+                savedTimeStr: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) + ' - ' + new Date().toLocaleDateString('ar-EG')
               }));
             } catch(e) {}
           }, 1500);
           return () => clearTimeout(timer);
         }
-      }, [data]);
+      }, [data, currentUser]);
 
       const handleRestoreVisitDraft = () => {
         if (!visitDraftInfo) return;
         updateData(visitDraftInfo);
-        if (typeof window.notifySuccess === 'function') {
-          window.notifySuccess('تم استرجاع مسودة الزيارة المحفوظة بنجاح!');
-        }
+        try {
+          localStorage.removeItem('active_visit_draft');
+        } catch(e) {}
         setVisitDraftInfo(null);
+        if (typeof window.notifySuccess === 'function') {
+          window.notifySuccess('تم استرجاع مسودة الزيارة المحفوظة بنجاح وتفريغها للبدء!');
+        }
+      };
+
+      const handleSkipDraftAndStartFresh = () => {
+        setVisitDraftInfo(null);
+        if (typeof window.notifyInfo === 'function') {
+          window.notifyInfo('تم تخطي المسودة والبدء بزيارة جديدة فارغة مع بقاء المسودة بأمان.');
+        }
       };
 
       const handleDiscardVisitDraft = () => {
@@ -1935,7 +1948,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         } catch(e) {}
         setVisitDraftInfo(null);
         if (typeof window.notifyInfo === 'function') {
-          window.notifyInfo('تم مسح مسودة الزيارة.');
+          window.notifyInfo('تم مسح مسودة الزيارة نهائياً.');
         }
       };
 
@@ -1945,12 +1958,15 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           return;
         }
         try {
+          const servant = (currentUser && (currentUser.name || currentUser.email)) || 'خادم غير محدد';
           localStorage.setItem('active_visit_draft', JSON.stringify({
             ...data,
-            savedAt: Date.now()
+            servantName: servant,
+            savedAt: Date.now(),
+            savedTimeStr: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) + ' - ' + new Date().toLocaleDateString('ar-EG')
           }));
           if (typeof window.notifySuccess === 'function') {
-            window.notifySuccess('تم حفظ مسودة الزيارة بنجاح! يمكنك الخروج والعودة لها في أي وقت.');
+            window.notifySuccess('تم حفظ مسودة الزيارة بنجاح باسم (' + servant + ')! يمكنك الخروج والعودة لها في أي وقت.');
           }
         } catch(e) {
           console.warn('Draft save err:', e);
@@ -2204,28 +2220,46 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 </div>
                 <div>
                   <div className="text-sm font-bold text-emerald-950 flex items-center gap-2">
-                    <span>يوجد مسودة زيارة محفوظة تلقائياً وغير مكتملة</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-bold">مسودة متاحة</span>
+                    <span>يوجد مسودة زيارة محفوظة وغير مكتملة</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-bold">مسودة معلقة</span>
                   </div>
-                  <div className="text-xs text-emerald-800 mt-0.5">
-                    تاريخ الحفظ: <span className="font-semibold">{visitDraftInfo.time}</span> | المكان: <span className="font-semibold">{visitDraftInfo.location}</span> | عدد الكنائس: <span className="font-semibold">{visitDraftInfo.churchesCount}</span>
+                  <div className="text-xs text-emerald-800 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    {visitDraftInfo.servantName && (
+                      <span>الخادم: <span className="font-bold text-emerald-950 bg-emerald-100 px-1.5 py-0.5 rounded">{visitDraftInfo.servantName}</span></span>
+                    )}
+                    <span>المكان: <span className="font-semibold">{visitDraftInfo.location || 'غير محدد'}</span></span>
+                    <span>التاريخ: <span className="font-semibold">{visitDraftInfo.date || 'غير محدد'}</span></span>
+                    <span>عدد الكنائس: <span className="font-semibold">{Array.isArray(visitDraftInfo.churches) ? visitDraftInfo.churches.length : (visitDraftInfo.churchesCount || 0)}</span></span>
+                    {(visitDraftInfo.savedTimeStr || visitDraftInfo.time) && (
+                      <span>وقت الحفظ: <span className="font-semibold">{visitDraftInfo.savedTimeStr || visitDraftInfo.time}</span></span>
+                    )}
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
                 <button
                   type="button"
                   onClick={handleRestoreVisitDraft}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                  title="استرجاع بيانات هذه المسودة وتعديلها"
                 >
-                  <RotateCcw size={14} /> استعادة المسودة وإكمال الزيارة
+                  <RotateCcw size={14} /> استعادة المسودة
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSkipDraftAndStartFresh}
+                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                  title="البدء بزيارة جديدة فارغة تماماً دون مسح مسودة الزميل"
+                >
+                  <PlusCircle size={14} /> بدء زيارة جديدة فارغة
                 </button>
                 <button
                   type="button"
                   onClick={handleDiscardVisitDraft}
                   className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                  title="مسح هذه المسودة نهائياً"
                 >
-                  <Trash2 size={14} /> مسح والبدء من جديد
+                  <Trash2 size={14} /> مسح المسودة
                 </button>
               </div>
             </div>
@@ -16571,8 +16605,9 @@ function App() {
 
           // Update Active Entry if another device modifies it
           setCurrentVisitId(prevId => {
+             const activeList = list.filter(v => !v.isDeleted);
              if (prevId) {
-                 const updated = list.find(v => v.id === prevId);
+                 const updated = activeList.find(v => v.id === prevId);
                  if (updated) {
                      setData(prev => {
                          if (prev && (prev.id === updated.id || prev.visitId === updated.id)) {
@@ -16584,12 +16619,12 @@ function App() {
                          }
                          return updated;
                      });
+                     return prevId;
                  }
-                 return prevId;
              }
-             if (list.length > 0) {
-                 setData(list[0]);
-                 return list[0].id;
+             if (activeList.length > 0) {
+                 setData(activeList[0]);
+                 return activeList[0].id;
              }
              // If nothing exists, keep whatever data is initialized
              return prevId; 
@@ -17209,7 +17244,7 @@ function App() {
                 />
              )}
              {activeTab === 'entry' && (
-                <ActiveVisitForm data={data} updateData={updateData} onEndVisit={handleEndVisit} onExport={openExportModal} onOpenImportLegacy={() => setShowImportLegacyModal(true)} />
+                <ActiveVisitForm data={data} updateData={updateData} currentUser={currentUser} onEndVisit={handleEndVisit} onExport={openExportModal} onOpenImportLegacy={() => setShowImportLegacyModal(true)} />
              )}
              {activeTab === 'archive' && (
                 <ArchivePage 
@@ -17517,7 +17552,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1792230560909";
+      const CLIENT_BUILD_ID = "1793175308899";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
