@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1793179042451" />
+  <meta name="app-build-id" content="1793179898610" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -3426,6 +3426,9 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       const [editingChurchInfo, setEditingChurchInfo] = useState(null);
       const [addingChurchModal, setAddingChurchModal] = useState(null);
       const [addingRegionModal, setAddingRegionModal] = useState(false);
+      const [editingGroupId, setEditingGroupId] = useState(null);
+      const [editingGroupChurchId, setEditingGroupChurchId] = useState(null);
+      const [servantNameInput, setServantNameInput] = useState('');
       const [addingCaseToChurch, setAddingCaseToChurch] = useState(null);
       const [renamingRegion, setRenamingRegion] = useState(null);
       const [newCaseForm, setNewCaseForm] = useState({
@@ -3675,6 +3678,84 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
         }
       };
 
+      const handleAddGroupToChurch = (churchId) => {
+        if (!onUpdateVisit || isReadOnly) return;
+        const newGroup = {
+          id: typeof uuidv4 === 'function' ? uuidv4() : Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+          servantsNames: '',
+          cases: []
+        };
+        const updatedChurches = (visit.churches || []).map(ch => {
+          if (ch.id === churchId) {
+            return {
+              ...ch,
+              servantsGroups: [...(ch.servantsGroups || []), newGroup]
+            };
+          }
+          return ch;
+        });
+        onUpdateVisit({
+          ...visit,
+          churches: updatedChurches,
+          updatedAt: Date.now()
+        });
+        setEditingGroupId(newGroup.id);
+        setEditingGroupChurchId(churchId);
+        setServantNameInput('');
+        if (typeof window.notifySuccess === 'function') {
+          window.notifySuccess('تم إضافة مجموعة خدام جديدة! يمكنك كتابة أسماء الخدام الآن.');
+        }
+      };
+
+      const handleSaveServantsNames = (churchId, groupId, newNames) => {
+        if (!onUpdateVisit || isReadOnly) return;
+        const updatedChurches = (visit.churches || []).map(ch => {
+          if (ch.id === churchId) {
+            return {
+              ...ch,
+              servantsGroups: (ch.servantsGroups || []).map(sg => {
+                if (sg.id === groupId) {
+                  return { ...sg, servantsNames: (newNames || '').trim() };
+                }
+                return sg;
+              })
+            };
+          }
+          return ch;
+        });
+        onUpdateVisit({
+          ...visit,
+          churches: updatedChurches,
+          updatedAt: Date.now()
+        });
+        setEditingGroupId(null);
+        setEditingGroupChurchId(null);
+        if (typeof window.notifySuccess === 'function') {
+          window.notifySuccess('تم حفظ أسماء الخدام بنجاح!');
+        }
+      };
+
+      const handleDeleteServantsGroup = (churchId, groupId) => {
+        if (!onUpdateVisit || isReadOnly) return;
+        const updatedChurches = (visit.churches || []).map(ch => {
+          if (ch.id === churchId) {
+            return {
+              ...ch,
+              servantsGroups: (ch.servantsGroups || []).filter(sg => sg.id !== groupId)
+            };
+          }
+          return ch;
+        });
+        onUpdateVisit({
+          ...visit,
+          churches: updatedChurches,
+          updatedAt: Date.now()
+        });
+        if (typeof window.notifySuccess === 'function') {
+          window.notifySuccess('تم حذف مجموعة الخدام.');
+        }
+      };
+
       const handleSaveNewChurch = ({ regionName, villageName, churchName }) => {
         if (!onUpdateVisit) return;
         const newChurch = {
@@ -3817,26 +3898,6 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   <p className="text-gray-500 text-sm mt-1 flex items-center gap-1"><Calendar size={14}/> {visit.date}</p>
                </div>
                <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                   {!isReadOnly && (
-                     <>
-                       <button
-                         type="button"
-                         onClick={() => setAddingRegionModal(true)}
-                         className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-[#002f6c] text-white hover:bg-[#001f4c] px-3.5 py-2 rounded-xl shadow-xs transition-colors font-bold text-xs"
-                         title="إضافة مركز أو منطقة جديدة للزيارة"
-                       >
-                         <Plus size={14} /> <span>🏛️ إضافة مركز جديد</span>
-                       </button>
-                       <button
-                         type="button"
-                         onClick={() => setAddingChurchModal({ defaultRegion: '' })}
-                         className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-emerald-700 text-white hover:bg-emerald-800 px-3.5 py-2 rounded-xl shadow-xs transition-colors font-bold text-xs"
-                         title="إضافة كنيسة جديدة للزيارة"
-                       >
-                         <Plus size={14} /> <span>⛪ إضافة كنيسة جديدة</span>
-                       </button>
-                     </>
-                   )}
                   {onEditVisitSchedule && !isReadOnly && (
                      <button
                         type="button"
@@ -4029,7 +4090,24 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 </div>
              </div>
              
-             <h3 className="text-lg font-bold text-gray-800 mb-4">تفاصيل الحالات</h3>
+             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                <div>
+                   <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                     <span>🏛️</span> <span>تفاصيل المراكز والحالات</span>
+                   </h3>
+                   <p className="text-xs text-gray-500 mt-0.5">قائمة المراكز والكنائس ومجموعات الخدام المسجلة</p>
+                </div>
+                {!isReadOnly && (
+                   <button
+                     type="button"
+                     onClick={() => setAddingRegionModal(true)}
+                     className="flex items-center gap-1.5 bg-[#002f6c] hover:bg-[#001f4c] text-white px-4 py-2.5 rounded-xl shadow-sm transition-colors font-bold text-xs sm:text-sm"
+                     title="إضافة مركز أو منطقة جديدة لهذه الزيارة"
+                   >
+                     <Plus size={16} /> <span>🏛️ إضافة مركز جديد</span>
+                   </button>
+                )}
+             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                {(visit.churches||[]).length === 0 && (!visit.regionVisitNumbers || Object.keys(visit.regionVisitNumbers).length === 0) ? (
                   <div className="p-8 text-center bg-white rounded-xl">
@@ -4223,7 +4301,104 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                       </div>
                       {(expandedChurches[ch.id] !== undefined ? expandedChurches[ch.id] : Boolean(searchQuery)) && (
                         <div>
-                                            {/* Desktop Table View */}
+                                            
+                          {/* Servants Groups Header Bar */}
+                          <div className="bg-blue-50/70 p-3 border-b border-blue-200/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-bold text-[#002f6c] flex items-center gap-1">
+                                <span>👥</span> <span>مجموعات الخدام:</span>
+                              </span>
+                              {(ch.servantsGroups || []).map((sg, sIdx) => (
+                                <div key={sg.id} className="inline-flex items-center gap-1.5 bg-white border border-blue-200 px-2.5 py-1 rounded-lg text-xs font-bold text-gray-800 shadow-2xs">
+                                  {editingGroupId === sg.id ? (
+                                    <div className="inline-flex items-center gap-1">
+                                      <input
+                                        type="text"
+                                        value={servantNameInput}
+                                        onChange={(e) => setServantNameInput(e.target.value)}
+                                        placeholder="أسماء الخدام (مثال: نادر + عادل)"
+                                        className="text-xs p-1 border border-blue-400 rounded-md outline-none focus:ring-1 focus:ring-[#002f6c] w-36"
+                                        autoFocus
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSaveServantsNames(ch.id, sg.id, servantNameInput)}
+                                        className="px-2 py-0.5 bg-[#002f6c] text-white rounded text-[11px] font-bold hover:bg-[#001f4c]"
+                                      >
+                                        حفظ
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingGroupId(null)}
+                                        className="px-1 text-gray-400 hover:text-gray-600 text-xs"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <span className="text-[#002f6c]">{sg.servantsNames || `مجموعة ${sIdx + 1} (غير محددة)`}</span>
+                                      <span className="text-[10px] text-gray-500 font-sans">({formatNumber((sg.cases || []).length)} حالة)</span>
+                                      {!isReadOnly && (
+                                        <button
+                                          type="button"
+                                          onClick={() => { setEditingGroupId(sg.id); setEditingGroupChurchId(ch.id); setServantNameInput(sg.servantsNames || ''); }}
+                                          className="text-blue-600 hover:text-blue-900 p-0.5 hover:bg-blue-50 rounded"
+                                          title="تعديل أسماء الخدام لهذه المجموعة"
+                                        >
+                                          <Edit2 size={12} />
+                                        </button>
+                                      )}
+                                      {!isReadOnly && (sg.cases || []).length === 0 && (ch.servantsGroups || []).length > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteServantsGroup(ch.id, sg.id)}
+                                          className="text-red-500 hover:text-red-700 p-0.5 hover:bg-red-50 rounded"
+                                          title="حذف هذه المجموعة الفارغة"
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                onClick={() => handleAddGroupToChurch(ch.id)}
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#002f6c] hover:text-[#001f4c] bg-white hover:bg-blue-100 border border-blue-300 px-2 py-1 rounded-lg transition-colors"
+                              >
+                                <Plus size={12} /> <span>إضافة خدام آخرين</span>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Empty cases check */}
+                          {((ch.servantsGroups || []).reduce((sum, g) => sum + (g.cases || []).length, 0) === 0) ? (
+                            <div className="p-8 text-center bg-white border-b border-gray-100">
+                              <p className="text-gray-500 font-medium text-xs mb-3">لا توجد حالات مسجلة في كنيسة ({ch.churchName}) بعد.</p>
+                              {!isReadOnly && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const firstSg = (ch.servantsGroups || [])[0];
+                                    setAddingCaseToChurch({
+                                      churchId: ch.id,
+                                      churchName: ch.churchName,
+                                      servantName: firstSg ? firstSg.servantsNames : ''
+                                    });
+                                  }}
+                                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs inline-flex items-center gap-1.5 transition-all"
+                                >
+                                  <Plus size={14} /> <span>إضافة أول حالة لهذه الكنيسة</span>
+                                </button>
+                              )}
+                            </div>
+                          ) : null}
+
+{/* Desktop Table View */}
                       <div className="hidden md:block p-0 overflow-x-auto">
                          <table className="w-full text-sm text-right">
                             <thead className="bg-[#002f6c] text-white text-xs uppercase">
@@ -4432,28 +4607,39 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                         ))}
                       </div>
 
-                        {!isReadOnly && (
-                          <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const firstSg = (ch.servantsGroups || [])[0];
-                                setAddingCaseToChurch({
-                                  churchId: ch.id,
-                                  churchName: ch.churchName,
-                                  servantName: firstSg ? firstSg.servantsNames : ''
-                                });
-                              }}
-                              className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-3.5 py-2 rounded-xl transition-all shadow-xs"
-                            >
-                              <Plus size={14} className="text-emerald-700" />
-                              <span>+ إضافة حالة جديدة لكنيسة {ch.churchName}</span>
-                            </button>
-                            <span className="text-[11px] text-gray-500 font-sans">
-                              {formatNumber((ch.servantsGroups || []).reduce((s, g) => s + (g.cases || []).length, 0))} حالة مسجلة
-                            </span>
-                          </div>
-                        )}
+                        <div className="p-3.5 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
+                          {!isReadOnly && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleAddGroupToChurch(ch.id)}
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#002f6c] bg-white hover:bg-blue-50 border border-[#002f6c]/30 hover:border-[#002f6c] px-3.5 py-2 rounded-xl transition-all shadow-xs"
+                                title="إضافة مجموعة خدام أخرى لنفس الكنيسة"
+                              >
+                                <Plus size={14} className="text-[#002f6c]" />
+                                <span>👥 إضافة مجموعة خدام للكنيسة</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const firstSg = (ch.servantsGroups || [])[0];
+                                  setAddingCaseToChurch({
+                                    churchId: ch.id,
+                                    churchName: ch.churchName,
+                                    servantName: firstSg ? firstSg.servantsNames : ''
+                                  });
+                                }}
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-3.5 py-2 rounded-xl transition-all shadow-xs"
+                              >
+                                <Plus size={14} className="text-emerald-700" />
+                                <span>➕ إضافة حالة جديدة</span>
+                              </button>
+                            </div>
+                          )}
+                          <span className="text-xs font-bold text-gray-600 bg-white border border-gray-200 px-3 py-1 rounded-full shadow-xs">
+                            📊 <span className="font-sans text-[#002f6c]">{formatNumber((ch.servantsGroups || []).reduce((s, g) => s + (g.cases || []).length, 0))}</span> حالة مسجلة
+                          </span>
+                        </div>
                       </div>
 
                       )}
@@ -18203,7 +18389,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1793179042451";
+      const CLIENT_BUILD_ID = "1793179898610";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
