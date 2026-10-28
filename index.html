@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="خدمة الأنبا كاراس" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="app-build-id" content="1793176537424" />
+  <meta name="app-build-id" content="1793177939506" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -1846,6 +1846,100 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       );
     }
 
+
+    // --- ADD CHURCH MODAL ---
+    function AddChurchModal({ defaultRegion = '', onSave, onClose, existingRegions = [], existingVillages = [] }) {
+      const [region, setRegion] = useState(defaultRegion || '');
+      const [village, setVillage] = useState('');
+      const [name, setName] = useState('');
+
+      const handleSave = () => {
+        const cleanRegion = (region || '').trim();
+        const cleanVillage = (village || '').trim();
+        const cleanName = (name || '').trim();
+
+        if (!cleanRegion && !cleanVillage && !cleanName) {
+          alert('برجاء إدخال اسم الكنيسة أو القرية على الأقل.');
+          return;
+        }
+
+        const canonicalReg = typeof normalizeRegionName === 'function' ? normalizeRegionName(cleanRegion || cleanVillage) : (cleanRegion || 'منطقة عامة');
+        const finalChurchName = cleanName || cleanVillage || 'كنيسة عامة';
+        const finalVillageName = cleanVillage || cleanName || finalChurchName;
+
+        onSave({
+          regionName: canonicalReg,
+          villageName: finalVillageName,
+          churchName: finalChurchName
+        });
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in" onClick={onClose}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-gray-100 bg-[#002f6c] text-white flex justify-between items-center">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <span className="text-lg">⛪</span>
+                <span>{defaultRegion ? `إضافة كنيسة بمركز (${defaultRegion})` : 'إضافة كنيسة / قرية جديدة'}</span>
+              </h3>
+              <button type="button" onClick={onClose} className="text-white/80 hover:text-white p-1">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4 text-right">
+              <div>
+                <SmartAutocompleteInput
+                  label="المركز / المنطقة التابع لها:"
+                  value={region}
+                  onChange={setRegion}
+                  options={existingRegions.length > 0 ? existingRegions : ['أبو قرقاص', 'مطاي', 'بني مزار', 'سمالوط', 'مغاغة', 'دير مواس', 'ملوي', 'المنيا']}
+                  placeholder="مثلاً: مطاي، أبو قرقاص..."
+                  autoFocus={!defaultRegion}
+                />
+              </div>
+              <div>
+                <SmartAutocompleteInput
+                  label="اسم القرية / البلد:"
+                  value={village}
+                  onChange={setVillage}
+                  options={existingVillages}
+                  placeholder="مثلاً: قطوشة، أبو قرقاص البلد، الفكرية..."
+                  autoFocus={Boolean(defaultRegion)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">اسم الكنيسة:</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="مثلاً: كنيسة رئيس الملائكة ميخائيل"
+                  className="w-full text-sm border border-gray-200 rounded-lg p-2.5 outline-none focus:border-[#002f6c] focus:ring-1 focus:ring-[#002f6c]"
+                />
+              </div>
+            </div>
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-xs sm:text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="px-5 py-2 text-xs sm:text-sm font-bold bg-[#002f6c] text-white hover:bg-[#001f4c] rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+              >
+                <Plus size={16} />
+                <span>حفظ وإضافة الكنيسة</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // --- SERVANTS GROUP VIEW ---
     function ServantsGroupView({ group, churchId, onUpdateGroup, onDeleteGroup, serialMap, onEditCase, onDeleteCase, onExecuteCase }) {
       const [isAddingCase, setIsAddingCase] = useState(false);
@@ -1986,6 +2080,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
     function ActiveVisitForm({ data, updateData, currentUser, onEndVisit, onStartNewVisit, onExport, onOpenImportLegacy }) {
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
       const [editingChurchInfo, setEditingChurchInfo] = useState(null);
+      const [addingChurchModal, setAddingChurchModal] = useState(null);
       const [executingCaseInfo, setExecutingCaseInfo] = useState(null);
       const [showImportModal, setShowImportModal] = useState(false);
       const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'initial' | 'executed' | 'cancelled'
@@ -2157,7 +2252,27 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       });
 
       const toggleChurch = (id) => setExpandedChurches(prev => ({...prev, [id]: !prev[id]}));
+      const handleSaveNewChurch = ({ regionName, villageName, churchName }) => {
+        const newChurch = {
+          id: uuidv4(),
+          regionName: regionName || 'منطقة غير محددة',
+          villageName: villageName || '',
+          churchName: churchName || 'كنيسة عامة',
+          servantsGroups: [{ id: uuidv4(), servantsNames: '', cases: [] }]
+        };
+        updateData(prev => ({ ...prev, churches: [newChurch, ...(prev.churches || [])] }));
+        setExpandedChurches(prev => ({ ...prev, [newChurch.id]: true }));
+        setExpandedRegions(prev => ({ ...prev, [newChurch.regionName]: true }));
+        setAddingChurchModal(null);
+        if (typeof window.notifySuccess === 'function') {
+          window.notifySuccess(`تم إضافة كنيسة (${newChurch.churchName}) بنجاح!`);
+        }
+      };
+
       const handleAddChurch = () => {
+        setAddingChurchModal({ defaultRegion: '' });
+      };
+      const _legacyAddChurch = () => {
         const newChurch = {
           id: uuidv4(), regionName: '', villageName: '', churchName: '',
           servantsGroups: [{ id: uuidv4(), servantsNames: '', cases: [] }]
@@ -2726,8 +2841,8 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           
           <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
             <h3 className="text-lg font-bold text-gray-800">الكنائس والمناطق ({formatNumber((data.churches||[]).length)})</h3>
-            {!isReadOnly && <button onClick={handleAddChurch} className="flex items-center gap-1.5 bg-[#002f6c] text-white hover:bg-[#001f4c] px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors">
-              <Plus size={16} /> إضافة كنيسة/منطقة
+            {!isReadOnly && <button onClick={() => setAddingChurchModal({ defaultRegion: '' })} className="flex items-center gap-1.5 bg-[#002f6c] text-white hover:bg-[#001f4c] px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition-colors">
+              <Plus size={16} /> إضافة كنيسة / مركز جديد
             </button>}
           </div>
 
@@ -2797,6 +2912,20 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                       </span>
                                     )}
                                     <div className="mr-auto flex flex-wrap gap-2 items-center">
+                                    {!isReadOnly && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setAddingChurchModal({ defaultRegion: regionName });
+                                        }}
+                                        className="px-3 py-1.5 rounded-lg bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold shadow-xs transition-colors inline-flex items-center gap-1.5 shrink-0"
+                                        title={`إضافة كنيسة جديدة تابعة لمركز ${regionName}`}
+                                      >
+                                        <Plus size={14} />
+                                        <span>إضافة كنيسة بمركز {regionName}</span>
+                                      </button>
+                                    )}
                                        <span className="bg-white text-[#002f6c] border border-[#002f6c]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
                                           ⛪ <span className="font-sans">{formatNumber(regionStats.totalChurches)}</span> كنائس
                                        </span>
@@ -2912,6 +3041,18 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                   )}
                 </div>
               ))}
+                                    {!isReadOnly && (
+                                      <div className="flex justify-center pt-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => setAddingChurchModal({ defaultRegion: regionName })}
+                                          className="flex items-center gap-2 bg-white hover:bg-blue-50 text-[#002f6c] text-xs sm:text-sm font-bold py-2.5 px-6 rounded-xl transition-all border border-[#002f6c]/30 hover:border-[#002f6c] shadow-xs"
+                                        >
+                                          <Plus size={16} />
+                                          <span>إضافة كنيسة جديدة بمركز {regionName}</span>
+                                        </button>
+                                      </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -2937,6 +3078,16 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
               onClose={() => setEditingChurchInfo(null)} 
               existingRegions={uniqueRegions}
               existingVillages={uniqueVillages}
+            />
+          )}
+
+          {addingChurchModal && (
+            <AddChurchModal
+              defaultRegion={addingChurchModal.defaultRegion}
+              existingRegions={uniqueRegions}
+              existingVillages={uniqueVillages}
+              onSave={handleSaveNewChurch}
+              onClose={() => setAddingChurchModal(null)}
             />
           )}
           {showImportModal && (
@@ -3124,6 +3275,7 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
       const [executingCaseInfo, setExecutingCaseInfo] = useState(null);
       const [editingCaseInfo, setEditingCaseInfo] = useState(null);
       const [editingChurchInfo, setEditingChurchInfo] = useState(null);
+      const [addingChurchModal, setAddingChurchModal] = useState(null);
       const [addingCaseToChurch, setAddingCaseToChurch] = useState(null);
       const [renamingRegion, setRenamingRegion] = useState(null);
       const [newCaseForm, setNewCaseForm] = useState({
@@ -3352,6 +3504,29 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
           regionName: ch.regionName || '',
           villageName: ch.villageName || ''
         });
+      };
+
+      const handleSaveNewChurch = ({ regionName, villageName, churchName }) => {
+        if (!onUpdateVisit) return;
+        const newChurch = {
+          id: uuidv4(),
+          regionName: regionName || 'منطقة غير محددة',
+          villageName: villageName || '',
+          churchName: churchName || 'كنيسة عامة',
+          servantsGroups: [{ id: uuidv4(), servantsNames: '', cases: [] }]
+        };
+        const updatedVisit = {
+          ...visit,
+          churches: [newChurch, ...(visit.churches || [])],
+          updatedAt: Date.now()
+        };
+        onUpdateVisit(updatedVisit);
+        setExpandedChurches(prev => ({ ...prev, [newChurch.id]: true }));
+        setExpandedRegions(prev => ({ ...prev, [newChurch.regionName]: true }));
+        setAddingChurchModal(null);
+        if (typeof window.notifySuccess === 'function') {
+          window.notifySuccess(`تم إضافة كنيسة (${newChurch.churchName}) بنجاح!`);
+        }
       };
 
       const handleSaveEditChurch = (churchId, newChurchName, newRegionName, newVillageName) => {
@@ -3726,6 +3901,20 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                                       </span>
                                     )}
                                     <div className="mr-auto flex flex-wrap gap-2 items-center">
+                                    {!isReadOnly && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setAddingChurchModal({ defaultRegion: regionName });
+                                        }}
+                                        className="px-3 py-1 rounded-lg bg-[#002f6c] hover:bg-[#001f4c] text-white text-xs font-bold shadow-xs transition-colors inline-flex items-center gap-1.5 shrink-0"
+                                        title={`إضافة كنيسة جديدة تابعة لمركز ${regionName}`}
+                                      >
+                                        <Plus size={13} />
+                                        <span>إضافة كنيسة بمركز {regionName}</span>
+                                      </button>
+                                    )}
                                        <span className="bg-white text-[#002f6c] border border-[#002f6c]/30 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
                                           ⛪ <span className="font-sans">{formatNumber(regionStats.totalChurches)}</span> كنائس
                                        </span>
@@ -4219,6 +4408,16 @@ const ANBA_KARAS_SPLASH_IMAGE = "anba_karas_splash.jpg";
                 onClose={() => setEditingChurchInfo(null)} 
                 existingRegions={uniqueRegions}
                 existingVillages={uniqueVillages}
+              />
+            )}
+
+            {addingChurchModal && (
+              <AddChurchModal
+                defaultRegion={addingChurchModal.defaultRegion}
+                existingRegions={uniqueRegions}
+                existingVillages={uniqueVillages}
+                onSave={handleSaveNewChurch}
+                onClose={() => setAddingChurchModal(null)}
               />
             )}
             {showImportModal && (
@@ -17747,7 +17946,7 @@ function App() {
   <!-- AUTOMATIC DEPLOYMENT AUTO-REFRESH SCRIPT -->
   <script>
     (function() {
-      const CLIENT_BUILD_ID = "1793176537424";
+      const CLIENT_BUILD_ID = "1793177939506";
       let isUpdating = false;
 
       function isUserActivelyEditing() {
